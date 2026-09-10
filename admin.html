@@ -853,6 +853,222 @@ if(token){showApp();loadProducts();loadOrders({setBaseline:true});initAdminNotif
   setInterval(scrub,500);
 })();
 </script>
-\n<!-- McKenzie Ramen House — Firebase standalone Admin override -->\n<script src="js/firebase-config.js"></script>\n<script src="js/firebase-standalone.js"></script>\n<script>\n(function(){\n  'use strict';\n  function ready(fn){\n    if(window.MckenzieFirebaseReady){\n      window.MckenzieFirebaseReady.then(fn).catch(function(err){\n        console.error(err);\n        var m=document.getElementById('loginMsg'); if(m)m.textContent='Firebase connection failed. Please refresh.';\n      });\n    } else setTimeout(function(){ready(fn);},100);\n  }\n\n  window.checkAdminApi=function(){\n    var el=document.getElementById('apiStatus'); if(!el)return;\n    el.textContent='Connecting to Firebase…'; el.style.color='#756965';\n    ready(function(){el.textContent='● Firebase connected';el.style.color='#23824a';});\n  };\n\n  window.run=function(name,args,onSuccess){\n    args=Array.isArray(args)?args:[]; onSuccess=typeof onSuccess==='function'?onSuccess:function(){};\n    ready(function(){\n      try{\n        var r=window.google&&window.google.script&&window.google.script.run;\n        if(!r||typeof r[name]!=='function'){onSuccess(null,'Firebase bridge is not ready.');return;}\n        r.withSuccessHandler(function(v){onSuccess(v,null);}).withFailureHandler(function(e){onSuccess(null,e&&e.message?e.message:String(e||'Firebase request failed.'));})[name].apply(null,args);\n      }catch(e){onSuccess(null,e.message||String(e));}\n    });\n  };\n\n  window.login=function(){\n    var email=document.getElementById('loginEmail').value.trim();\n    var password=document.getElementById('loginPassword').value;\n    var msg=document.getElementById('loginMsg'),btn=document.getElementById('adminLoginBtn');\n    if(!email||!password){msg.textContent='Please enter your admin email and password.';return;}\n    msg.textContent='Signing in securely…'; if(btn)btn.disabled=true;\n    window.run('adminLogin',[email,password],function(v,e){\n      if(btn)btn.disabled=false;\n      if(e||!v||!v.success){msg.textContent=e||'Invalid admin credentials.';return;}\n      window.token=v.token||''; if(window.token)sessionStorage.setItem('mck_admin_token',window.token);\n      msg.textContent=''; window.showApp(); window.loadProducts(); window.loadOrders({setBaseline:true});\n      if(typeof window.initAdminNotifications==='function')window.initAdminNotifications();\n    });\n  };\n\n  function imageUrlInput(){\n    var old=document.getElementById('image'); if(!old)return;\n    if(old.type==='url')return;\n    var parent=old.parentElement; if(!parent)return;\n    parent.innerHTML='<input id="image" type="url" placeholder="https://mckenzieramen.github.io/mckenzie-ramen-house/images/product.jpg" style="width:100%;padding:11px 12px;border:1px solid #eaded1;border-radius:9px;outline:none"><small style="display:block;margin-top:7px;color:#756965">Upload the image to the GitHub <b>images</b> folder first, then paste the GitHub Pages image URL here. Firebase Storage is not required.</small>';\n    var input=document.getElementById('image');\n    input.addEventListener('input',function(){var p=document.getElementById('preview');if(this.value.trim()){p.src=this.value.trim();p.style.display='block';}else{p.style.display='none';p.removeAttribute('src');}});\n  }\n\n  var originalOpenModal=window.openModal;\n  window.openModal=function(p){\n    if(typeof originalOpenModal==='function')originalOpenModal(p);\n    setTimeout(function(){\n      imageUrlInput();\n      var input=document.getElementById('image'),preview=document.getElementById('preview');\n      if(input&&p&&p.image){input.value=p.image;preview.src=p.image;preview.style.display='block';}\n    },0);\n  };\n\n  window.saveProduct=function(){\n    var name=document.getElementById('name').value.trim(),price=document.getElementById('price').value;\n    var image=(document.getElementById('image')||{}).value||''; image=image.trim();\n    var msg=document.getElementById('saveMsg');\n    if(!name||price===''){msg.textContent='Product name and price are required.';return;}\n    if(!image){msg.textContent='Please enter the product image URL.';return;}\n    msg.textContent='Saving product to Firebase…';\n    var data={token:window.token||sessionStorage.getItem('mck_admin_token')||'',id:document.getElementById('productId').value,name:name,price:Number(price),category:document.getElementById('category').value,available:document.getElementById('available').value==='true',description:document.getElementById('description').value.trim(),bestSeller:document.getElementById('bestSeller').checked,newProduct:document.getElementById('newProduct').checked,imageUrl:image};\n    window.run('adminSaveProduct',[data],function(v,e){\n      if(e||!v||!v.success){msg.textContent=e||'Unable to save product.';return;}\n      msg.textContent='Product saved successfully!'; setTimeout(function(){window.closeModal();window.loadProducts();},400);\n    });\n  };\n\n  window.deleteProduct=function(id){\n    if(!confirm('Delete this product?'))return;\n    window.run('adminDeleteProduct',[window.token||sessionStorage.getItem('mck_admin_token')||'',id],function(v,e){\n      if(e||!v||!v.success){if(typeof window.showAdminToast==='function')window.showAdminToast('⚠ Delete failed',e||'Unable to delete product.');return;}\n      window.loadProducts();\n    });\n  };\n\n  window.logout=function(){\n    if(typeof window.MckenzieAdminSignOut==='function')window.MckenzieAdminSignOut();\n    window.token='';sessionStorage.removeItem('mck_admin_token');\n    var app=document.getElementById('app'),login=document.getElementById('login');\n    if(app)app.style.display='none';if(login)login.style.display='flex';\n    var pw=document.getElementById('loginPassword');if(pw)pw.value='';\n  };\n\n  ready(function(){\n    window.checkAdminApi(); imageUrlInput();\n    var saved=sessionStorage.getItem('mck_admin_token')||'';\n    if(saved){window.token=saved;window.showApp();window.loadProducts();window.loadOrders({setBaseline:true});if(typeof window.initAdminNotifications==='function')window.initAdminNotifications();}\n  });\n})();\n</script>\n
+
+<!-- McKenzie Ramen House — Firebase standalone Admin -->
+<script src="js/firebase-config.js"></script>
+<script src="js/firebase-standalone.js"></script>
+<script>
+(function(){
+  'use strict';
+
+  function firebaseErrorText(err){
+    if(!err) return 'Unknown Firebase error.';
+    return String(err.message || err.code || err || 'Unknown Firebase error.');
+  }
+
+  function showFirebaseError(err){
+    var text = firebaseErrorText(err);
+    console.error('McKenzie Firebase error:', err);
+    var status = document.getElementById('apiStatus');
+    if(status){
+      status.textContent = 'Firebase error: ' + text;
+      status.style.color = '#b91e35';
+    }
+    var msg = document.getElementById('loginMsg');
+    if(msg) msg.textContent = 'Firebase connection failed.';
+  }
+
+  function waitForFirebase(fn){
+    if(window.MckenzieFirebaseReady && typeof window.MckenzieFirebaseReady.then === 'function'){
+      window.MckenzieFirebaseReady.then(fn).catch(showFirebaseError);
+      return;
+    }
+    setTimeout(function(){ waitForFirebase(fn); }, 100);
+  }
+
+  window.checkAdminApi = function(){
+    var status = document.getElementById('apiStatus');
+    if(!status) return;
+    status.textContent = 'Connecting to Firebase…';
+    status.style.color = '#756965';
+
+    waitForFirebase(function(){
+      status.textContent = '● Firebase connected';
+      status.style.color = '#23824a';
+    });
+  };
+
+  window.run = function(name,args,onSuccess){
+    args = Array.isArray(args) ? args : [];
+    onSuccess = typeof onSuccess === 'function' ? onSuccess : function(){};
+
+    waitForFirebase(function(){
+      try{
+        var bridge = window.google && window.google.script && window.google.script.run;
+        if(!bridge || typeof bridge[name] !== 'function'){
+          onSuccess(null,'Firebase bridge method is unavailable: ' + name);
+          return;
+        }
+        bridge
+          .withSuccessHandler(function(value){ onSuccess(value,null); })
+          .withFailureHandler(function(error){ onSuccess(null,firebaseErrorText(error)); })[name]
+          .apply(null,args);
+      }catch(error){
+        onSuccess(null,firebaseErrorText(error));
+      }
+    });
+  };
+
+  window.login = function(){
+    var emailEl = document.getElementById('loginEmail');
+    var passwordEl = document.getElementById('loginPassword');
+    var msg = document.getElementById('loginMsg');
+    var btn = document.getElementById('adminLoginBtn');
+    var email = emailEl ? emailEl.value.trim() : '';
+    var password = passwordEl ? passwordEl.value : '';
+
+    if(!email || !password){
+      if(msg) msg.textContent = 'Please enter your admin email and password.';
+      return;
+    }
+
+    if(msg) msg.textContent = 'Signing in securely…';
+    if(btn) btn.disabled = true;
+
+    window.run('adminLogin',[email,password],function(result,error){
+      if(btn) btn.disabled = false;
+      if(error || !result || !result.success){
+        if(msg) msg.textContent = error || 'Invalid admin credentials.';
+        return;
+      }
+
+      window.token = result.token || '';
+      if(window.token) sessionStorage.setItem('mck_admin_token',window.token);
+      if(msg) msg.textContent = '';
+
+      if(typeof window.showApp === 'function') window.showApp();
+      if(typeof window.loadProducts === 'function') window.loadProducts();
+      if(typeof window.loadOrders === 'function') window.loadOrders({setBaseline:true});
+      if(typeof window.initAdminNotifications === 'function') window.initAdminNotifications();
+    });
+  };
+
+  function imageUrlInput(){
+    var old = document.getElementById('image');
+    if(!old || old.type === 'url') return;
+    var parent = old.parentElement;
+    if(!parent) return;
+
+    parent.innerHTML = '<input id="image" type="url" placeholder="https://mckenzieramen.github.io/mckenzie-ramen-house/images/product.jpg" style="width:100%;padding:11px 12px;border:1px solid #eaded1;border-radius:9px;outline:none"><small style="display:block;margin-top:7px;color:#756965">Upload the image to the GitHub <b>images</b> folder first, then paste the GitHub Pages image URL here.</small>';
+
+    var input = document.getElementById('image');
+    if(input) input.addEventListener('input',function(){
+      var preview = document.getElementById('preview');
+      if(!preview) return;
+      if(this.value.trim()){
+        preview.src = this.value.trim();
+        preview.style.display = 'block';
+      }else{
+        preview.style.display = 'none';
+        preview.removeAttribute('src');
+      }
+    });
+  }
+
+  var originalOpenModal = window.openModal;
+  window.openModal = function(product){
+    if(typeof originalOpenModal === 'function') originalOpenModal(product);
+    setTimeout(function(){
+      imageUrlInput();
+      var input = document.getElementById('image');
+      var preview = document.getElementById('preview');
+      if(input && product && product.image){
+        input.value = product.image;
+        if(preview){
+          preview.src = product.image;
+          preview.style.display = 'block';
+        }
+      }
+    },0);
+  };
+
+  window.saveProduct = function(){
+    var nameEl = document.getElementById('name');
+    var priceEl = document.getElementById('price');
+    var imageEl = document.getElementById('image');
+    var msg = document.getElementById('saveMsg');
+    var name = nameEl ? nameEl.value.trim() : '';
+    var price = priceEl ? priceEl.value : '';
+    var image = imageEl ? imageEl.value.trim() : '';
+
+    if(!name || price === ''){ if(msg) msg.textContent='Product name and price are required.'; return; }
+    if(!image){ if(msg) msg.textContent='Please enter the product image URL.'; return; }
+
+    if(msg) msg.textContent='Saving product to Firebase…';
+
+    var data = {
+      token: window.token || sessionStorage.getItem('mck_admin_token') || '',
+      id: document.getElementById('productId').value,
+      name: name,
+      price: Number(price),
+      category: document.getElementById('category').value,
+      available: document.getElementById('available').value === 'true',
+      description: document.getElementById('description').value.trim(),
+      bestSeller: document.getElementById('bestSeller').checked,
+      newProduct: document.getElementById('newProduct').checked,
+      imageUrl: image
+    };
+
+    window.run('adminSaveProduct',[data],function(result,error){
+      if(error || !result || !result.success){
+        if(msg) msg.textContent = error || 'Unable to save product.';
+        return;
+      }
+      if(msg) msg.textContent='Product saved successfully!';
+      setTimeout(function(){
+        if(typeof window.closeModal === 'function') window.closeModal();
+        if(typeof window.loadProducts === 'function') window.loadProducts();
+      },400);
+    });
+  };
+
+  window.deleteProduct = function(id){
+    if(!confirm('Delete this product?')) return;
+    window.run('adminDeleteProduct',[window.token || sessionStorage.getItem('mck_admin_token') || '',id],function(result,error){
+      if(error || !result || !result.success){
+        if(typeof window.showAdminToast === 'function') window.showAdminToast('⚠ Delete failed',error || 'Unable to delete product.');
+        return;
+      }
+      if(typeof window.loadProducts === 'function') window.loadProducts();
+    });
+  };
+
+  window.logout = function(){
+    if(typeof window.MckenzieAdminSignOut === 'function') window.MckenzieAdminSignOut();
+    window.token = '';
+    sessionStorage.removeItem('mck_admin_token');
+    var app = document.getElementById('app');
+    var login = document.getElementById('login');
+    if(app) app.style.display='none';
+    if(login) login.style.display='flex';
+    var pw = document.getElementById('loginPassword');
+    if(pw) pw.value='';
+  };
+
+  waitForFirebase(function(){
+    window.checkAdminApi();
+    imageUrlInput();
+    var saved = sessionStorage.getItem('mck_admin_token') || '';
+    if(saved){
+      window.token = saved;
+      if(typeof window.showApp === 'function') window.showApp();
+      if(typeof window.loadProducts === 'function') window.loadProducts();
+      if(typeof window.loadOrders === 'function') window.loadOrders({setBaseline:true});
+      if(typeof window.initAdminNotifications === 'function') window.initAdminNotifications();
+    }
+  });
+})();
+</script>
+
 </body>
 </html>
