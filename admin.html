@@ -11,14 +11,44 @@
 button,input,select,textarea{font:inherit}
 .layout{min-height:100vh;display:flex}.side{width:245px;background:#130807;color:#fff;padding:25px 17px;position:fixed;inset:0 auto 0 0}.brand{text-align:center;padding:4px 0 28px;border-bottom:1px solid #3a211c}.brand-mark{font-size:31px}.brand h2{font-family:'Cormorant Garamond',serif;font-size:25px;margin:4px 0;color:#f1c24b}.brand small{color:#bfaea8}.nav{margin-top:25px;display:grid;gap:8px}.nav button{width:100%;text-align:left;background:transparent;color:#d9cdca;border:0;border-radius:11px;padding:13px 14px;cursor:pointer;font-weight:700}.nav button.active,.nav button:hover{background:#341514;color:#ffd45c}.logout{position:absolute;bottom:25px;left:17px;right:17px;border:1px solid #6d3b33!important}
 .main{margin-left:245px;width:calc(100% - 245px);padding:30px 4%}.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:28px}.top h1{font-family:'Cormorant Garamond',serif;font-size:43px;margin:0;color:#60151f}.top p{margin:3px 0;color:var(--muted)}.add{background:var(--red);color:#fff;border:0;padding:13px 19px;border-radius:12px;font-weight:800;cursor:pointer;box-shadow:0 8px 20px #b91e3525}.add:disabled{opacity:.65;cursor:wait}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:15px;margin-bottom:25px}.stat{background:#fff;border:1px solid var(--line);border-radius:15px;padding:18px}.stat span{color:var(--muted);font-size:12px}.stat strong{display:block;font-size:28px;margin-top:5px}.panel{background:#fff;border:1px solid var(--line);border-radius:17px;padding:22px}.toolbar{display:flex;gap:10px;justify-content:space-between;margin-bottom:18px}.search-wrap{position:relative;max-width:330px;width:100%;display:flex;align-items:center}.search-wrap .search-icon{position:absolute;left:12px;font-size:15px;pointer-events:none}.search-wrap .search{max-width:none;padding:11px 10px 11px 36px}.search-btn{border:1px solid var(--line);background:#fff;padding:11px 13px;border-radius:10px;cursor:pointer;font-weight:800;color:#60151f}.search-btn:hover{background:#fff7ec}.search{max-width:330px;width:100%;padding:11px 14px;border:1px solid var(--line);border-radius:10px;outline:none}.products{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}.product{border:1px solid var(--line);border-radius:15px;overflow:hidden;background:#fff}.product img{width:100%;height:185px;object-fit:cover;background:#eee}.pbody{padding:15px}.badge{display:inline-block;background:#f8e3e5;color:var(--red);padding:4px 7px;border-radius:6px;font-size:9px;font-weight:800;margin-bottom:7px}.pbody h3{margin:0 0 4px;font-family:'Cormorant Garamond',serif;font-size:27px}.price{font-weight:800;color:var(--red);font-size:18px}.meta{font-size:12px;color:var(--muted);margin:7px 0 13px}.actions{display:flex;gap:7px}.actions button{flex:1;padding:9px;border-radius:9px;border:1px solid var(--line);background:#fff;cursor:pointer;font-weight:700}.actions .edit{color:var(--red);border-color:#e8b5bc}.actions .del{color:#8a3434}.empty{text-align:center;padding:50px;color:var(--muted)}
-.modal{display:none;position:fixed;z-index:20;inset:0;background:#090303aa;align-items:center;justify-content:center;padding:20px}.modal.open{display:flex}.box{background:#fff;width:min(720px,100%);max-height:92vh;overflow:auto;border-radius:20px;padding:25px}.box h2{font-family:'Cormorant Garamond',serif;font-size:35px;color:#60151f;margin:0 0 18px}.form{display:grid;grid-template-columns:1fr 1fr;gap:14px}.field.full{grid-column:1/-1}.field label{display:block;font-size:12px;font-weight:800;margin-bottom:6px}.field input,.field select,.field textarea{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:9px;outline:none}.field textarea{min-height:90px;resize:vertical}.checks{display:flex;gap:18px;flex-wrap:wrap}.upload{border:2px dashed #d8c4b7;border-radius:14px;padding:17px;text-align:center;cursor:pointer;background:#fffaf5}.upload strong{display:block}.preview{display:none;margin-top:12px;width:100%;height:190px;object-fit:cover;border-radius:12px}.modal-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:20px}.cancel{border:1px solid var(--line);background:#fff;padding:11px 18px;border-radius:10px;font-weight:700}.save{border:0;background:var(--red);color:#fff;padding:11px 20px;border-radius:10px;font-weight:800}.login{position:fixed;inset:0;background:linear-gradient(135deg,#120706,#4a1018);display:flex;align-items:center;justify-content:center;padding:20px;z-index:50}.login-card{width:min(420px,100%);background:#fff;border-radius:22px;padding:32px;box-shadow:0 25px 70px #0008}.login-card .logo{font-size:40px;text-align:center}.login-card h1{text-align:center;font-family:'Cormorant Garamond',serif;color:#651620;font-size:37px;margin:4px 0}.login-card p{text-align:center;color:var(--muted);font-size:13px}.login-card label{font-size:12px;font-weight:800;display:block;margin:15px 0 6px}.login-card input{width:100%;padding:12px;border:1px solid var(--line);border-radius:10px}.login-btn{width:100%;margin-top:20px;padding:13px;background:var(--red);color:#fff;border:0;border-radius:11px;font-weight:800}.msg{margin-top:12px;text-align:center;font-size:12px;color:#a33}
+.modal{display:none;position:fixed;z-index:20;inset:0;background:#090303aa;align-items:center;justify-content:center;padding:20px}.modal.open{display:flex}.box{background:#fff;width:min(720px,100%);max-height:92vh;overflow:auto;border-radius:20px;padding:25px}.box h2{font-family:'Cormorant Garamond',serif;font-size:35px;color:#60151f;margin:0 0 18px}.form{display:grid;grid-template-columns:1fr 1fr;gap:14px}.field.full{grid-column:1/-1}.field label{display:block;font-size:12px;font-weight:800;margin-bottom:6px}.field input,.field select,.field textarea{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:9px;outline:none}.field textarea{min-height:90px;resize:vertical}.checks{display:flex;gap:18px;flex-wrap:wrap}.upload{border:2px dashed #d8c4b7;border-radius:14px;padding:17px;text-align:center;cursor:pointer;background:#fffaf5}.upload strong{display:block}.preview{display:none;margin-top:12px;width:100%;height:190px;object-fit:cover;border-radius:12px}.modal-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:20px}.cancel{border:1px solid var(--line);background:#fff;padding:11px 18px;border-radius:10px;font-weight:700}.save{border:0;background:var(--red);color:#fff;padding:11px 20px;border-radius:10px;font-weight:800}.login{position:fixed;inset:0;background:linear-gradient(135deg,#120706,#4a1018);display:flex;align-items:center;justify-content:center;padding:20px;z-index:2147483000;pointer-events:auto}.login-card{position:relative;z-index:2147483001;pointer-events:auto;width:min(420px,100%);background:#fff;border-radius:22px;padding:32px;box-shadow:0 25px 70px #0008}.login-card .logo{font-size:40px;text-align:center}.login-card h1{text-align:center;font-family:'Cormorant Garamond',serif;color:#651620;font-size:37px;margin:4px 0}.login-card p{text-align:center;color:var(--muted);font-size:13px}.login-card label{font-size:12px;font-weight:800;display:block;margin:15px 0 6px}.login-card input{width:100%;padding:12px;border:1px solid var(--line);border-radius:10px}.login-btn{width:100%;margin-top:20px;padding:13px;background:var(--red);color:#fff;border:0;border-radius:11px;font-weight:800}.msg{margin-top:12px;text-align:center;font-size:12px;color:#a33}
 
-.orders-wrap{display:none}.orders-toolbar{display:flex;gap:10px;justify-content:space-between;align-items:center;margin-bottom:18px;flex-wrap:wrap}.status-filter{padding:11px 14px;border:1px solid var(--line);border-radius:10px;background:#fff}.orders{display:grid;gap:14px}.order-card{border:1px solid var(--line);border-radius:15px;padding:18px;background:#fff;transition:transform .22s ease,box-shadow .22s ease,border-color .22s ease}.order-card.new-order-highlight{border:2px solid #e4ad32;box-shadow:0 10px 28px rgba(228,173,50,.18);position:relative}.order-card.new-order-highlight::before{content:"🔔 NEW ORDER";position:absolute;top:-11px;left:18px;background:#e4ad32;color:#130807;padding:5px 10px;border-radius:999px;font-size:10px;font-weight:900;letter-spacing:.3px;box-shadow:0 4px 12px rgba(0,0,0,.12)}.order-card.new-order-highlight .order-id{font-size:15px}#newOrderToast{transition:opacity .5s ease,transform .5s ease}#newOrderToast.new-order-toast-hide{opacity:0;transform:translateY(-12px) scale(.98);pointer-events:none}.order-head{display:flex;justify-content:space-between;gap:15px;align-items:flex-start}.order-id{font-weight:800;color:#60151f}.order-meta{font-size:12px;color:var(--muted);margin-top:4px}.status-pill{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;font-size:11px;font-weight:800}.status-pending{background:#fff2cf;color:#8a5b00}.status-processing{background:#fbe0e4;color:#9c182c}.status-on-the-way{background:#e1edff;color:#1c5fa8}.status-delivered{background:#dff5e7;color:#18733a}.order-grid{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:15px;margin-top:15px}.order-box{background:#fffaf5;border:1px solid var(--line);border-radius:11px;padding:12px}.order-box strong{display:block;margin-bottom:6px}.order-items{margin:0;padding-left:18px;font-size:13px}.order-items li{margin:5px 0}.order-total{font-size:20px;font-weight:800;color:var(--red);margin-top:8px}.order-workflow-note{font-size:11px;color:var(--muted);margin-top:14px}.order-actions{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}.order-actions button{border:1px solid var(--line);background:#fff;padding:9px 13px;border-radius:9px;cursor:pointer;font-weight:800}.order-actions button.active{background:var(--red);color:#fff;border-color:var(--red);box-shadow:0 5px 14px rgba(185,30,53,.22)}.order-actions button:disabled{opacity:.42;cursor:not-allowed;background:#eee;color:#888;border-color:#ddd}.order-actions button.active:disabled{opacity:.42;background:#eee;color:#888;border-color:#ddd;cursor:not-allowed;box-shadow:none}.orders-empty{text-align:center;padding:55px;color:var(--muted)} .reviews-wrap{margin-top:0}.review-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:15px;margin:0 0 18px}.reviews-list{display:grid;gap:13px}.review-card{border:1px solid var(--line);border-radius:15px;padding:17px;background:#fff}.review-card-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.review-customer{font-weight:900;color:#60151f}.review-menu{font-size:11px;color:var(--muted);margin-top:3px}.review-stars{color:#e9ad35;letter-spacing:2px;font-size:18px;margin:10px 0}.review-text{font-size:13px;line-height:1.65;color:#4f201c;background:#fffaf5;border:1px solid var(--line);border-radius:10px;padding:11px}.review-meta{font-size:10px;color:var(--muted);margin-top:9px}.review-actions{display:flex;gap:7px;margin-top:11px;flex-wrap:wrap}.review-actions button{border:1px solid var(--line);background:#fff;padding:8px 11px;border-radius:9px;cursor:pointer;font-weight:800;color:#60151f}.review-actions button.active{background:var(--red);color:#fff;border-color:var(--red)}.review-status{font-size:10px;font-weight:900;padding:6px 9px;border-radius:999px}.review-status.published{background:#e7f7eb;color:#19743a}.review-status.hidden{background:#eee;color:#777}@media(max-width:950px){.review-stats{grid-template-columns:repeat(2,1fr)}} .admin-items{display:grid;gap:8px}.admin-item-row{display:grid;grid-template-columns:1fr 125px;gap:8px;align-items:center;background:#fff;border:1px solid var(--line);border-radius:9px;padding:8px}.admin-item-main{display:grid;gap:2px;font-size:13px}.admin-item-main span{font-size:11px;color:var(--muted)}.item-status-select{width:100%;padding:7px 8px;border:1px solid var(--line);border-radius:8px;background:#fff;font-size:11px;font-weight:800}.order-actions button:disabled{opacity:.4;cursor:not-allowed;background:#eee;color:#777;border-color:#ddd}.order-actions button.active{background:var(--red);color:#fff;border-color:var(--red);box-shadow:0 5px 14px rgba(185,30,53,.22)}.order-actions button:disabled{opacity:.42;cursor:not-allowed;background:#eee;color:#888;border-color:#ddd}.order-actions button.active:disabled{opacity:.42;background:#eee;color:#888;border-color:#ddd;cursor:not-allowed;box-shadow:none}.status-preparing{background:#fbe0e4;color:#9c182c}.status-ready{background:#fff0c7;color:#8a5b00}.status-cancelled{background:#eee;color:#777}.order-closed-note{margin-top:12px;padding:10px 12px;border-radius:9px;background:#e8f7ec;color:#18733a;font-size:12px;font-weight:700}@media(max-width:950px){.order-grid{grid-template-columns:1fr 1fr}}@media(max-width:600px){.order-grid{grid-template-columns:1fr}}
+.orders-wrap{display:none}.orders-toolbar{display:flex;gap:10px;justify-content:space-between;align-items:center;margin-bottom:18px;flex-wrap:wrap}.status-filter{padding:11px 14px;border:1px solid var(--line);border-radius:10px;background:#fff}.orders{display:grid;gap:14px}.order-card{border:1px solid var(--line);border-radius:15px;padding:18px;background:#fff}.order-head{display:flex;justify-content:space-between;gap:15px;align-items:flex-start}.order-id{font-weight:800;color:#60151f}.order-meta{font-size:12px;color:var(--muted);margin-top:4px}.status-pill{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;font-size:11px;font-weight:800}.status-pending{background:#fff2cf;color:#8a5b00}.status-processing{background:#fbe0e4;color:#9c182c}.status-on-the-way{background:#e1edff;color:#1c5fa8}.status-delivered{background:#dff5e7;color:#18733a}.order-grid{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:15px;margin-top:15px}.order-box{background:#fffaf5;border:1px solid var(--line);border-radius:11px;padding:12px}.order-box strong{display:block;margin-bottom:6px}.order-items{margin:0;padding-left:18px;font-size:13px}.order-items li{margin:5px 0}.order-total{font-size:20px;font-weight:800;color:var(--red);margin-top:8px}.order-workflow-note{font-size:11px;color:var(--muted);margin-top:14px}.order-actions{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}.order-actions button{border:1px solid var(--line);background:#fff;padding:9px 13px;border-radius:9px;cursor:pointer;font-weight:800}.order-actions button.active{background:var(--red);color:#fff;border-color:var(--red);box-shadow:0 5px 14px rgba(185,30,53,.22)}.order-actions button:disabled{opacity:.42;cursor:not-allowed;background:#eee;color:#888;border-color:#ddd}.order-actions button.active:disabled{opacity:1;background:var(--red);color:#fff;border-color:var(--red);cursor:default}.orders-empty{text-align:center;padding:55px;color:var(--muted)} .reviews-wrap{margin-top:0}.review-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:15px;margin:0 0 18px}.reviews-list{display:grid;gap:13px}.review-card{border:1px solid var(--line);border-radius:15px;padding:17px;background:#fff}.review-card-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.review-customer{font-weight:900;color:#60151f}.review-menu{font-size:11px;color:var(--muted);margin-top:3px}.review-stars{color:#e9ad35;letter-spacing:2px;font-size:18px;margin:10px 0}.review-text{font-size:13px;line-height:1.65;color:#4f201c;background:#fffaf5;border:1px solid var(--line);border-radius:10px;padding:11px}.review-meta{font-size:10px;color:var(--muted);margin-top:9px}.review-actions{display:flex;gap:7px;margin-top:11px;flex-wrap:wrap}.review-actions button{border:1px solid var(--line);background:#fff;padding:8px 11px;border-radius:9px;cursor:pointer;font-weight:800;color:#60151f}.review-actions button.active{background:var(--red);color:#fff;border-color:var(--red)}.review-status{font-size:10px;font-weight:900;padding:6px 9px;border-radius:999px}.review-status.published{background:#e7f7eb;color:#19743a}.review-status.hidden{background:#eee;color:#777}@media(max-width:950px){.review-stats{grid-template-columns:repeat(2,1fr)}} .admin-items{display:grid;gap:8px}.admin-item-row{display:grid;grid-template-columns:1fr 125px;gap:8px;align-items:center;background:#fff;border:1px solid var(--line);border-radius:9px;padding:8px}.admin-item-main{display:grid;gap:2px;font-size:13px}.admin-item-main span{font-size:11px;color:var(--muted)}.item-status-select{width:100%;padding:7px 8px;border:1px solid var(--line);border-radius:8px;background:#fff;font-size:11px;font-weight:800}.order-actions button:disabled{opacity:.4;cursor:not-allowed;background:#eee;color:#777;border-color:#ddd}.order-actions button.active{background:var(--red);color:#fff;border-color:var(--red);box-shadow:0 5px 14px rgba(185,30,53,.22)}.order-actions button:disabled{opacity:.42;cursor:not-allowed;background:#eee;color:#888;border-color:#ddd}.order-actions button.active:disabled{opacity:1;background:var(--red);color:#fff;border-color:var(--red);cursor:default}.status-preparing{background:#fbe0e4;color:#9c182c}.status-ready{background:#fff0c7;color:#8a5b00}.status-cancelled{background:#eee;color:#777}.order-closed-note{margin-top:12px;padding:10px 12px;border-radius:9px;background:#e8f7ec;color:#18733a;font-size:12px;font-weight:700}@media(max-width:950px){.order-grid{grid-template-columns:1fr 1fr}}@media(max-width:600px){.order-grid{grid-template-columns:1fr}}
 @media(max-width:950px){.side{width:76px}.brand h2,.brand small,.nav span,.logout span{display:none}.main{margin-left:76px;width:calc(100% - 76px)}.products{grid-template-columns:repeat(2,1fr)}.stats{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:600px){.side{display:none}.main{margin:0;width:100%;padding:20px}.top{align-items:flex-start}.top h1{font-size:34px}.stats{grid-template-columns:1fr 1fr}.products{grid-template-columns:1fr}.form{grid-template-columns:1fr}.field.full{grid-column:auto}.top .add{padding:10px}.toolbar{flex-direction:column}}
 
-
+.custom-confirm-overlay{
+  position:fixed;inset:0;z-index:2147483000;
+  display:none;align-items:center;justify-content:center;
+  padding:20px;background:rgba(12,5,4,.62);
+  backdrop-filter:blur(3px);
+}
+.custom-confirm-overlay.show{display:flex}
+.custom-confirm-card{
+  width:min(430px,100%);background:#fff;border:1px solid #eaded1;
+  border-radius:20px;padding:28px;box-shadow:0 25px 80px rgba(0,0,0,.30);
+  text-align:center;animation:confirmPop .18s ease-out both;
+}
+.custom-confirm-icon{
+  width:58px;height:58px;margin:0 auto 10px;border-radius:50%;
+  display:grid;place-items:center;background:#fff1f3;font-size:28px;
+}
+.custom-confirm-card h2{
+  margin:0;color:#60151f;font-family:'Cormorant Garamond',serif;font-size:31px;
+}
+.custom-confirm-card p{
+  margin:9px 0 22px;color:#756965;font-size:13px;line-height:1.5;
+}
+.custom-confirm-actions{display:flex;gap:10px;justify-content:center}
+.custom-confirm-actions button{
+  flex:1;border-radius:10px;padding:12px 14px;font-weight:800;cursor:pointer;
+}
+.custom-confirm-cancel{background:#fff;border:1px solid #eaded1;color:#5d504c}
+.custom-confirm-ok{background:#b91e35;border:1px solid #b91e35;color:#fff}
+.custom-confirm-ok:hover{background:#8e1528}
+@keyframes confirmPop{from{opacity:0;transform:translateY(8px) scale(.98)}to{opacity:1;transform:none}}
 </style>
+
 <style id="review-notify-style">
 .review-notify-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:12px}
 .review-notify-btn{border:1px solid #b91e35;background:#b91e35;color:#fff;padding:9px 13px;border-radius:9px;cursor:pointer;font-weight:900}
@@ -175,25 +205,6 @@ button,input,select,textarea{font:inherit}
   cursor: not-allowed !important;
 }
 </style>
-
-<style id="order-review-detail-style">
-.order-review-detail{margin-top:12px;border:1px solid #ead8cf;border-radius:11px;background:#fffaf5;padding:12px}
-.order-review-detail-title{font-weight:900;color:#60151f;font-size:12px;margin-bottom:8px}
-.order-review-detail-item{background:#fff;border:1px solid #ead8cf;border-radius:9px;padding:9px;margin-top:7px}
-.order-review-detail-head{display:flex;justify-content:space-between;gap:10px;align-items:center;font-weight:800;font-size:12px}
-.order-review-detail-stars{color:#e9ad35;letter-spacing:1px}
-.order-review-detail-comment{font-size:12px;line-height:1.5;color:#4f201c;margin-top:5px}
-.order-review-detail-meta{font-size:10px;color:#756965;margin-top:5px}
-</style>
-<style id="delivered-action-lock-override">
-.order-actions button:disabled,.order-actions button.active:disabled{opacity:.42!important;background:#eee!important;color:#888!important;border-color:#ddd!important;cursor:not-allowed!important;box-shadow:none!important}
-.order-card.order-delivered-locked .item-status-select{background:#eee!important;color:#888!important;opacity:.7!important;cursor:not-allowed!important}
-</style>
-
-<style id="branding-settings-style">
-.settings-wrap{display:none}.branding-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}.branding-card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:18px}.branding-card h3{font-family:'Cormorant Garamond',serif;font-size:27px;color:#60151f;margin:0 0 5px}.branding-card p{font-size:11px;color:var(--muted);margin:0 0 14px}.branding-preview{width:100%;height:220px;object-fit:contain;background:#fffaf5;border:1px dashed #d8c4b7;border-radius:12px;margin-bottom:12px}.branding-preview.cover{height:220px;object-fit:cover}.branding-upload{display:block;border:2px dashed #d8c4b7;border-radius:12px;padding:13px;text-align:center;cursor:pointer;background:#fffaf5;color:#60151f;font-weight:800}.branding-upload small{display:block;color:var(--muted);font-weight:500;margin-top:4px}.branding-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:18px}.branding-save{border:0;background:var(--red);color:#fff;padding:12px 20px;border-radius:10px;font-weight:900;cursor:pointer}.branding-save:disabled{opacity:.6;cursor:wait}.branding-msg{margin-top:12px;text-align:right;color:var(--muted);font-size:12px}.branding-note{margin-top:15px;padding:12px;border-radius:10px;background:#fffaf5;border:1px solid var(--line);font-size:11px;color:var(--muted)}
-@media(max-width:700px){.branding-grid{grid-template-columns:1fr}}
-</style>
 </head>
 <body>
 
@@ -207,14 +218,28 @@ button,input,select,textarea{font:inherit}
 </div>
 
 
+
+<div id="deliveryConfirmModal" class="custom-confirm-overlay" aria-hidden="true">
+  <div class="custom-confirm-card" role="dialog" aria-modal="true" aria-labelledby="deliveryConfirmTitle">
+    <div class="custom-confirm-icon">🍜</div>
+    <h2 id="deliveryConfirmTitle">Mark Order as Delivered?</h2>
+    <p id="deliveryConfirmMessage">Are you sure you want to mark this order as Delivered?</p>
+    <div class="custom-confirm-actions">
+      <button type="button" class="custom-confirm-cancel" onclick="closeDeliveryConfirm()">Cancel</button>
+      <button type="button" class="custom-confirm-ok" onclick="approveDeliveryConfirm()">Yes, Mark Delivered</button>
+    </div>
+  </div>
+</div>
+
 <div id="login" class="login">
   <div class="login-card">
     <div class="logo">🍜</div>
     <h1>McKenzie Admin</h1>
     <p>Owner access · Products & Orders</p>
+    <div id="apiStatus" style="text-align:center;font-size:11px;color:#756965;margin:8px 0 2px">Connecting to secure admin server…</div>
     <label>Admin Email</label><input id="loginEmail" type="email" autocomplete="username">
     <label>Password</label><input id="loginPassword" type="password" autocomplete="current-password">
-    <button class="login-btn" onclick="login()">LOGIN TO DASHBOARD</button>
+    <button id="adminLoginBtn" class="login-btn" type="button">LOGIN TO DASHBOARD</button>
     <div id="loginMsg" class="msg"></div>
   </div>
 </div>
@@ -227,7 +252,7 @@ button,input,select,textarea{font:inherit}
     <button id="navOrders" onclick="showSection('orders')">🧾 <span>Orders</span><b id="orderBadge" style="display:none;margin-left:auto;background:#b91e35;color:#fff;border-radius:999px;padding:2px 7px;font-size:10px">0</b></button>
     <button onclick="alert('Customers module next.')">👥 <span>Customers</span></button>
     <button id="navReviews" onclick="showSection('reviews')">⭐ <span>Reviews</span><b id="reviewBadge" style="display:none;margin-left:auto;background:#b91e35;color:#fff;border-radius:999px;padding:2px 7px;font-size:10px">0</b></button>
-    <button id="navSettings" onclick="showSection('settings')">⚙️ <span>Settings</span></button>
+    <button onclick="alert('Settings module next.')">⚙️ <span>Settings</span></button>
   </div>
   <button class="nav logout" onclick="logout()">↪ <span>Logout</span></button>
 </aside>
@@ -282,40 +307,6 @@ button,input,select,textarea{font:inherit}
     </div>
     <div id="reviews" class="reviews-list"></div>
   </section>
-
-  <section class="panel settings-wrap" id="settingsSection">
-    <div class="orders-toolbar">
-      <div><strong>Restaurant Branding</strong><div style="font-size:12px;color:#756965;margin-top:4px">Upload the logo and cover image used by the customer website.</div></div>
-    </div>
-
-    <div class="branding-grid">
-      <div class="branding-card">
-        <h3>Restaurant Logo</h3>
-        <p>This logo will be used on the homepage, sticky header, and footer.</p>
-        <img id="brandingLogoPreview" class="branding-preview" alt="Restaurant Logo Preview">
-        <label class="branding-upload" for="brandingLogoInput">
-          📷 Choose Logo
-          <small>PNG, JPG, or WEBP · Maximum 6 MB</small>
-          <input id="brandingLogoInput" type="file" accept="image/png,image/jpeg,image/webp" hidden onchange="previewBrandingFile(event,'logo')">
-        </label>
-      </div>
-
-      <div class="branding-card">
-        <h3>Cover / Hero Image</h3>
-        <p>This image will become the main cover background on the customer homepage.</p>
-        <img id="brandingCoverPreview" class="branding-preview cover" alt="Cover Image Preview">
-        <label class="branding-upload" for="brandingCoverInput">
-          🖼️ Choose Cover Image
-          <small>PNG, JPG, or WEBP · Maximum 6 MB</small>
-          <input id="brandingCoverInput" type="file" accept="image/png,image/jpeg,image/webp" hidden onchange="previewBrandingFile(event,'cover')">
-        </label>
-      </div>
-    </div>
-
-    <div class="branding-actions"><button id="brandingSaveBtn" class="branding-save" type="button" onclick="saveBranding()">Save Branding</button></div>
-    <div id="brandingMsg" class="branding-msg"></div>
-    <div class="branding-note">💡 Changes are saved to the restaurant backend. You do not need to edit the GitHub website when changing the logo or cover.</div>
-  </section>
 </main>
 </div>
 
@@ -363,22 +354,61 @@ button,input,select,textarea{font:inherit}
 })();
 let token=sessionStorage.getItem('mck_admin_token')||'';
 let products=[]; let selectedImage=null; let editing=null;
-let brandingLogoFile=null; let brandingCoverFile=null; let brandingLoaded=false;
+
+const MCKENZIE_API_URL = 'https://script.google.com/macros/s/AKfycbxHuXpTYPCSQ_Uj1-LqC7jAjGEcbQ8uKvwX3tmy_ZqOb_bvdFgvQ-IwTjumY713SuF8Hw/exec';
 
 function run(name,args,onSuccess){
-  if(!window.google || !google.script || !google.script.run){ onSuccess(null,'This Admin page must be opened from the Google Apps Script web app (/admin), not directly from GitHub.'); return; }
-  let r=google.script.run.withSuccessHandler(v=>onSuccess(v,null)).withFailureHandler(e=>onSuccess(null,e&&e.message?e.message:String(e)));
-  r[name](...(args||[]));
+  args = Array.isArray(args) ? args : [];
+  const params = new URLSearchParams();
+  params.set('api','admin');
+  params.set('action',name);
+  params.set('args',JSON.stringify(args));
+
+  fetch(MCKENZIE_API_URL + '?' + params.toString(), {
+    method:'GET',
+    cache:'no-store',
+    credentials:'omit'
+  })
+  .then(r=>r.text())
+  .then(text=>{
+    let v;
+    try { v=JSON.parse(text); }
+    catch(err){ onSuccess(null,'Invalid response from the Admin API.'); return; }
+    if(v && v.success === false && v.error) { onSuccess(v,null); return; }
+    onSuccess(v,null);
+  })
+  .catch(err=>onSuccess(null,err && err.message ? err.message : String(err)));
+}
+function checkAdminApi(){
+  const el=document.getElementById('apiStatus');
+  fetch(MCKENZIE_API_URL+'?api=adminHealth', {cache:'no-store',credentials:'omit'})
+    .then(r=>r.text())
+    .then(t=>{
+      try{
+        const v=JSON.parse(t);
+        if(v && v.success){ el.textContent='● Admin server online'; el.style.color='#23824a'; }
+        else throw new Error();
+      }catch(e){ el.textContent='● Admin server unavailable'; el.style.color='#a33'; }
+    })
+    .catch(()=>{ el.textContent='● Admin server unavailable'; el.style.color='#a33'; });
 }
 function login(){
   const email=document.getElementById('loginEmail').value.trim(), password=document.getElementById('loginPassword').value;
   document.getElementById('loginMsg').textContent='Checking...';
   run('adminLogin',[email,password],(v,e)=>{
     if(e||!v||!v.success){document.getElementById('loginMsg').textContent=e||'Invalid admin credentials.';return;}
-    token=v.token;sessionStorage.setItem('mck_admin_token',token);showApp();try{if(window.Notification&&Notification.permission==='default')Notification.requestPermission();}catch(err){}loadProducts();loadOrders({setBaseline:true});loadReviews({background:true});initAdminNotifications();
+    token=v.token;sessionStorage.setItem('mck_admin_token',token);showApp();try{if(window.Notification&&Notification.permission==='default')Notification.requestPermission();}catch(err){}loadProducts();loadOrders({setBaseline:true});initAdminNotifications();
   });
 }
 function showApp(){document.getElementById('login').style.display='none';document.getElementById('app').style.display='flex'}
+(function(){
+  var btn=document.getElementById('adminLoginBtn');
+  var email=document.getElementById('loginEmail');
+  var password=document.getElementById('loginPassword');
+  if(btn) btn.addEventListener('click', function(ev){ ev.preventDefault(); login(); });
+  if(password) password.addEventListener('keydown', function(ev){ if(ev.key==='Enter'){ ev.preventDefault(); login(); } });
+  if(email) email.addEventListener('keydown', function(ev){ if(ev.key==='Enter'){ ev.preventDefault(); password && password.focus(); } });
+})();
 function loadProducts(){
   run('adminGetProducts',[token],(v,e)=>{
     if(e||!v||!v.success){logout();alert(e||'Admin session expired.');return;}
@@ -449,24 +479,18 @@ function showSection(section){
   const navProducts=document.getElementById('navProducts');
   const navOrders=document.getElementById('navOrders');
   const navReviews=document.getElementById('navReviews');
-  const navSettings=document.getElementById('navSettings');
-  const settingsSection=document.getElementById('settingsSection');
   const isOrders=section==='orders';
   const isReviews=section==='reviews';
-  const isSettings=section==='settings';
-  if(productsPanel) productsPanel.style.display=(isOrders||isReviews||isSettings)?'none':'';
-  if(productsStats) productsStats.style.display=(isOrders||isReviews||isSettings)?'none':'';
-  if(productsTop) productsTop.style.display=(isOrders||isReviews||isSettings)?'none':'';
+  if(productsPanel) productsPanel.style.display=(isOrders||isReviews)?'none':'';
+  if(productsStats) productsStats.style.display=(isOrders||isReviews)?'none':'';
+  if(productsTop) productsTop.style.display=(isOrders||isReviews)?'none':'';
   if(ordersSection) ordersSection.style.display=isOrders?'block':'none';
   if(reviewsSection) reviewsSection.style.display=isReviews?'block':'none';
-  if(settingsSection) settingsSection.style.display=isSettings?'block':'none';
-  if(navProducts) navProducts.classList.toggle('active',!isOrders&&!isReviews&&!isSettings);
+  if(navProducts) navProducts.classList.toggle('active',!isOrders&&!isReviews);
   if(navOrders) navOrders.classList.toggle('active',isOrders);
   if(navReviews) navReviews.classList.toggle('active',isReviews);
-  if(navSettings) navSettings.classList.toggle('active',isSettings);
   if(isOrders) loadOrders();
   if(isReviews) loadReviews();
-  if(isSettings) loadBranding();
 }
 
 let orders=[];
@@ -475,7 +499,6 @@ function loadOrders(options){
   run('adminGetOrders',[token],(v,e)=>{
     if(e||!v||!v.success){ if(!options.silent) alert(e||'Unable to load orders.'); return; }
     orders=Array.isArray(v.orders)?v.orders:[];
-    orders.sort(function(a,b){return new Date(b.orderedAt||0)-new Date(a.orderedAt||0);});
     if(options.setBaseline !== false){
       lastOrderIds = new Set(orders.map(function(o){return String(o.orderId||'');}));
       firstOrderLoad = false;
@@ -493,7 +516,6 @@ function refreshOrders(){
     if(e||!v||!v.success){alert(e||'Unable to refresh orders.');}
     else{
       orders=Array.isArray(v.orders)?v.orders:[];
-      orders.sort(function(a,b){return new Date(b.orderedAt||0)-new Date(a.orderedAt||0);});
       lastOrderIds=new Set(orders.map(function(o){return String(o.orderId||'');}));
       firstOrderLoad=false;
       renderOrders();
@@ -506,20 +528,6 @@ function refreshOrders(){
 }
 function orderStatusClass(status){return 'status-'+String(status||'Preparing').toLowerCase().replace(/\s+/g,'-');}
 function itemStatusClass(status){return 'item-'+String(status||'Preparing').toLowerCase().replace(/\s+/g,'-');}
-
-function getOrderReviewDetails_(orderId){
-  return (reviews||[]).filter(function(r){return String(r.orderId||'')===String(orderId||'');});
-}
-function renderOrderReviewDetails_(orderId){
-  const rs=getOrderReviewDetails_(orderId);
-  if(!rs.length)return '';
-  const rows=rs.map(function(r){
-    const rating=Math.max(0,Math.min(5,Number(r.rating||0)));
-    const stars='★★★★★'.split('').map(function(_,i){return i<rating?'★':'☆';}).join('');
-    return '<div class="order-review-detail-item"><div class="order-review-detail-head"><span>'+esc(r.productName||'Menu item')+'</span><span class="order-review-detail-stars">'+stars+'</span></div>'+(r.review?'<div class="order-review-detail-comment">“'+esc(r.review)+'”</div>':'<div class="order-review-detail-comment"><em>No written comment.</em></div>')+'<div class="order-review-detail-meta">Reviewed '+esc(r.submittedAt?new Date(r.submittedAt).toLocaleString():'')+'</div></div>';
-  }).join('');
-  return '<div class="order-review-detail"><div class="order-review-detail-title">⭐ Customer Survey — '+rs.length+' item'+(rs.length===1?'':'s')+' reviewed</div>'+rows+'</div>';
-}
 function renderOrders(){
   const container=document.getElementById('orders');
   if(!container)return;
@@ -539,28 +547,21 @@ function renderOrders(){
     const closed=o.customerConfirmed===true;
     const deliveredLocked=status==='Delivered';
     const items=(o.items||[]).map((i,idx)=>{
-      const pendingKey=String(o.orderId||'')+'::'+String(idx);
-      if(String(i.itemStatus||'Preparing').trim()==='Ready') lockedItemStatuses.set(pendingKey,'Ready');
-      const pending=pendingItemStatuses.get(pendingKey);
-      const locked=lockedItemStatuses.get(pendingKey);
-      const st=(locked==='Ready' || pending==='Ready' || (!locked && !pending && String(i.itemStatus||'Preparing').trim()==='Ready'))?'Ready':'Preparing';
+      const st=(String(i.itemStatus||'Preparing').trim()==='Ready'?'Ready':'Preparing');
       return '<div class="admin-item-row">'+
         '<div class="admin-item-main"><strong>'+esc(i.productName)+'</strong><span>× '+Number(i.quantity||0)+' · ₱'+Number(i.subtotal||0).toLocaleString(undefined,{minimumFractionDigits:2})+'</span></div>'+ 
-        '<select class="item-status-select '+itemStatusClass(st)+'" '+((status!=='Preparing'||closed||st==='Ready')?'disabled':'')+' onchange="updateOrderItemStatus(\''+escAttr(o.orderId)+'\','+idx+',this.value)">'+
+        '<select class="item-status-select '+itemStatusClass(st)+'" '+((status!=='Preparing'||closed)?'disabled':'')+' onchange="updateOrderItemStatus(\''+escAttr(o.orderId)+'\','+idx+',this.value)">'+
         '<option '+(st==='Preparing'?'selected':'')+'>Preparing</option><option '+(st==='Ready'?'selected':'')+'>Ready</option></select>'+ 
         '</div>';
     }).join('');
-    const allItemsReady=(o.items||[]).length>0 && (o.items||[]).every(function(i,itemIndex){
-      const key=String(o.orderId||'')+'::'+String(itemIndex);
-      const pending=pendingItemStatuses.get(key);
-      const locked=lockedItemStatuses.get(key);
-      return locked==='Ready' || pending==='Ready' || (!locked && !pending && String(i.itemStatus||'Preparing').trim()==='Ready');
+    const allItemsReady=(o.items||[]).length>0 && (o.items||[]).every(function(i){
+      return String(i.itemStatus||'Preparing').trim()==='Ready';
     });
     // Exact workflow: Preparing -> Ready -> On the Way -> Delivered.
     // Ready becomes clickable only after every purchased menu item is Ready.
     const canMarkReady=status==='Preparing' && allItemsReady;
     const canDeliver=status==='On the Way';
-    return '<article class="order-card '+(deliveredLocked?'order-delivered-locked ':'')+(newOrderIds.has(String(o.orderId||''))?'new-order-highlight':'')+'">'+
+    return '<article class="order-card '+(deliveredLocked?'order-delivered-locked':'')+'">'+
       '<div class="order-head"><div><div class="order-id">#'+esc(o.orderId)+'</div><div class="order-meta">'+esc(o.customerName||'Guest')+' · '+esc(o.mobile||'')+'</div><div class="order-meta">'+(o.orderedAt?new Date(o.orderedAt).toLocaleString():'')+'</div></div>'+
       '<span class="status-pill '+orderStatusClass(status)+'">'+esc(status)+(closed?' · Closed':'')+'</span></div>'+
       '<div class="order-grid">'+
@@ -568,9 +569,9 @@ function renderOrders(){
       '<div class="order-box"><strong>📍 Customer</strong><div style="font-size:13px">'+esc(o.customerName||'Guest')+'</div><div class="order-meta">Phone: '+esc(o.mobile||'—')+'</div><div class="order-meta">Payment: '+esc(o.paymentMethod||'—')+'</div><div class="order-meta">Payment status: '+esc(o.paymentStatus||'Pending')+'</div><div class="order-meta">'+esc(o.address||'No address provided')+'</div></div>'+
       '<div class="order-box"><strong>📝 Instruction</strong><div style="font-size:13px">'+esc(o.instruction||'No special instruction.')+'</div></div>'+
       '</div>'+
-      '<div class="order-workflow-note">Workflow: <b>Preparing</b> → <b>Ready</b> → <b>On the Way</b> → <b>Delivered</b><br><span style="font-size:11px">Ready immediately moves the order to On the Way.</span></div>'+
+      '<div class="order-workflow-note">Workflow: <b>Preparing</b> → <b>Ready</b> → <b>On the Way</b> → <b>Delivered</b><br><span style="font-size:11px">Admin uses only Preparing, Ready, and Delivered buttons. Ready automatically advances to On the Way.</span></div>'+
       '<div class="order-actions">'+
-      '<button class="'+(status==='Preparing'?'active':'')+'" disabled title="Order is being prepared">Preparing</button>'+
+      '<button class="'+(status==='Preparing' && !allItemsReady ? 'active':'')+'" disabled title="Order is being prepared">Preparing</button>'+
       '<button class="'+(canMarkReady?'active':'')+'" '+(deliveredLocked||closed||!canMarkReady?'disabled':'')+' onclick="updateOrderStatus(\''+escAttr(o.orderId)+'\',\'Ready\')" title="Click when every item is Ready. The order will move directly to On the Way.">Ready</button>'+
       '<button class="'+(canDeliver?'active':'')+'" '+(deliveredLocked||closed||!canDeliver?'disabled':'')+' onclick="updateOrderStatus(\''+escAttr(o.orderId)+'\',\'Delivered\')">Delivered</button>'+
       '</div>'+
@@ -578,7 +579,6 @@ function renderOrders(){
       '<button type="button" class="review-notify-btn '+(o.reviewCompleted?'review-done':'')+'" '+((status!=='Delivered'||!o.customerConfirmed||o.reviewCompleted)?'disabled':'')+' onclick="notifyCustomerReview(\''+escAttr(o.orderId)+'\',this,'+(o.reviewRequested?'true':'false')+')">'+(o.reviewCompleted?'✓ Review Completed':(o.reviewRequested?'🔔 Notify Again':'🔔 Notify Customer to Review'))+'</button>'+
       '<span class="review-progress">'+(status!=='Delivered'?'Available after Delivered':(!o.customerConfirmed?'Waiting for customer to confirm receipt':(o.reviewCompleted?'Customer has reviewed this order':(o.reviewRequested?'Waiting for customer to open the review notification':'Customer can now review'))))+'</span>'+
       '</div>'+
-      renderOrderReviewDetails_(o.orderId)+
       (closed?'<div class="order-closed-note">✓ Customer confirmed receipt. Order is closed. You can notify the customer to review below.</div>':'')+
       '</article>';
   }).join('');
@@ -590,57 +590,62 @@ function updateOrderItemStatus(orderId,itemIndex,status){
   status=(String(status||'Preparing').trim()==='Ready'?'Ready':'Preparing');
   const order=orders[idx];
   if(String(order.orderStatus||'Preparing')!=='Preparing')return;
-  const itemKey=String(orderId)+'::'+String(itemIndex);
-  // Once an item is Ready, it is locked at Ready. It cannot be changed back.
-  if(lockedItemStatuses.get(itemKey)==='Ready' || String(order.items?.[itemIndex]?.itemStatus||'Preparing').trim()==='Ready') {
-    lockedItemStatuses.set(itemKey,'Ready');
-    if(order.items && order.items[itemIndex]) order.items[itemIndex].itemStatus='Ready';
-    renderOrders();
-    return;
-  }
 
   // Update the UI immediately and keep the selection stable while the backend saves.
   if(!order.items)order.items=[];
   if(!order.items || !order.items[itemIndex])return;
   order.items[itemIndex].itemStatus=status;
-  pendingItemStatuses.set(itemKey,status);
-  if(status==='Ready') lockedItemStatuses.set(itemKey,'Ready');
   savingOrderItems.add(String(orderId));
   renderOrders();
 
   run('adminUpdateOrderItemStatus',[token,orderId,itemIndex,status],function(v,e){
+    savingOrderItems.delete(String(orderId));
     if(e||!v||!v.success){
-      pendingItemStatuses.delete(itemKey);
-      if(status==='Ready') lockedItemStatuses.delete(itemKey);
-      savingOrderItems.delete(String(orderId));
       showAdminToast('⚠ Unable to save item status',String(e||'Please try again.'));
       loadOrders({silent:true});
       return;
     }
-    const wanted=pendingItemStatuses.get(itemKey) || lockedItemStatuses.get(itemKey) || status;
-    // IMPORTANT: never replace the whole local order with a possibly stale server snapshot.
-    // The local Admin state is authoritative for the item the user just changed.
-    // Replacing the entire order here was causing a delayed response from another request
-    // to put a previously-Ready item back on Preparing.
-    if(status==='Ready') lockedItemStatuses.set(itemKey,'Ready');
-    if(orders[idx] && orders[idx].items && orders[idx].items[itemIndex]){
-      orders[idx].items[itemIndex].itemStatus=wanted;
+    // Keep the exact returned item status, but do NOT let item readiness
+    // automatically advance the order. The Admin must click Ready.
+    const fresh=v.order;
+    if(fresh){
+      fresh.orderStatus=(String(fresh.orderStatus||'Preparing')==='Pending'?'Preparing':String(fresh.orderStatus||'Preparing'));
+      orders[idx]=fresh;
     }
-    pendingItemStatuses.delete(itemKey);
-    savingOrderItems.delete(String(orderId));
     renderOrders();
   });
 }
-function updateOrderStatus(orderId,status){
+let pendingDeliveryConfirmOrderId = '';
+function openDeliveryConfirm(orderId){
+  pendingDeliveryConfirmOrderId=String(orderId||'');
+  const modal=document.getElementById('deliveryConfirmModal');
+  const msg=document.getElementById('deliveryConfirmMessage');
+  if(msg) msg.textContent='Are you sure you want to mark order '+pendingDeliveryConfirmOrderId+' as Delivered?';
+  if(modal){modal.classList.add('show');modal.setAttribute('aria-hidden','false');}
+}
+function closeDeliveryConfirm(){
+  pendingDeliveryConfirmOrderId='';
+  const modal=document.getElementById('deliveryConfirmModal');
+  if(modal){modal.classList.remove('show');modal.setAttribute('aria-hidden','true');}
+}
+function approveDeliveryConfirm(){
+  const id=pendingDeliveryConfirmOrderId;
+  closeDeliveryConfirm();
+  if(id) updateOrderStatus(id,'Delivered',true);
+}
+function updateOrderStatus(orderId,status,confirmed){
   const idx=orders.findIndex(function(x){return String(x.orderId)===String(orderId);});
   if(idx<0)return;
   const o=orders[idx];
   const current=String((o&&o.orderStatus)||'Preparing')==='Pending'?'Preparing':String((o&&o.orderStatus)||'Preparing');
   const items=(o&&o.items)||[];
-  const allReady=items.length>0 && items.every(function(i,itemIndex){const k=String(orderId)+'::'+String(itemIndex); return lockedItemStatuses.get(k)==='Ready' || String(i.itemStatus||'Preparing').trim()==='Ready';});
+  const allReady=items.length>0 && items.every(function(i){return String(i.itemStatus||'Preparing').trim()==='Ready';});
   if(status==='Ready' && (current!=='Preparing'||!allReady)) return;
   if(status==='Delivered' && current!=='On the Way') return;
-  if(status==='Delivered' && !confirm('Mark order '+orderId+' as Delivered?'))return;
+  if(status==='Delivered' && confirmed!==true){
+    openDeliveryConfirm(orderId);
+    return;
+  }
 
   // Instant Admin UI: do not make the user wait for the server round-trip.
   // Clicking Ready immediately shows On the Way; there is NO On the Way button.
@@ -648,10 +653,8 @@ function updateOrderStatus(orderId,status){
   const nextStatus=(status==='Ready'?'On the Way':status);
   o.orderStatus=nextStatus;
   if(nextStatus==='Delivered'){
-    // Delivered by Admin is not customer receipt confirmation.
-    // The customer must answer the receipt popup first.
-    o.customerConfirmed=false;
-    o.closed=false;
+    o.customerConfirmed=true;
+    o.closed=true;
   }
   savingOrderStatuses.add(String(orderId));
   renderOrders();
@@ -679,9 +682,6 @@ let orderPollTimer = null;
 let firstOrderLoad = true;
 const savingOrderItems = new Set();
 const savingOrderStatuses = new Set();
-const pendingItemStatuses = new Map();
-const lockedItemStatuses = new Map();
-const newOrderIds = new Set();
 let audioCtx = null;
 
 function initAdminNotifications(){
@@ -698,8 +698,6 @@ function initAdminNotifications(){
       if (!firstOrderLoad) {
         const newOrders = latest.filter(function(o){ return !lastOrderIds.has(String(o.orderId||'')); });
         if (newOrders.length) {
-          newOrders.forEach(function(o){ newOrderIds.add(String(o.orderId||'')); });
-          latest.sort(function(a,b){return new Date(b.orderedAt||0)-new Date(a.orderedAt||0);});
           orders = latest;
           lastOrderIds = ids;
           showNewOrderNotification(newOrders);
@@ -715,21 +713,13 @@ function initAdminNotifications(){
       }
       firstOrderLoad = false;
       lastOrderIds = ids;
-      latest.forEach(function(latestOrder){
-        const existingOrder=orders.find(function(existing){return String(existing.orderId||'')===String(latestOrder.orderId||'');});
-        if(!existingOrder || !Array.isArray(latestOrder.items)) return;
-        latestOrder.items.forEach(function(item,itemIndex){
-          const pending=pendingItemStatuses.get(String(latestOrder.orderId||'')+'::'+String(itemIndex));
-          if(pending) item.itemStatus=pending;
-        });
-      });
-      orders = latest;
+      if (!savingOrderItems.size) orders = latest;
       const notice = document.getElementById('orderNotice');
       if (notice) notice.textContent = latest.length ? ('Live • Last checked: ' + new Date().toLocaleTimeString()) : 'Live • No customer orders yet.';
       if (document.getElementById('ordersSection') && document.getElementById('ordersSection').style.display !== 'none') renderOrders();
       updateOrderBadge(latest);
     });
-  },1000);
+  },3000);
 }
 
 function updateOrderBadge(list){
@@ -740,12 +730,6 @@ function updateOrderBadge(list){
   badge.style.display=active?'inline-block':'none';
 }
 
-function hideNewOrderToast_(){
-  const toast=document.getElementById('newOrderToast');
-  if(!toast)return;
-  toast.classList.add('new-order-toast-hide');
-  setTimeout(function(){if(toast && toast.classList.contains('new-order-toast-hide')) toast.style.display='none';},520);
-}
 function showNewOrderNotification(newOrders){
   const count=newOrders.length;
   const names=newOrders.slice(0,2).map(function(o){return o.customerName||'Customer';}).join(', ');
@@ -759,10 +743,8 @@ function showNewOrderNotification(newOrders){
   }
   toast.innerHTML='🔔 '+esc(text)+'<div style="font-size:11px;color:#e8d8cf;margin-top:5px">Click Orders to view and process the order.</div>';
   toast.style.display='block';
-  toast.classList.remove('new-order-toast-hide');
-  toast.onclick=function(){ showSection('orders'); loadOrders(); hideNewOrderToast_(); };
-  clearTimeout(window.__mckNewOrderToastTimer);
-  window.__mckNewOrderToastTimer=setTimeout(hideNewOrderToast_,4200);
+  toast.onclick=function(){ showSection('orders'); loadOrders(); toast.style.display='none'; };
+  setTimeout(function(){ if(toast) toast.style.display='none'; },9000);
   try{
     if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)();
     if(audioCtx.state==='suspended') audioCtx.resume();
@@ -772,13 +754,11 @@ function showNewOrderNotification(newOrders){
 }
 
 let reviews=[];
-function loadReviews(options){
-  options=options||{};
-  const background=!!options.background;
+function loadReviews(){
   const btn=document.getElementById('refreshReviewsBtn');
-  if(btn && !background){btn.disabled=true;btn.textContent='↻ Loading...';}
+  if(btn){btn.disabled=true;btn.textContent='↻ Loading...';}
   run('adminGetReviews',[token],(v,e)=>{
-    if(e||!v||!v.success){if(btn && !background){btn.disabled=false;btn.textContent='↻ Refresh';} if(!background) alert(e||'Unable to load reviews.');return;}
+    if(e||!v||!v.success){if(btn){btn.disabled=false;btn.textContent='↻ Refresh';} alert(e||'Unable to load reviews.');return;}
     reviews=Array.isArray(v.reviews)?v.reviews:[];
     const st=v.stats||{};
     document.getElementById('reviewTotal').textContent=st.total||0;
@@ -789,9 +769,7 @@ function loadReviews(options){
     if(notice) notice.textContent=reviews.length?'Live • '+reviews.length+' customer review'+(reviews.length===1?'':'s'):'No customer reviews yet.';
     renderReviews();
     updateReviewBadge(reviews);
-    if(btn && !background){btn.disabled=false;btn.textContent='↻ Refresh';}
-    // Refresh order cards so each delivered order can show its specific reviewed menu items.
-    if(typeof renderOrders==='function') renderOrders();
+    if(btn){btn.disabled=false;btn.textContent='↻ Refresh';}
   });
 }
 function renderReviews(){
@@ -888,69 +866,25 @@ function hideAdminToast(){
   clearTimeout(adminToastTimer);
 }
 
-function previewBrandingFile(e,type){
-  const file=e.target.files[0];
-  if(!file)return;
-  if(file.size>6*1024*1024){alert('Please use an image smaller than 6 MB.');e.target.value='';return;}
-  if(!/^image\/(png|jpeg|webp)$/i.test(file.type)){alert('Please choose a PNG, JPG, or WEBP image.');e.target.value='';return;}
-  const reader=new FileReader();
-  reader.onload=function(){
-    const preview=document.getElementById(type==='logo'?'brandingLogoPreview':'brandingCoverPreview');
-    if(preview){preview.src=reader.result;preview.style.display='block';}
-  };
-  reader.readAsDataURL(file);
-  if(type==='logo') brandingLogoFile=file; else brandingCoverFile=file;
-}
-function fileDataBranding(file){
-  return new Promise(function(resolve,reject){
-    if(!file)return resolve(null);
-    const r=new FileReader();
-    r.onload=function(){resolve({name:file.name,type:file.type,base64:String(r.result).split(',')[1]});};
-    r.onerror=reject;
-    r.readAsDataURL(file);
-  });
-}
-function loadBranding(){
-  if(brandingLoaded)return;
-  run('adminGetBrandAssets',[token],function(v,e){
-    if(e||!v||!v.success){document.getElementById('brandingMsg').textContent=e||'Unable to load branding.';return;}
-    brandingLoaded=true;
-    const logo=document.getElementById('brandingLogoPreview');
-    const cover=document.getElementById('brandingCoverPreview');
-    if(logo){logo.src=v.logo||'';logo.style.display=v.logo?'block':'none';}
-    if(cover){cover.src=v.background||'';cover.style.display=v.background?'block':'none';}
-  });
-}
-async function saveBranding(){
-  const btn=document.getElementById('brandingSaveBtn');
-  const msg=document.getElementById('brandingMsg');
-  btn.disabled=true;
-  msg.textContent='Saving branding and uploading images...';
-  try{
-    const logo=await fileDataBranding(brandingLogoFile);
-    const cover=await fileDataBranding(brandingCoverFile);
-    if(!logo&&!cover){msg.textContent='Choose a logo or cover image first.';btn.disabled=false;return;}
-    run('adminSaveBrandAssets',[{token:token,logo:logo,background:cover}],function(v,e){
-      btn.disabled=false;
-      if(e||!v||!v.success){msg.textContent=e||'Unable to save branding.';return;}
-      brandingLogoFile=null; brandingCoverFile=null;
-      const li=document.getElementById('brandingLogoInput'); const ci=document.getElementById('brandingCoverInput');
-      if(li)li.value=''; if(ci)ci.value='';
-      brandingLoaded=false;
-      if(v.assets){
-        const logoPreview=document.getElementById('brandingLogoPreview');
-        const coverPreview=document.getElementById('brandingCoverPreview');
-        if(logoPreview&&v.assets.logo){logoPreview.src=v.assets.logo;logoPreview.style.display='block';}
-        if(coverPreview&&v.assets.background){coverPreview.src=v.assets.background;coverPreview.style.display='block';}
-      }
-      msg.textContent='✓ Branding saved successfully.';
-    });
-  }catch(err){btn.disabled=false;msg.textContent=err&&err.message?err.message:'Unable to save branding.';}
-}
-
 function logout(){token='';sessionStorage.removeItem('mck_admin_token');document.getElementById('app').style.display='none';document.getElementById('login').style.display='flex'}
-if(token){showApp();loadProducts();loadOrders({setBaseline:true});loadReviews({background:true});initAdminNotifications()}
+checkAdminApi();
+if(token){showApp();loadProducts();loadOrders({setBaseline:true});initAdminNotifications()}
 
+</script>
+
+<script id="mckenzie-final-order-workflow-lock">
+(function(){
+  // FINAL ADMIN ORDER WORKFLOW v3 — Preparing / Ready / Delivered buttons only.
+  function scrub(){
+    document.querySelectorAll('#orders .order-actions button').forEach(function(btn){
+      var t=String(btn.textContent||'').trim();
+      if(t==='Pending' || t==='On the Way') btn.remove();
+    });
+  }
+  scrub();
+  new MutationObserver(scrub).observe(document.body,{subtree:true,childList:true});
+  setInterval(scrub,500);
+})();
 </script>
 </body>
 </html>
