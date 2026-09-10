@@ -10,19 +10,48 @@
 (function () {
   "use strict";
 
-  const cfg = window.MCKENZIE_FIREBASE_CONFIG;
-  if (!cfg || /^PASTE_/.test(String(cfg.apiKey || ""))) {
-    console.error("McKenzie Firebase config is not configured.");
-  }
+  // The Firebase config is embedded as a fallback so the admin page still
+  // works even if GitHub Pages serves js/firebase-config.js from cache or
+  // fails to load that helper file.
+  const EMBEDDED_CONFIG = {
+    apiKey: "AIzaSyDnLMhAhkAw1JMlbTxN4u8vB6poip5dt94",
+    authDomain: "mckenzie-ramen-house.firebaseapp.com",
+    projectId: "mckenzie-ramen-house",
+    storageBucket: "mckenzie-ramen-house.firebasestorage.app",
+    messagingSenderId: "1048288418639",
+    appId: "1:1048288418639:web:85e0148036179259c8033a",
+    measurementId: "G-C2KDRE88ZW"
+  };
+
+  // Use the verified Firebase Console web config as the source of truth.
+  // This prevents an old/stale firebase-config.js from causing auth/api-key errors.
+  const cfg = EMBEDDED_CONFIG;
+  window.MCKENZIE_FIREBASE_CONFIG = EMBEDDED_CONFIG;
+  window.MCKENZIE_ADMIN_UID = window.MCKENZIE_ADMIN_UID || "OHDs2DV4jyO3eBrww8d0gUQkNli2";
 
   const READY = (async function () {
-    const appMod = await import("https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js");
-    const authMod = await import("https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js");
-    const fsMod = await import("https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js");
-    const app = appMod.initializeApp(cfg);
-    const auth = authMod.getAuth(app);
-    const db = fsMod.getFirestore(app);
-    return { app, auth, db, ...authMod, ...fsMod };
+    try {
+      const appMod = await import("https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js");
+      const authMod = await import("https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js");
+      const fsMod = await import("https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js");
+
+      const app = appMod.initializeApp(cfg, "mckenzie-ramen-house");
+      const auth = authMod.getAuth(app);
+      const db = fsMod.getFirestore(app);
+
+      console.log("McKenzie Ramen House Firebase initialized successfully.");
+
+      return {
+        app,
+        auth,
+        db,
+        ...authMod,
+        ...fsMod
+      };
+    } catch (error) {
+      console.error("McKenzie Firebase initialization failed:", error);
+      throw error;
+    }
   })();
 
   window.MckenzieFirebaseReady = READY;
@@ -32,60 +61,128 @@
     return e;
   }
 
-  function isoNow() { return new Date().toISOString(); }
+  function isoNow() {
+    return new Date().toISOString();
+  }
 
   async function currentUser(required) {
     const f = await READY;
-    if (f.auth.currentUser) return f.auth.currentUser;
-    if (!required) return null;
+
+    if (f.auth.currentUser) {
+      return f.auth.currentUser;
+    }
+
+    if (!required) {
+      return null;
+    }
+
     throw makeError("Please log in again.");
   }
 
   async function isAdmin() {
     const f = await READY;
     const u = f.auth.currentUser;
-    if (!u) return false;
-    const configuredUid = String(window.MCKENZIE_ADMIN_UID || "").trim();
-    if (configuredUid && configuredUid !== "PASTE_ADMIN_USER_UID_HERE") {
+
+    if (!u) {
+      return false;
+    }
+
+    const configuredUid = String(
+      window.MCKENZIE_ADMIN_UID || ""
+    ).trim();
+
+    if (
+      configuredUid &&
+      configuredUid !== "PASTE_ADMIN_USER_UID_HERE"
+    ) {
       return u.uid === configuredUid;
     }
+
     return false;
   }
 
   async function requireAdmin() {
-    if (!(await isAdmin())) throw makeError("Admin access is not configured for this account.");
+    if (!(await isAdmin())) {
+      throw makeError(
+        "Admin access is not configured for this account."
+      );
+    }
+
     return true;
   }
 
   function cleanTimestamp(v) {
-    if (!v) return "";
-    if (typeof v === "string") return v;
-    if (v && typeof v.toDate === "function") return v.toDate().toISOString();
-    if (v instanceof Date) return v.toISOString();
+    if (!v) {
+      return "";
+    }
+
+    if (typeof v === "string") {
+      return v;
+    }
+
+    if (v && typeof v.toDate === "function") {
+      return v.toDate().toISOString();
+    }
+
+    if (v instanceof Date) {
+      return v.toISOString();
+    }
+
     return String(v);
   }
 
   function docData(snap) {
-    return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+    return snap.exists()
+      ? {
+          id: snap.id,
+          ...snap.data()
+        }
+      : null;
   }
 
   async function getDocById(collectionName, id) {
     const f = await READY;
-    const snap = await f.getDoc(f.doc(f.db, collectionName, String(id)));
+
+    const snap = await f.getDoc(
+      f.doc(
+        f.db,
+        collectionName,
+        String(id)
+      )
+    );
+
     return docData(snap);
   }
 
-  async function getCollection(collectionName, queryConstraint) {
+  async function getCollection(
+    collectionName,
+    queryConstraint
+  ) {
     const f = await READY;
-    const ref = f.collection(f.db, collectionName);
+
+    const ref = f.collection(
+      f.db,
+      collectionName
+    );
+
     const snap = queryConstraint
-      ? await f.getDocs(f.query(ref, queryConstraint))
+      ? await f.getDocs(
+          f.query(
+            ref,
+            queryConstraint
+          )
+        )
       : await f.getDocs(ref);
-    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+    return snap.docs.map(d => ({
+      id: d.id,
+      ...d.data()
+    }));
   }
 
   function profileFromUser(u, data) {
     const p = data || {};
+
     return {
       success: true,
       userId: u.uid,
@@ -101,110 +198,251 @@
       postalCode: p.postalCode || "",
       country: p.country || "Philippines",
       region: p.region || "",
-      additionalInstruction: p.additionalInstruction || ""
+      additionalInstruction:
+        p.additionalInstruction || ""
     };
   }
 
   async function getProfile(userId) {
     const u = await currentUser(true);
-    if (String(userId) !== String(u.uid)) throw makeError("You can only access your own profile.");
-    const p = await getDocById("users", u.uid);
-    return profileFromUser(u, p || {});
+
+    if (String(userId) !== String(u.uid)) {
+      throw makeError(
+        "You can only access your own profile."
+      );
+    }
+
+    const p = await getDocById(
+      "users",
+      u.uid
+    );
+
+    return profileFromUser(
+      u,
+      p || {}
+    );
   }
 
   async function saveProfile(data) {
     const f = await READY;
     const u = await currentUser(true);
+
     data = data || {};
-    if (String(data.userId || "") !== u.uid) throw makeError("Invalid customer account.");
-    const fullName = String(data.fullName || "").trim();
-    const email = String(data.email || u.email || "").trim().toLowerCase();
-    const mobile = String(data.mobile || "").trim();
 
-    if (!fullName) throw makeError("Full name is required.");
-    if (!email) throw makeError("Email address is required.");
-    if (!mobile) throw makeError("Phone number is required.");
+    if (String(data.userId || "") !== u.uid) {
+      throw makeError(
+        "Invalid customer account."
+      );
+    }
 
-    await f.setDoc(f.doc(f.db, "users", u.uid), {
-      username: data.username || "",
-      email,
-      fullName,
-      mobile,
-      houseUnit: String(data.houseUnit || "").trim(),
-      street: String(data.street || "").trim(),
-      barangay: String(data.barangay || "").trim(),
-      city: String(data.city || "").trim(),
-      province: String(data.province || "").trim(),
-      postalCode: String(data.postalCode || "").trim(),
-      country: String(data.country || "Philippines").trim() || "Philippines",
-      region: String(data.region || "").trim(),
-      additionalInstruction: String(data.additionalInstruction || "").trim(),
-      updatedAt: isoNow()
-    }, { merge: true });
+    const fullName = String(
+      data.fullName || ""
+    ).trim();
+
+    const email = String(
+      data.email || u.email || ""
+    ).trim().toLowerCase();
+
+    const mobile = String(
+      data.mobile || ""
+    ).trim();
+
+    if (!fullName) {
+      throw makeError(
+        "Full name is required."
+      );
+    }
+
+    if (!email) {
+      throw makeError(
+        "Email address is required."
+      );
+    }
+
+    if (!mobile) {
+      throw makeError(
+        "Phone number is required."
+      );
+    }
+
+    await f.setDoc(
+      f.doc(
+        f.db,
+        "users",
+        u.uid
+      ),
+      {
+        username: data.username || "",
+        email,
+        fullName,
+        mobile,
+        houseUnit: String(
+          data.houseUnit || ""
+        ).trim(),
+        street: String(
+          data.street || ""
+        ).trim(),
+        barangay: String(
+          data.barangay || ""
+        ).trim(),
+        city: String(
+          data.city || ""
+        ).trim(),
+        province: String(
+          data.province || ""
+        ).trim(),
+        postalCode: String(
+          data.postalCode || ""
+        ).trim(),
+        country:
+          String(
+            data.country || "Philippines"
+          ).trim() || "Philippines",
+        region: String(
+          data.region || ""
+        ).trim(),
+        additionalInstruction:
+          String(
+            data.additionalInstruction || ""
+          ).trim(),
+        updatedAt: isoNow()
+      },
+      {
+        merge: true
+      }
+    );
 
     return getProfile(u.uid);
   }
 
-  async function loginUser(identifier, password) {
+  async function loginUser(
+    identifier,
+    password
+  ) {
     const f = await READY;
 
-    identifier = String(identifier || "").trim().toLowerCase();
-    password = String(password || "");
+    identifier = String(
+      identifier || ""
+    ).trim().toLowerCase();
+
+    password = String(
+      password || ""
+    );
 
     if (!identifier || !password) {
-      throw makeError("Please enter username/email and password.");
+      throw makeError(
+        "Please enter username/email and password."
+      );
     }
 
+    // Firebase Auth signs in by email.
+    // Username login is intentionally disabled
+    // in the standalone version because exposing a
+    // username→email directory would weaken privacy.
     if (!identifier.includes("@")) {
-      throw makeError("Please log in using your registered email address.");
+      throw makeError(
+        "Please log in using your registered email address."
+      );
     }
 
-    const cred = await f.signInWithEmailAndPassword(
-      f.auth,
-      identifier,
-      password
+    const cred =
+      await f.signInWithEmailAndPassword(
+        f.auth,
+        identifier,
+        password
+      );
+
+    const p = await getDocById(
+      "users",
+      cred.user.uid
     );
 
-    const p = await getDocById("users", cred.user.uid);
-    return profileFromUser(cred.user, p || {});
+    return profileFromUser(
+      cred.user,
+      p || {}
+    );
   }
 
-  async function createAccount(fullName, email, username, password, mobile) {
+  async function createAccount(
+    fullName,
+    email,
+    username,
+    password,
+    mobile
+  ) {
     const f = await READY;
 
-    const cred = await f.createUserWithEmailAndPassword(
-      f.auth,
-      String(email).trim().toLowerCase(),
-      String(password)
+    const cred =
+      await f.createUserWithEmailAndPassword(
+        f.auth,
+        String(email)
+          .trim()
+          .toLowerCase(),
+        String(password)
+      );
+
+    await f.setDoc(
+      f.doc(
+        f.db,
+        "users",
+        cred.user.uid
+      ),
+      {
+        username: String(
+          username || ""
+        ).trim(),
+
+        email:
+          cred.user.email ||
+          String(email)
+            .trim()
+            .toLowerCase(),
+
+        fullName: String(
+          fullName || ""
+        ).trim(),
+
+        mobile: String(
+          mobile || ""
+        ).trim(),
+
+        country: "Philippines",
+        status: "ACTIVE",
+        createdAt: isoNow(),
+        updatedAt: isoNow()
+      },
+      {
+        merge: true
+      }
     );
 
-    await f.setDoc(f.doc(f.db, "users", cred.user.uid), {
-      username: String(username || "").trim(),
-      email: cred.user.email || String(email).trim().toLowerCase(),
-      fullName: String(fullName || "").trim(),
-      mobile: String(mobile || "").trim(),
-      country: "Philippines",
-      status: "ACTIVE",
-      createdAt: isoNow(),
-      updatedAt: isoNow()
-    }, { merge: true });
-
     try {
-      await f.sendEmailVerification(cred.user);
+      await f.sendEmailVerification(
+        cred.user
+      );
     } catch (e) {
-      console.warn("Verification email could not be sent:", e);
+      console.warn(
+        "Verification email could not be sent:",
+        e
+      );
     }
 
     return {
       success: true,
-      message: "Account created. Please verify your email, then log in.",
-      verificationToken: cred.user.uid,
-      email: cred.user.email || email,
+      message:
+        "Account created. Please verify your email, then log in.",
+      verificationToken:
+        cred.user.uid,
+      email:
+        cred.user.email || email,
       expiresInSeconds: 600
     };
   }
 
-  async function verifyEmailCode(token, code) {
+  async function verifyEmailCode(
+    token,
+    code
+  ) {
     const f = await READY;
     const u = await currentUser(true);
 
@@ -222,47 +460,81 @@
     };
   }
 
-  async function sendPasswordReset(identifier) {
+  async function sendPasswordReset(
+    identifier
+  ) {
     const f = await READY;
 
-    const email = String(identifier || "").trim().toLowerCase();
+    const email = String(
+      identifier || ""
+    ).trim().toLowerCase();
 
-    if (!email || !email.includes("@")) {
-      throw makeError("Please enter your registered email address.");
+    if (
+      !email ||
+      !email.includes("@")
+    ) {
+      throw makeError(
+        "Please enter your registered email address."
+      );
     }
 
-    await f.sendPasswordResetEmail(f.auth, email);
+    await f.sendPasswordResetEmail(
+      f.auth,
+      email
+    );
 
     return {
       success: true,
       email,
-      message: "Password reset email sent."
+      message:
+        "Password reset email sent."
     };
   }
 
-  async function changePassword(userId, oldPassword, newPassword) {
+  async function changePassword(
+    userId,
+    oldPassword,
+    newPassword
+  ) {
     const f = await READY;
     const u = await currentUser(true);
 
     if (u.uid !== String(userId)) {
-      throw makeError("Invalid customer account.");
+      throw makeError(
+        "Invalid customer account."
+      );
     }
 
-    if (!newPassword || String(newPassword).length < 6) {
-      throw makeError("Password must be at least 6 characters.");
+    if (
+      !newPassword ||
+      String(newPassword).length < 6
+    ) {
+      throw makeError(
+        "Password must be at least 6 characters."
+      );
     }
 
     if (!u.email) {
-      throw makeError("Your account has no email address.");
+      throw makeError(
+        "Your account has no email address."
+      );
     }
 
-    const cred = f.EmailAuthProvider.credential(
-      u.email,
-      String(oldPassword || "")
+    const cred =
+      f.EmailAuthProvider.credential(
+        u.email,
+        String(oldPassword || "")
+      );
+
+    await f.reauthenticateWithCredential(
+      u,
+      cred
     );
 
-    await f.reauthenticateWithCredential(u, cred);
-    await f.updatePassword(u, String(newPassword));
+    await f.updatePassword(
+      u,
+      String(newPassword)
+    );
 
     return {
       success: true
@@ -274,33 +546,61 @@
     const u = await currentUser(true);
 
     if (u.uid !== String(userId)) {
-      throw makeError("Invalid customer account.");
+      throw makeError(
+        "Invalid customer account."
+      );
     }
 
-    const list = await getCollection("addresses");
+    const list =
+      await getCollection("addresses");
 
     return list
-      .filter(a => String(a.userId) === u.uid)
+      .filter(
+        a =>
+          String(a.userId) ===
+          u.uid
+      )
       .sort(
         (a, b) =>
-          (b.isDefault ? 1 : 0) - (a.isDefault ? 1 : 0)
+          (b.isDefault ? 1 : 0) -
+          (a.isDefault ? 1 : 0)
       )
       .map(a => ({
         addressId: a.id,
         userId: a.userId,
-        label: a.label || "Saved Address",
-        houseUnit: a.houseUnit || "",
-        street: a.street || "",
-        barangay: a.barangay || "",
-        city: a.city || "",
-        province: a.province || "",
-        region: a.region || "",
-        postalCode: a.postalCode || "",
-        country: a.country || "Philippines",
-        additionalInstruction: a.additionalInstruction || "",
-        isDefault: !!a.isDefault,
-        createdAt: cleanTimestamp(a.createdAt),
-        updatedAt: cleanTimestamp(a.updatedAt)
+        label:
+          a.label ||
+          "Saved Address",
+        houseUnit:
+          a.houseUnit || "",
+        street:
+          a.street || "",
+        barangay:
+          a.barangay || "",
+        city:
+          a.city || "",
+        province:
+          a.province || "",
+        region:
+          a.region || "",
+        postalCode:
+          a.postalCode || "",
+        country:
+          a.country ||
+          "Philippines",
+        additionalInstruction:
+          a.additionalInstruction ||
+          "",
+        isDefault:
+          !!a.isDefault,
+        createdAt:
+          cleanTimestamp(
+            a.createdAt
+          ),
+        updatedAt:
+          cleanTimestamp(
+            a.updatedAt
+          )
       }));
   }
 
@@ -310,8 +610,13 @@
 
     data = data || {};
 
-    if (String(data.userId || "") !== u.uid) {
-      throw makeError("Invalid customer account.");
+    if (
+      String(data.userId || "") !==
+      u.uid
+    ) {
+      throw makeError(
+        "Invalid customer account."
+      );
     }
 
     const required = [
@@ -319,38 +624,57 @@
       ["province", "province"],
       ["city", "city/municipality"],
       ["barangay", "barangay"],
-      ["houseUnit", "lot/house/unit number"],
+      [
+        "houseUnit",
+        "lot/house/unit number"
+      ],
       ["street", "street"]
     ];
 
-    for (const [key, label] of required) {
-      if (!String(data[key] || "").trim()) {
+    for (
+      const [key, label] of required
+    ) {
+      if (
+        !String(
+          data[key] || ""
+        ).trim()
+      ) {
         throw makeError(
-          "Please select/enter your " + label + "."
+          "Please select/enter your " +
+            label +
+            "."
         );
       }
     }
 
-    const all = await addresses(u.uid);
+    const all =
+      await addresses(u.uid);
 
     const id = String(
       data.addressId ||
-      (
-        "ADDR-" +
-        Date.now() +
-        "-" +
-        Math.floor(Math.random() * 10000)
-      )
+        (
+          "ADDR-" +
+          Date.now() +
+          "-" +
+          Math.floor(
+            Math.random() * 10000
+          )
+        )
     );
 
     if (data.isDefault !== false) {
       for (const a of all) {
         if (a.isDefault) {
           await f.updateDoc(
-            f.doc(f.db, "addresses", a.addressId),
+            f.doc(
+              f.db,
+              "addresses",
+              a.addressId
+            ),
             {
               isDefault: false,
-              updatedAt: isoNow()
+              updatedAt:
+                isoNow()
             }
           );
         }
@@ -358,94 +682,155 @@
     }
 
     await f.setDoc(
-      f.doc(f.db, "addresses", id),
+      f.doc(
+        f.db,
+        "addresses",
+        id
+      ),
       {
         userId: u.uid,
+
         label: String(
-          data.label || "Saved Address"
+          data.label ||
+            "Saved Address"
         ).trim(),
+
         houseUnit: String(
           data.houseUnit || ""
         ).trim(),
+
         street: String(
           data.street || ""
         ).trim(),
+
         barangay: String(
           data.barangay || ""
         ).trim(),
+
         city: String(
           data.city || ""
         ).trim(),
+
         province: String(
           data.province || ""
         ).trim(),
+
         region: String(
           data.region || ""
         ).trim(),
+
         postalCode: String(
           data.postalCode || ""
         ).trim(),
+
         country: String(
-          data.country || "Philippines"
+          data.country ||
+            "Philippines"
         ).trim(),
-        additionalInstruction: String(
-          data.additionalInstruction || ""
-        ).trim(),
-        isDefault: data.isDefault !== false,
-        createdAt: data.createdAt || isoNow(),
-        updatedAt: isoNow()
+
+        additionalInstruction:
+          String(
+            data.additionalInstruction ||
+              ""
+          ).trim(),
+
+        isDefault:
+          data.isDefault !== false,
+
+        createdAt:
+          data.createdAt ||
+          isoNow(),
+
+        updatedAt:
+          isoNow()
       },
-      { merge: true }
+      {
+        merge: true
+      }
     );
 
     if (data.isDefault !== false) {
       await f.setDoc(
-        f.doc(f.db, "users", u.uid),
+        f.doc(
+          f.db,
+          "users",
+          u.uid
+        ),
         {
-          houseUnit: data.houseUnit || "",
-          street: data.street || "",
-          barangay: data.barangay || "",
-          city: data.city || "",
-          province: data.province || "",
-          region: data.region || "",
-          postalCode: data.postalCode || "",
-          country: data.country || "Philippines",
+          houseUnit:
+            data.houseUnit || "",
+          street:
+            data.street || "",
+          barangay:
+            data.barangay || "",
+          city:
+            data.city || "",
+          province:
+            data.province || "",
+          region:
+            data.region || "",
+          postalCode:
+            data.postalCode || "",
+          country:
+            data.country ||
+            "Philippines",
           additionalInstruction:
-            data.additionalInstruction || "",
-          updatedAt: isoNow()
+            data.additionalInstruction ||
+            "",
+          updatedAt:
+            isoNow()
         },
-        { merge: true }
+        {
+          merge: true
+        }
       );
     }
 
     return addresses(u.uid);
   }
 
-  async function setDefaultAddress(userId, addressId) {
+  async function setDefaultAddress(
+    userId,
+    addressId
+  ) {
     const f = await READY;
     const u = await currentUser(true);
 
     if (u.uid !== String(userId)) {
-      throw makeError("Invalid customer account.");
+      throw makeError(
+        "Invalid customer account."
+      );
     }
 
-    const all = await addresses(u.uid);
+    const all =
+      await addresses(u.uid);
 
     const selected = all.find(
-      a => a.addressId === String(addressId)
+      a =>
+        a.addressId ===
+        String(addressId)
     );
 
     if (!selected) {
-      throw makeError("Address not found.");
+      throw makeError(
+        "Address not found."
+      );
     }
 
     for (const a of all) {
       await f.updateDoc(
-        f.doc(f.db, "addresses", a.addressId),
+        f.doc(
+          f.db,
+          "addresses",
+          a.addressId
+        ),
         {
           isDefault:
-            a.addressId === selected.addressId,
-          updatedAt: isoNow()
+            a.addressId ===
+            selected.addressId,
+
+          updatedAt:
+            isoNow()
         }
       );
     }
@@ -455,34 +840,50 @@
 
   async function getProducts() {
     const f = await READY;
-    const list = await getCollection("products");
+
+    const list =
+      await getCollection(
+        "products"
+      );
 
     return list
       .filter(p => p.name)
       .map(p => ({
         id: p.id,
         name: p.name,
-        category: p.category || "Ramen",
-        price: Number(p.price || 0),
-        image: p.image || "",
-        description: p.description || "",
-        available: p.available !== false,
-        bestSeller: !!p.bestSeller,
-        newProduct: !!p.newProduct
+        category:
+          p.category ||
+          "Ramen",
+        price:
+          Number(
+            p.price || 0
+          ),
+        image:
+          p.image || "",
+        description:
+          p.description || "",
+        available:
+          p.available !== false,
+        bestSeller:
+          !!p.bestSeller,
+        newProduct:
+          !!p.newProduct
       }));
   }
 
   async function getBrandAssets() {
-    const p = await getDocById(
-      "brandAssets",
-      "main"
-    );
+    const p =
+      await getDocById(
+        "brandAssets",
+        "main"
+      );
 
     return p || {};
   }
 
   async function getRamenLoadingImage() {
-    const p = await getBrandAssets();
+    const p =
+      await getBrandAssets();
 
     return p.ramenLoadingImage || "";
   }
@@ -496,55 +897,91 @@
       payload.province,
       payload.region
     ]
-      .map(v => String(v || "").trim())
+      .map(v =>
+        String(v || "").trim()
+      )
       .filter(Boolean)
       .join(", ");
   }
 
-  async function saveOrder(orderId, payload) {
+  async function saveOrder(
+    orderId,
+    payload
+  ) {
     const f = await READY;
     const u = await currentUser(true);
 
     payload = payload || {};
 
-    if (String(payload.userId || "") !== u.uid) {
-      throw makeError("Please log in again.");
+    if (
+      String(
+        payload.userId || ""
+      ) !== u.uid
+    ) {
+      throw makeError(
+        "Please log in again."
+      );
     }
 
-    const cleanItems = Array.isArray(payload.items)
-      ? payload.items
-          .map(item => ({
-            productId: String(
-              item.id ||
-              item.productId ||
-              ""
-            ),
-            productName: String(
-              item.name ||
-              item.productName ||
-              "Ramen item"
-            ),
-            price: Number(item.price || 0),
-            quantity: Number(item.quantity || 0),
-            subtotal: Number(
-              item.subtotal != null
-                ? item.subtotal
-                : Number(item.price || 0) *
-                  Number(item.quantity || 0)
-            ),
-            itemStatus: "Preparing"
-          }))
-          .filter(x => x.quantity > 0)
-      : [];
+    const cleanItems =
+      Array.isArray(payload.items)
+        ? payload.items
+            .map(item => ({
+              productId: String(
+                item.id ||
+                  item.productId ||
+                  ""
+              ),
+
+              productName:
+                String(
+                  item.name ||
+                    item.productName ||
+                    "Ramen item"
+                ),
+
+              price:
+                Number(
+                  item.price || 0
+                ),
+
+              quantity:
+                Number(
+                  item.quantity || 0
+                ),
+
+              subtotal:
+                Number(
+                  item.subtotal != null
+                    ? item.subtotal
+                    : Number(
+                        item.price || 0
+                      ) *
+                      Number(
+                        item.quantity || 0
+                      )
+                ),
+
+              itemStatus:
+                "Preparing"
+            }))
+            .filter(
+              x => x.quantity > 0
+            )
+        : [];
 
     if (!cleanItems.length) {
-      throw makeError("The order contains no items.");
+      throw makeError(
+        "The order contains no items."
+      );
     }
 
-    const total = cleanItems.reduce(
-      (s, i) => s + i.subtotal,
-      0
-    );
+    const total =
+      cleanItems.reduce(
+        (s, i) =>
+          s + i.subtotal,
+        0
+      );
 
     const ref = f.doc(
       f.db,
@@ -552,163 +989,256 @@
       String(orderId)
     );
 
-    const existing = await f.getDoc(ref);
+    const existing =
+      await f.getDoc(ref);
 
     if (existing.exists()) {
       return {
         success: true,
-        orderId: String(orderId),
+        orderId:
+          String(orderId),
         duplicate: true
       };
     }
 
-    await f.setDoc(ref, {
-      orderId: String(orderId),
-      userId: u.uid,
-      customerName: String(
-        payload.fullName || ""
-      ),
-      fullName: String(
-        payload.fullName || ""
-      ),
-      email: u.email || "",
-      mobile: String(
-        payload.mobile || ""
-      ),
-      items: cleanItems,
-      total,
-      paymentMethod: String(
-        payload.paymentMethod || ""
-      ),
-      paymentStatus: "Pending",
-      orderStatus: "Preparing",
-      address: orderAddress(payload),
-      instruction: String(
-        payload.additionalInstruction || ""
-      ),
-      orderedAt: isoNow(),
-      customerConfirmed: false,
-      confirmedAt: "",
-      deliveredAt: "",
-      closed: false
-    });
+    await f.setDoc(
+      ref,
+      {
+        orderId:
+          String(orderId),
+
+        userId:
+          u.uid,
+
+        customerName:
+          String(
+            payload.fullName || ""
+          ),
+
+        fullName:
+          String(
+            payload.fullName || ""
+          ),
+
+        email:
+          u.email || "",
+
+        mobile:
+          String(
+            payload.mobile || ""
+          ),
+
+        items:
+          cleanItems,
+
+        total,
+
+        paymentMethod:
+          String(
+            payload.paymentMethod ||
+              ""
+          ),
+
+        paymentStatus:
+          "Pending",
+
+        orderStatus:
+          "Preparing",
+
+        address:
+          orderAddress(
+            payload
+          ),
+
+        instruction:
+          String(
+            payload.additionalInstruction ||
+              ""
+          ),
+
+        orderedAt:
+          isoNow(),
+
+        customerConfirmed:
+          false,
+
+        confirmedAt:
+          "",
+
+        deliveredAt:
+          "",
+
+        closed:
+          false
+      }
+    );
 
     return {
       success: true,
-      orderId: String(orderId),
-      status: "Preparing"
+      orderId:
+        String(orderId),
+      status:
+        "Preparing"
     };
   }
 
   function normalizeOrder(o) {
-    if (!o) return null;
+    if (!o) {
+      return null;
+    }
 
     return {
-      orderId: String(
-        o.orderId ||
-        o.id ||
-        ""
-      ),
-      userId: String(
-        o.userId ||
-        ""
-      ),
+      orderId:
+        String(
+          o.orderId ||
+            o.id ||
+            ""
+        ),
+
+      userId:
+        String(
+          o.userId || ""
+        ),
+
       customerName:
         o.customerName ||
         o.fullName ||
         "Customer",
+
       fullName:
         o.fullName ||
         o.customerName ||
         "Customer",
-      email: o.email || "",
-      mobile: o.mobile || "",
-      items: Array.isArray(o.items)
-        ? o.items.map((it, idx) => ({
-            itemIndex: idx,
-            productId: String(
-              it.productId ||
-              it.id ||
-              ""
-            ),
-            productName:
-              it.productName ||
-              it.name ||
-              "Ramen item",
-            price: Number(
-              it.price || 0
-            ),
-            quantity: Number(
-              it.quantity || 0
-            ),
-            subtotal: Number(
-              it.subtotal != null
-                ? it.subtotal
-                : Number(it.price || 0) *
-                  Number(it.quantity || 0)
-            ),
-            itemStatus: String(
-              it.itemStatus ||
-              "Preparing"
+
+      email:
+        o.email || "",
+
+      mobile:
+        o.mobile || "",
+
+      items:
+        Array.isArray(o.items)
+          ? o.items.map(
+              (it, idx) => ({
+                itemIndex:
+                  idx,
+
+                productId:
+                  String(
+                    it.productId ||
+                      it.id ||
+                      ""
+                  ),
+
+                productName:
+                  it.productName ||
+                  it.name ||
+                  "Ramen item",
+
+                price:
+                  Number(
+                    it.price || 0
+                  ),
+
+                quantity:
+                  Number(
+                    it.quantity || 0
+                  ),
+
+                subtotal:
+                  Number(
+                    it.subtotal != null
+                      ? it.subtotal
+                      : Number(
+                          it.price || 0
+                        ) *
+                        Number(
+                          it.quantity || 0
+                        )
+                  ),
+
+                itemStatus:
+                  String(
+                    it.itemStatus ||
+                      "Preparing"
+                  )
+              })
             )
-          }))
-        : [],
-      total: Number(
-        o.total || 0
-      ),
+          : [],
+
+      total:
+        Number(
+          o.total || 0
+        ),
+
       paymentMethod:
         o.paymentMethod || "",
+
       paymentStatus:
         o.paymentStatus ||
         "Pending",
+
       orderStatus:
-        o.orderStatus === "Pending"
+        o.orderStatus ===
+        "Pending"
           ? "Preparing"
           : (
               o.orderStatus ||
               "Preparing"
             ),
+
       address:
         o.address || "",
+
       instruction:
         o.instruction ||
         o.additionalInstruction ||
         "",
+
       orderedAt:
         cleanTimestamp(
           o.orderedAt
         ),
+
       customerConfirmed:
         !!o.customerConfirmed,
+
       confirmedAt:
         cleanTimestamp(
           o.confirmedAt
         ),
+
       deliveredAt:
         cleanTimestamp(
           o.deliveredAt
         ),
+
       closed:
         !!o.closed,
+
       canRate:
-        (
-          o.orderStatus ===
-          "Delivered"
-        ) &&
+        o.orderStatus ===
+          "Delivered" &&
         !!o.customerConfirmed
     };
   }
 
-  async function getOrdersForUser(userId) {
+  async function getOrdersForUser(
+    userId
+  ) {
     const f = await READY;
     const u = await currentUser(true);
 
     if (u.uid !== String(userId)) {
-      throw makeError("Invalid customer account.");
+      throw makeError(
+        "Invalid customer account."
+      );
     }
 
     const list =
-      await getCollection("orders");
+      await getCollection(
+        "orders"
+      );
 
     return list
       .filter(
@@ -719,10 +1249,13 @@
       .map(normalizeOrder)
       .sort(
         (a, b) =>
-          String(b.orderedAt)
-            .localeCompare(
-              String(a.orderedAt)
+          String(
+            b.orderedAt
+          ).localeCompare(
+            String(
+              a.orderedAt
             )
+          )
       );
   }
 
@@ -731,7 +1264,9 @@
     userId
   ) {
     const list =
-      await getCollection("reviews");
+      await getCollection(
+        "reviews"
+      );
 
     return list.filter(
       r =>
@@ -739,7 +1274,7 @@
           String(orderId) &&
         String(
           r.customerId ||
-          r.userId
+            r.userId
         ) ===
           String(userId)
     );
@@ -793,41 +1328,51 @@
 
     const byProduct = {};
 
-    reviews.forEach(
-      r =>
-        byProduct[
-          String(r.productId)
-        ] = r
-    );
+    reviews.forEach(r => {
+      byProduct[
+        String(r.productId)
+      ] = r;
+    });
 
     return {
       success: true,
-      orderId: order.orderId,
+
+      orderId:
+        order.orderId,
+
       customerName:
         order.customerName ||
         "Customer",
-      items: order.items.map(
-        item => ({
-          productId:
-            item.productId,
-          productName:
-            item.productName,
-          quantity:
-            item.quantity,
-          reviewed:
-            !!byProduct[
-              item.productId
-            ],
-          existingRating:
-            byProduct[
-              item.productId
-            ]?.rating || 0,
-          existingReview:
-            byProduct[
-              item.productId
-            ]?.review || ""
-        })
-      ),
+
+      items:
+        order.items.map(
+          item => ({
+            productId:
+              item.productId,
+
+            productName:
+              item.productName,
+
+            quantity:
+              item.quantity,
+
+            reviewed:
+              !!byProduct[
+                item.productId
+              ],
+
+            existingRating:
+              byProduct[
+                item.productId
+              ]?.rating || 0,
+
+            existingReview:
+              byProduct[
+                item.productId
+              ]?.review || ""
+          })
+        ),
+
       completed:
         order.items.every(
           item =>
@@ -855,9 +1400,10 @@
     }
 
     rating = Number(rating);
-    review = String(
-      review || ""
-    ).trim();
+    review =
+      String(
+        review || ""
+      ).trim();
 
     if (
       !Number.isFinite(rating) ||
@@ -884,7 +1430,9 @@
     const item =
       form.items.find(
         i =>
-          String(i.productId) ===
+          String(
+            i.productId
+          ) ===
           String(productId)
       );
 
@@ -918,19 +1466,26 @@
         reviewId: id,
         orderId:
           String(orderId),
+
         customerId:
           u.uid,
+
         productId:
           String(productId),
+
         productName:
           item.productName,
+
         rating,
         review,
+
         customerName:
           form.customerName ||
           "Customer",
+
         submittedAt:
           isoNow(),
+
         status:
           "Published"
       }
@@ -957,19 +1512,17 @@
         r =>
           String(
             r.status ||
-            "Published"
+              "Published"
           ).toLowerCase() ===
           "published"
       )
       .sort(
         (a, b) =>
           String(
-            b.submittedAt ||
-            ""
+            b.submittedAt || ""
           ).localeCompare(
             String(
-              a.submittedAt ||
-              ""
+              a.submittedAt || ""
             )
           )
       )
@@ -978,18 +1531,25 @@
         reviewId:
           r.reviewId ||
           r.id,
+
         orderId:
           r.orderId,
+
         productId:
           r.productId,
+
         productName:
           r.productName,
+
         rating:
           r.rating,
+
         review:
           r.review,
+
         customerName:
           r.customerName,
+
         submittedAt:
           cleanTimestamp(
             r.submittedAt
@@ -1032,13 +1592,16 @@
       )
       .map(n => ({
         ...n,
+
         notificationId:
           n.notificationId ||
           n.id,
+
         createdAt:
           cleanTimestamp(
             n.createdAt
           ),
+
         readAt:
           cleanTimestamp(
             n.readAt
@@ -1059,14 +1622,11 @@
       );
     }
 
-    const ref =
-      f.doc(
-        f.db,
-        "notifications",
-        String(
-          notificationId
-        )
-      );
+    const ref = f.doc(
+      f.db,
+      "notifications",
+      String(notificationId)
+    );
 
     const snap =
       await f.getDoc(ref);
@@ -1110,12 +1670,11 @@
       );
     }
 
-    const ref =
-      f.doc(
-        f.db,
-        "orders",
-        String(orderId)
-      );
+    const ref = f.doc(
+      f.db,
+      "orders",
+      String(orderId)
+    );
 
     const snap =
       await f.getDoc(ref);
@@ -1152,10 +1711,12 @@
       {
         customerConfirmed:
           !!received,
+
         confirmedAt:
           received
             ? now
             : "",
+
         closed:
           !!received
       }
@@ -1174,13 +1735,17 @@
       success: true,
       received:
         !!received,
+
       closed:
         !!received,
+
       contact: {
         phone:
           "09123456789",
+
         email:
           "Mckenzieramenhouse@gmail.com",
+
         facebook:
           "Mckenzie Ramen House"
       }
@@ -1197,7 +1762,9 @@
     };
   }
 
-  async function saveProduct(data) {
+  async function saveProduct(
+    data
+  ) {
     const f = await READY;
 
     await requireAdmin();
@@ -1216,8 +1783,7 @@
 
     const description =
       String(
-        data.description ||
-        ""
+        data.description || ""
       ).trim();
 
     const price =
@@ -1247,15 +1813,13 @@
     let image =
       String(
         data.imageUrl ||
-        data.image ||
-        ""
+          data.image ||
+          ""
       ).trim();
 
     if (
       image &&
-      image.startsWith(
-        "data:"
-      )
+      image.startsWith("data:")
     ) {
       throw makeError(
         "This standalone version uses an image URL. Upload the image to the GitHub images folder, then paste its URL here."
@@ -1283,13 +1847,16 @@
         price,
         image,
         description,
+
         available:
-          data.available !==
-          false,
+          data.available !== false,
+
         bestSeller:
           !!data.bestSeller,
+
         newProduct:
           !!data.newProduct,
+
         updatedAt:
           isoNow()
       },
@@ -1306,7 +1873,9 @@
     };
   }
 
-  async function deleteProduct(id) {
+  async function deleteProduct(
+    id
+  ) {
     const f = await READY;
 
     await requireAdmin();
@@ -1366,8 +1935,7 @@
           r =>
             String(
               r.orderId
-            ) ===
-            o.orderId
+            ) === o.orderId
         );
 
       const productIds =
@@ -1403,8 +1971,7 @@
           n =>
             String(
               n.orderId
-            ) ===
-              o.orderId &&
+            ) === o.orderId &&
             n.type ===
               "REVIEW_REQUEST"
         );
@@ -1435,12 +2002,11 @@
 
     await requireAdmin();
 
-    const ref =
-      f.doc(
-        f.db,
-        "orders",
-        String(orderId)
-      );
+    const ref = f.doc(
+      f.db,
+      "orders",
+      String(orderId)
+    );
 
     const snap =
       await f.getDoc(ref);
@@ -1485,7 +2051,7 @@
     const current =
       String(
         items[i].itemStatus ||
-        "Preparing"
+          "Preparing"
       );
 
     if (
@@ -1502,7 +2068,7 @@
 
     items[i].itemStatus =
       String(status) ===
-        "Ready"
+      "Ready"
         ? "Ready"
         : "Preparing";
 
@@ -1517,9 +2083,7 @@
 
     const fresh =
       (
-        await f.getDoc(
-          ref
-        )
+        await f.getDoc(ref)
       ).data();
 
     return {
@@ -1539,12 +2103,11 @@
 
     await requireAdmin();
 
-    const ref =
-      f.doc(
-        f.db,
-        "orders",
-        String(orderId)
-      );
+    const ref = f.doc(
+      f.db,
+      "orders",
+      String(orderId)
+    );
 
     const snap =
       await f.getDoc(ref);
@@ -1581,9 +2144,7 @@
         status || ""
       );
 
-    if (
-      next === "Ready"
-    ) {
+    if (next === "Ready") {
       if (
         current !==
         "Preparing"
@@ -1602,9 +2163,8 @@
           i =>
             String(
               i.itemStatus ||
-              "Preparing"
-            ) ===
-            "Ready"
+                "Preparing"
+            ) === "Ready"
         )
       ) {
         throw makeError(
@@ -1614,16 +2174,24 @@
 
       next =
         "On the Way";
+
     } else if (
-      next === "On the Way" &&
+      next ===
+        "On the Way" &&
       current !== "Ready"
     ) {
+      // Kept for compatibility;
+      // admin UI normally jumps
+      // Ready -> On the Way.
       throw makeError(
         "Order must be Ready before it can be moved On the Way."
       );
+
     } else if (
-      next === "Delivered" &&
-      current !== "On the Way"
+      next ===
+        "Delivered" &&
+      current !==
+        "On the Way"
     ) {
       throw makeError(
         "Order must be On the Way before it can be marked Delivered."
@@ -1667,7 +2235,7 @@
         "-" +
         Math.floor(
           Math.random() *
-          10000
+            10000
         );
 
       await f.setDoc(
@@ -1679,20 +2247,27 @@
         {
           notificationId:
             nid,
+
           userId:
             o.userId,
+
           orderId:
             String(
               orderId
             ),
+
           type:
             "RECEIPT_CONFIRMATION",
+
           title:
             "🍜 Did you receive your food?",
+
           message:
             "Your McKenzie Ramen House order was marked as Delivered. Did you receive your food?",
+
           createdAt:
             isoNow(),
+
           readAt:
             ""
         }
@@ -1725,7 +2300,7 @@
         r =>
           String(
             r.status ||
-            "Published"
+              "Published"
           ).toLowerCase() ===
           "published"
       );
@@ -1745,17 +2320,18 @@
 
     return {
       success: true,
+
       reviews:
         reviews
           .sort(
             (a, b) =>
               String(
                 b.submittedAt ||
-                ""
+                  ""
               ).localeCompare(
                 String(
                   a.submittedAt ||
-                  ""
+                    ""
                 )
               )
           )
@@ -1763,36 +2339,49 @@
             reviewId:
               r.reviewId ||
               r.id,
+
             orderId:
               r.orderId,
+
             customerId:
               r.customerId,
+
             productId:
               r.productId,
+
             productName:
               r.productName,
+
             rating:
               r.rating,
+
             review:
               r.review,
+
             customerName:
               r.customerName,
+
             submittedAt:
               cleanTimestamp(
                 r.submittedAt
               ),
+
             status:
               r.status ||
               "Published"
           })),
+
       stats: {
         total:
           reviews.length,
+
         published:
           published.length,
+
         hidden:
           reviews.length -
           published.length,
+
         average:
           Math.round(
             avg * 10
@@ -1822,12 +2411,11 @@
       );
     }
 
-    const ref =
-      f.doc(
-        f.db,
-        "reviews",
-        String(id)
-      );
+    const ref = f.doc(
+      f.db,
+      "reviews",
+      String(id)
+    );
 
     const snap =
       await f.getDoc(ref);
@@ -1870,9 +2458,7 @@
         )
       );
 
-    if (
-      !orderSnap.exists()
-    ) {
+    if (!orderSnap.exists()) {
       throw makeError(
         "Order not found."
       );
@@ -1969,6 +2555,7 @@
         notificationId:
           existing.notificationId ||
           existing.id,
+
         message:
           "Review notification is already waiting for the customer."
       };
@@ -1997,7 +2584,7 @@
       "-" +
       Math.floor(
         Math.random() *
-        10000
+          10000
       );
 
     await f.setDoc(
@@ -2009,22 +2596,29 @@
       {
         notificationId:
           nid,
+
         userId:
           String(
             order.userId
           ),
+
         orderId:
           String(
             orderId
           ),
+
         type:
           "REVIEW_REQUEST",
+
         title:
           "🍜 Your ramen review is ready!",
+
         message:
           "Your order has been delivered. Please share your rating and review for the menu items you received.",
+
         createdAt:
           isoNow(),
+
         readAt:
           ""
       }
@@ -2035,8 +2629,10 @@
       sent: true,
       resent:
         !!forceResend,
+
       notificationId:
         nid,
+
       message:
         forceResend
           ? "Review resent to the customer."
@@ -2069,11 +2665,9 @@
     name,
     args
   ) {
-    args =
-      args || [];
+    args = args || [];
 
     switch (name) {
-
       case "loginUser":
         return loginUser(
           args[0],
@@ -2157,22 +2751,25 @@
           await getOrdersForUser(
             args[0]
           )
-        ).map(
-          o => ({
-            orderId:
-              o.orderId,
-            total:
-              o.total,
-            paymentMethod:
-              o.paymentMethod,
-            paymentStatus:
-              o.paymentStatus,
-            orderStatus:
-              o.orderStatus,
-            orderedAt:
-              o.orderedAt
-          })
-        );
+        ).map(o => ({
+          orderId:
+            o.orderId,
+
+          total:
+            o.total,
+
+          paymentMethod:
+            o.paymentMethod,
+
+          paymentStatus:
+            o.paymentStatus,
+
+          orderStatus:
+            o.orderStatus,
+
+          orderedAt:
+            o.orderedAt
+        }));
 
       case "confirmCustomerOrderReceived":
         return respondReceipt(
@@ -2258,28 +2855,28 @@
       case "getAddressProvinces":
         return psgc(
           "https://psgc.cloud/api/regions/" +
-          encodeURIComponent(
-            args[0]
-          ) +
-          "/provinces"
+            encodeURIComponent(
+              args[0]
+            ) +
+            "/provinces"
         );
 
       case "getAddressCities":
         return psgc(
           "https://psgc.cloud/api/provinces/" +
-          encodeURIComponent(
-            args[0]
-          ) +
-          "/cities-municipalities"
+            encodeURIComponent(
+              args[0]
+            ) +
+            "/cities-municipalities"
         );
 
       case "getAddressBarangays":
         return psgc(
           "https://psgc.cloud/api/cities-municipalities/" +
-          encodeURIComponent(
-            args[0]
-          ) +
-          "/barangays"
+            encodeURIComponent(
+              args[0]
+            ) +
+            "/barangays"
         );
 
       case "adminLogin": {
@@ -2299,9 +2896,7 @@
             )
           );
 
-        if (
-          !(await isAdmin())
-        ) {
+        if (!(await isAdmin())) {
           await f.signOut(
             f.auth
           );
@@ -2367,11 +2962,13 @@
       default:
         throw makeError(
           "Standalone backend function not implemented: " +
-          name
+            name
         );
     }
   }
 
+  // Immediate browser-compatible replacement for google.script.run.
+  // Existing UI calls are queued until Firebase modules finish loading.
   const runner = {
     _success: null,
     _failure: null,
@@ -2419,6 +3016,8 @@
             const fail =
               target._failure;
 
+            // Reset handlers per invocation,
+            // matching google.script.run's behavior.
             target._success =
               null;
 
@@ -2429,15 +3028,15 @@
               .then(
                 () =>
                   dispatch(
-                    String(
-                      prop
-                    ),
+                    String(prop),
                     args
                   )
               )
               .then(
                 v => {
-                  if (ok) ok(v);
+                  if (ok) {
+                    ok(v);
+                  }
                 }
               )
               .catch(
@@ -2445,9 +3044,7 @@
                   if (fail) {
                     fail(e);
                   } else {
-                    console.error(
-                      e
-                    );
+                    console.error(e);
                   }
                 }
               );
@@ -2463,5 +3060,4 @@
       "mckenzie-firebase-ready"
     )
   );
-
 })();
