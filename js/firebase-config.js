@@ -1,4 +1,4 @@
-window.MCKENZIE_FIREBASE_CONFIG = {OHDs2DV4jyO3eBrww8d0gUQkNli2}
+window.MCKENZIE_FIREBASE_CONFIG = {
   apiKey: "AIzaSyD9L5m9lTbTxN4u8vB6poip5dt94",
   authDomain: "mckenzie-ramen-house.firebaseapp.com",
   projectId: "mckenzie-ramen-house",
