@@ -8,4 +8,4 @@ window.MCKENZIE_FIREBASE_CONFIG = {OHDs2DV4jyO3eBrww8d0gUQkNli2}
   measurementId: "G-C2KDRE88ZW"
 };
 
-window.MCKENZIE_ADMIN_UID = "OHDs2DV4jyO3eBrww8d0gUQkNli2";d
+window.MCKENZIE_ADMIN_UID = "OHDs2DV4jyO3eBrww8d0gUQkNli2";
