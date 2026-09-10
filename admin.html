@@ -953,118 +953,331 @@ if(token){showApp();loadProducts();loadOrders({setBaseline:true});initAdminNotif
     });
   };
 
-  function imageUrlInput(){
-    var old = document.getElementById('image');
-    if(!old || old.type === 'url') return;
-    var parent = old.parentElement;
-    if(!parent) return;
+  // ------------------------------------------------------------
+  // DIRECT PRODUCT PHOTO UPLOAD
+  // ------------------------------------------------------------
+  // The selected image is compressed in the browser before it is
+  // sent to Firebase. This avoids Firebase Storage/Blaze and keeps
+  // the Firestore product document below its document-size limit.
 
-    parent.innerHTML = '<input id="image" type="url" placeholder="https://mckenzieramen.github.io/mckenzie-ramen-house/images/product.jpg" style="width:100%;padding:11px 12px;border:1px solid #eaded1;border-radius:9px;outline:none"><small style="display:block;margin-top:7px;color:#756965">Upload the image to the GitHub <b>images</b> folder first, then paste the GitHub Pages image URL here.</small>';
-
+  function installDirectUpload(){
     var input = document.getElementById('image');
-    if(input) input.addEventListener('input',function(){
-      var preview = document.getElementById('preview');
-      if(!preview) return;
-      if(this.value.trim()){
-        preview.src = this.value.trim();
-        preview.style.display = 'block';
-      }else{
-        preview.style.display = 'none';
-        preview.removeAttribute('src');
+    if(!input) return;
+
+    // Restore the original file input if an older cached version
+    // of this page converted it into a URL input.
+    if(input.type !== 'file'){
+      var parent = input.parentElement;
+      if(parent){
+        parent.innerHTML = '<label class="upload" for="image"><strong>📷 Choose Product Photo</strong><small>JPG, PNG, WEBP · Select the photo directly from your computer.</small><input id="image" type="file" accept="image/png,image/jpeg,image/webp" hidden></label><img id="preview" class="preview">';
+        input = document.getElementById('image');
       }
+    }
+
+    if(!input || input.dataset.directUploadInstalled === '1') return;
+
+    input.dataset.directUploadInstalled = '1';
+    input.addEventListener('change',function(event){
+      var file = event.target.files && event.target.files[0];
+      if(!file) return;
+
+      var allowed = [
+        'image/jpeg',
+        'image/png',
+        'image/webp'
+      ];
+
+      if(allowed.indexOf(file.type) === -1){
+        alert('Please choose a JPG, PNG, or WEBP image.');
+        input.value = '';
+        return;
+      }
+
+      if(file.size > 12 * 1024 * 1024){
+        alert('Please choose an image smaller than 12 MB.');
+        input.value = '';
+        return;
+      }
+
+      var preview = document.getElementById('preview');
+      if(preview){
+        preview.src = URL.createObjectURL(file);
+        preview.style.display = 'block';
+      }
+
+      var msg = document.getElementById('saveMsg');
+      if(msg) msg.textContent = 'Photo selected. It will be optimized when you save the product.';
     });
   }
 
+  function getSelectedImage(){
+    var input = document.getElementById('image');
+    if(!input || input.type !== 'file' || !input.files || !input.files[0]){
+      return Promise.resolve(null);
+    }
+
+    var file = input.files[0];
+
+    return new Promise(function(resolve,reject){
+      var reader = new FileReader();
+
+      reader.onload = function(){
+        var img = new Image();
+
+        img.onload = function(){
+          var maxDimension = 1400;
+          var width = img.width;
+          var height = img.height;
+
+          if(width > maxDimension || height > maxDimension){
+            var scale = Math.min(
+              maxDimension / width,
+              maxDimension / height
+            );
+            width = Math.round(width * scale);
+            height = Math.round(height * scale);
+          }
+
+          var canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+
+          var ctx = canvas.getContext('2d');
+          if(!ctx){
+            reject(new Error('Your browser could not prepare the image.'));
+            return;
+          }
+
+          // JPEG is used for uploaded product photos to keep the
+          // Firestore document safely below the 1 MiB document limit.
+          ctx.drawImage(img,0,0,width,height);
+
+          var quality = 0.82;
+          var dataUrl = canvas.toDataURL('image/jpeg',quality);
+
+          // Keep trying lower quality if the image is still large.
+          while(dataUrl.length > 760000 && quality > 0.45){
+            quality -= 0.07;
+            dataUrl = canvas.toDataURL('image/jpeg',quality);
+          }
+
+          if(dataUrl.length > 760000){
+            var smaller = document.createElement('canvas');
+            var sw = Math.round(width * 0.75);
+            var sh = Math.round(height * 0.75);
+            smaller.width = sw;
+            smaller.height = sh;
+
+            var sctx = smaller.getContext('2d');
+            sctx.drawImage(img,0,0,sw,sh);
+            dataUrl = smaller.toDataURL('image/jpeg',0.68);
+          }
+
+          if(dataUrl.length > 900000){
+            reject(new Error('This photo is still too large after optimization. Please choose a smaller image.'));
+            return;
+          }
+
+          resolve({
+            name: file.name,
+            type: 'image/jpeg',
+            dataUrl: dataUrl
+          });
+        };
+
+        img.onerror = function(){
+          reject(new Error('The selected image could not be read.'));
+        };
+
+        img.src = reader.result;
+      };
+
+      reader.onerror = function(){
+        reject(new Error('The selected image could not be read.'));
+      };
+
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // ------------------------------------------------------------
+  // PRODUCT MODAL
+  // ------------------------------------------------------------
+
   var originalOpenModal = window.openModal;
+
   window.openModal = function(product){
-    if(typeof originalOpenModal === 'function') originalOpenModal(product);
+    if(typeof originalOpenModal === 'function'){
+      originalOpenModal(product);
+    }
+
     setTimeout(function(){
-      imageUrlInput();
+      installDirectUpload();
+
       var input = document.getElementById('image');
       var preview = document.getElementById('preview');
-      if(input && product && product.image){
-        input.value = product.image;
-        if(preview){
-          preview.src = product.image;
-          preview.style.display = 'block';
-        }
+
+      if(input && input.type === 'file'){
+        input.value = '';
+      }
+
+      if(preview && product && product.image){
+        preview.src = product.image;
+        preview.style.display = 'block';
       }
     },0);
   };
 
-  window.saveProduct = function(){
+  // ------------------------------------------------------------
+  // SAVE PRODUCT
+  // ------------------------------------------------------------
+
+  window.saveProduct = async function(){
     var nameEl = document.getElementById('name');
     var priceEl = document.getElementById('price');
     var imageEl = document.getElementById('image');
     var msg = document.getElementById('saveMsg');
+    var saveButton = document.querySelector('.modal-actions .save');
+
     var name = nameEl ? nameEl.value.trim() : '';
     var price = priceEl ? priceEl.value : '';
-    var image = imageEl ? imageEl.value.trim() : '';
+    var existingProduct = window.editing || null;
 
-    if(!name || price === ''){ if(msg) msg.textContent='Product name and price are required.'; return; }
-    if(!image){ if(msg) msg.textContent='Please enter the product image URL.'; return; }
+    if(!name || price === ''){
+      if(msg) msg.textContent = 'Product name and price are required.';
+      return;
+    }
 
-    if(msg) msg.textContent='Saving product to Firebase…';
+    if(saveButton) saveButton.disabled = true;
+    if(msg) msg.textContent = 'Preparing product photo…';
 
-    var data = {
-      token: window.token || sessionStorage.getItem('mck_admin_token') || '',
-      id: document.getElementById('productId').value,
-      name: name,
-      price: Number(price),
-      category: document.getElementById('category').value,
-      available: document.getElementById('available').value === 'true',
-      description: document.getElementById('description').value.trim(),
-      bestSeller: document.getElementById('bestSeller').checked,
-      newProduct: document.getElementById('newProduct').checked,
-      imageUrl: image
-    };
+    try{
+      var uploadedImage = await getSelectedImage();
+      var imageUrl = '';
 
-    window.run('adminSaveProduct',[data],function(result,error){
-      if(error || !result || !result.success){
-        if(msg) msg.textContent = error || 'Unable to save product.';
+      if(uploadedImage && uploadedImage.dataUrl){
+        imageUrl = uploadedImage.dataUrl;
+      }else if(existingProduct && existingProduct.image){
+        imageUrl = existingProduct.image;
+      }
+
+      if(!imageUrl){
+        if(msg) msg.textContent = 'Please choose a product photo.';
+        if(saveButton) saveButton.disabled = false;
         return;
       }
-      if(msg) msg.textContent='Product saved successfully!';
-      setTimeout(function(){
-        if(typeof window.closeModal === 'function') window.closeModal();
-        if(typeof window.loadProducts === 'function') window.loadProducts();
-      },400);
-    });
+
+      if(msg) msg.textContent = 'Saving product to Firebase…';
+
+      var data = {
+        token: window.token || sessionStorage.getItem('mck_admin_token') || '',
+        id: document.getElementById('productId').value,
+        name: name,
+        price: Number(price),
+        category: document.getElementById('category').value,
+        available: document.getElementById('available').value === 'true',
+        description: document.getElementById('description').value.trim(),
+        bestSeller: document.getElementById('bestSeller').checked,
+        newProduct: document.getElementById('newProduct').checked,
+        imageUrl: imageUrl
+      };
+
+      window.run('adminSaveProduct',[data],function(result,error){
+        if(saveButton) saveButton.disabled = false;
+
+        if(error || !result || !result.success){
+          if(msg) msg.textContent = error || 'Unable to save product.';
+          return;
+        }
+
+        if(msg) msg.textContent = 'Product saved successfully!';
+
+        setTimeout(function(){
+          if(typeof window.closeModal === 'function') window.closeModal();
+          if(typeof window.loadProducts === 'function') window.loadProducts();
+        },500);
+      });
+
+    }catch(error){
+      if(saveButton) saveButton.disabled = false;
+      if(msg) msg.textContent = firebaseErrorText(error);
+    }
   };
 
   window.deleteProduct = function(id){
     if(!confirm('Delete this product?')) return;
-    window.run('adminDeleteProduct',[window.token || sessionStorage.getItem('mck_admin_token') || '',id],function(result,error){
-      if(error || !result || !result.success){
-        if(typeof window.showAdminToast === 'function') window.showAdminToast('⚠ Delete failed',error || 'Unable to delete product.');
-        return;
+
+    window.run(
+      'adminDeleteProduct',
+      [
+        window.token || sessionStorage.getItem('mck_admin_token') || '',
+        id
+      ],
+      function(result,error){
+        if(error || !result || !result.success){
+          if(typeof window.showAdminToast === 'function'){
+            window.showAdminToast(
+              '⚠ Delete failed',
+              error || 'Unable to delete product.'
+            );
+          }
+          return;
+        }
+
+        if(typeof window.loadProducts === 'function'){
+          window.loadProducts();
+        }
       }
-      if(typeof window.loadProducts === 'function') window.loadProducts();
-    });
+    );
   };
 
   window.logout = function(){
-    if(typeof window.MckenzieAdminSignOut === 'function') window.MckenzieAdminSignOut();
+    if(typeof window.MckenzieAdminSignOut === 'function'){
+      window.MckenzieAdminSignOut();
+    }
+
     window.token = '';
     sessionStorage.removeItem('mck_admin_token');
+
     var app = document.getElementById('app');
     var login = document.getElementById('login');
-    if(app) app.style.display='none';
-    if(login) login.style.display='flex';
-    var pw = document.getElementById('loginPassword');
-    if(pw) pw.value='';
+
+    if(app) app.style.display = 'none';
+    if(login) login.style.display = 'flex';
+
+    var password = document.getElementById('loginPassword');
+    if(password) password.value = '';
   };
+
+  // ------------------------------------------------------------
+  // STARTUP
+  // ------------------------------------------------------------
 
   waitForFirebase(function(){
     window.checkAdminApi();
-    imageUrlInput();
-    var saved = sessionStorage.getItem('mck_admin_token') || '';
+    installDirectUpload();
+
+    var saved =
+      sessionStorage.getItem('mck_admin_token') || '';
+
     if(saved){
       window.token = saved;
-      if(typeof window.showApp === 'function') window.showApp();
-      if(typeof window.loadProducts === 'function') window.loadProducts();
-      if(typeof window.loadOrders === 'function') window.loadOrders({setBaseline:true});
-      if(typeof window.initAdminNotifications === 'function') window.initAdminNotifications();
+
+      if(typeof window.showApp === 'function'){
+        window.showApp();
+      }
+
+      if(typeof window.loadProducts === 'function'){
+        window.loadProducts();
+      }
+
+      if(typeof window.loadOrders === 'function'){
+        window.loadOrders({setBaseline:true});
+      }
+
+      if(typeof window.initAdminNotifications === 'function'){
+        window.initAdminNotifications();
+      }
     }
   });
 })();
