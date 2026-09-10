@@ -1,19 +1,26 @@
 /*
   McKenzie Ramen House — STANDALONE Firebase bridge
   --------------------------------------------------
-  This file intentionally exposes a compatibility layer named
-  google.script.run so the existing customer/admin UI can keep its
-  current function calls while the backend is now Firebase.
+  Firebase backend for the GitHub Pages customer/admin website.
 
-  No Google Apps Script / Google Sheets calls are made.
+  This file keeps compatibility with the existing
+  google.script.run calls used by the original UI.
+
+  IMPORTANT:
+  - Uses the official Firebase Console configuration.
+  - Does NOT use the old Google Apps Script backend.
+  - Products are publicly readable, matching Firestore Rules.
+  - Admin-only operations still require the configured admin UID.
 */
+
 (function () {
   "use strict";
 
-  // The Firebase config is embedded as a fallback so the admin page still
-  // works even if GitHub Pages serves js/firebase-config.js from cache or
-  // fails to load that helper file.
-  const EMBEDDED_CONFIG = {
+  // ============================================================
+  // OFFICIAL FIREBASE CONFIG
+  // ============================================================
+
+  const FIREBASE_CONFIG = {
     apiKey: "AIzaSyDnLMhAhkAw1JMlbTxN4u8vB6poip5dt94",
     authDomain: "mckenzie-ramen-house.firebaseapp.com",
     projectId: "mckenzie-ramen-house",
@@ -23,86 +30,159 @@
     measurementId: "G-C2KDRE88ZW"
   };
 
-  // Use the verified Firebase Console web config as the source of truth.
-  // This prevents an old/stale firebase-config.js from causing auth/api-key errors.
-  const cfg = EMBEDDED_CONFIG;
-  window.MCKENZIE_FIREBASE_CONFIG = EMBEDDED_CONFIG;
-  window.MCKENZIE_ADMIN_UID = window.MCKENZIE_ADMIN_UID || "OHDs2DV4jyO3eBrww8d0gUQkNli2";
+  const ADMIN_UID =
+    "OHDs2DV4jyO3eBrww8d0gUQkNli2";
+
+  // Always use the verified project configuration.
+  window.MCKENZIE_FIREBASE_CONFIG =
+    FIREBASE_CONFIG;
+
+  window.MCKENZIE_ADMIN_UID =
+    ADMIN_UID;
+
+
+  // ============================================================
+  // FIREBASE INITIALIZATION
+  // ============================================================
 
   const READY = (async function () {
     try {
-      const appMod = await import("https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js");
-      const authMod = await import("https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js");
-      const fsMod = await import("https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js");
+      const [
+        appMod,
+        authMod,
+        fsMod
+      ] = await Promise.all([
+        import(
+          "https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js"
+        ),
 
-      const app = appMod.initializeApp(cfg, "mckenzie-ramen-house");
-      const auth = authMod.getAuth(app);
-      const db = fsMod.getFirestore(app);
+        import(
+          "https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js"
+        ),
 
-      console.log("McKenzie Ramen House Firebase initialized successfully.");
+        import(
+          "https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js"
+        )
+      ]);
+
+      const app =
+        appMod.initializeApp(
+          FIREBASE_CONFIG,
+          "mckenzie-ramen-house"
+        );
+
+      const auth =
+        authMod.getAuth(app);
+
+      const db =
+        fsMod.getFirestore(app);
+
+      console.log(
+        "McKenzie Ramen House Firebase initialized.",
+        {
+          projectId:
+            FIREBASE_CONFIG.projectId,
+          authDomain:
+            FIREBASE_CONFIG.authDomain
+        }
+      );
 
       return {
         app,
         auth,
         db,
+
         ...authMod,
         ...fsMod
       };
+
     } catch (error) {
-      console.error("McKenzie Firebase initialization failed:", error);
+
+      console.error(
+        "McKenzie Firebase initialization failed:",
+        error
+      );
+
       throw error;
     }
   })();
 
-  window.MckenzieFirebaseReady = READY;
+
+  window.MckenzieFirebaseReady =
+    READY;
+
+
+  // ============================================================
+  // HELPERS
+  // ============================================================
 
   function makeError(message) {
-    const e = new Error(String(message || "Firebase request failed."));
-    return e;
+    const error =
+      new Error(
+        String(
+          message ||
+          "Firebase request failed."
+        )
+      );
+
+    return error;
   }
+
 
   function isoNow() {
     return new Date().toISOString();
   }
 
-  async function currentUser(required) {
-    const f = await READY;
 
-    if (f.auth.currentUser) {
-      return f.auth.currentUser;
+  async function currentUser(
+    required
+  ) {
+
+    const firebase =
+      await READY;
+
+    const user =
+      firebase.auth.currentUser;
+
+    if (user) {
+      return user;
     }
 
     if (!required) {
       return null;
     }
 
-    throw makeError("Please log in again.");
+    throw makeError(
+      "Please log in again."
+    );
   }
 
-  async function isAdmin() {
-    const f = await READY;
-    const u = f.auth.currentUser;
 
-    if (!u) {
+  async function isAdmin() {
+
+    const firebase =
+      await READY;
+
+    const user =
+      firebase.auth.currentUser;
+
+    if (!user) {
       return false;
     }
 
-    const configuredUid = String(
-      window.MCKENZIE_ADMIN_UID || ""
-    ).trim();
-
-    if (
-      configuredUid &&
-      configuredUid !== "PASTE_ADMIN_USER_UID_HERE"
-    ) {
-      return u.uid === configuredUid;
-    }
-
-    return false;
+    return (
+      user.uid ===
+      ADMIN_UID
+    );
   }
 
+
   async function requireAdmin() {
-    if (!(await isAdmin())) {
+
+    const admin =
+      await isAdmin();
+
+    if (!admin) {
       throw makeError(
         "Admin access is not configured for this account."
       );
@@ -111,141 +191,269 @@
     return true;
   }
 
-  function cleanTimestamp(v) {
-    if (!v) {
+
+  function cleanTimestamp(value) {
+
+    if (!value) {
       return "";
     }
 
-    if (typeof v === "string") {
-      return v;
+    if (
+      typeof value ===
+      "string"
+    ) {
+      return value;
     }
 
-    if (v && typeof v.toDate === "function") {
-      return v.toDate().toISOString();
+    if (
+      value &&
+      typeof value.toDate ===
+        "function"
+    ) {
+      return value
+        .toDate()
+        .toISOString();
     }
 
-    if (v instanceof Date) {
-      return v.toISOString();
+    if (
+      value instanceof Date
+    ) {
+      return value.toISOString();
     }
 
-    return String(v);
+    return String(value);
   }
 
-  function docData(snap) {
-    return snap.exists()
-      ? {
-          id: snap.id,
-          ...snap.data()
-        }
-      : null;
+
+  function docData(snapshot) {
+
+    if (!snapshot.exists()) {
+      return null;
+    }
+
+    return {
+      id: snapshot.id,
+      ...snapshot.data()
+    };
   }
 
-  async function getDocById(collectionName, id) {
-    const f = await READY;
 
-    const snap = await f.getDoc(
-      f.doc(
-        f.db,
+  async function getDocById(
+    collectionName,
+    id
+  ) {
+
+    const firebase =
+      await READY;
+
+    const reference =
+      firebase.doc(
+        firebase.db,
         collectionName,
         String(id)
-      )
-    );
+      );
 
-    return docData(snap);
+    const snapshot =
+      await firebase.getDoc(
+        reference
+      );
+
+    return docData(snapshot);
   }
+
 
   async function getCollection(
     collectionName,
     queryConstraint
   ) {
-    const f = await READY;
 
-    const ref = f.collection(
-      f.db,
-      collectionName
-    );
+    const firebase =
+      await READY;
 
-    const snap = queryConstraint
-      ? await f.getDocs(
-          f.query(
-            ref,
+    const reference =
+      firebase.collection(
+        firebase.db,
+        collectionName
+      );
+
+    let snapshot;
+
+    if (queryConstraint) {
+
+      snapshot =
+        await firebase.getDocs(
+          firebase.query(
+            reference,
             queryConstraint
           )
-        )
-      : await f.getDocs(ref);
+        );
 
-    return snap.docs.map(d => ({
-      id: d.id,
-      ...d.data()
-    }));
+    } else {
+
+      snapshot =
+        await firebase.getDocs(
+          reference
+        );
+    }
+
+    return snapshot.docs.map(
+      document => ({
+        id: document.id,
+        ...document.data()
+      })
+    );
   }
 
-  function profileFromUser(u, data) {
-    const p = data || {};
+
+  // ============================================================
+  // USER PROFILE
+  // ============================================================
+
+  function profileFromUser(
+    user,
+    data
+  ) {
+
+    const profile =
+      data || {};
 
     return {
+
       success: true,
-      userId: u.uid,
-      username: p.username || "",
-      email: u.email || p.email || "",
-      mobile: p.mobile || "",
-      fullName: p.fullName || u.displayName || "",
-      houseUnit: p.houseUnit || "",
-      street: p.street || "",
-      barangay: p.barangay || "",
-      city: p.city || "",
-      province: p.province || "",
-      postalCode: p.postalCode || "",
-      country: p.country || "Philippines",
-      region: p.region || "",
+
+      userId:
+        user.uid,
+
+      username:
+        profile.username ||
+        "",
+
+      email:
+        user.email ||
+        profile.email ||
+        "",
+
+      mobile:
+        profile.mobile ||
+        "",
+
+      fullName:
+        profile.fullName ||
+        user.displayName ||
+        "",
+
+      houseUnit:
+        profile.houseUnit ||
+        "",
+
+      street:
+        profile.street ||
+        "",
+
+      barangay:
+        profile.barangay ||
+        "",
+
+      city:
+        profile.city ||
+        "",
+
+      province:
+        profile.province ||
+        "",
+
+      postalCode:
+        profile.postalCode ||
+        "",
+
+      country:
+        profile.country ||
+        "Philippines",
+
+      region:
+        profile.region ||
+        "",
+
       additionalInstruction:
-        p.additionalInstruction || ""
+        profile.additionalInstruction ||
+        ""
     };
   }
 
-  async function getProfile(userId) {
-    const u = await currentUser(true);
 
-    if (String(userId) !== String(u.uid)) {
+  async function getProfile(
+    userId
+  ) {
+
+    const user =
+      await currentUser(true);
+
+    if (
+      String(userId) !==
+      String(user.uid)
+    ) {
+
       throw makeError(
         "You can only access your own profile."
       );
     }
 
-    const p = await getDocById(
-      "users",
-      u.uid
-    );
+    const profile =
+      await getDocById(
+        "users",
+        user.uid
+      );
 
     return profileFromUser(
-      u,
-      p || {}
+      user,
+      profile || {}
     );
   }
 
-  async function saveProfile(data) {
-    const f = await READY;
-    const u = await currentUser(true);
 
-    data = data || {};
+  async function saveProfile(
+    data
+  ) {
 
-    if (String(data.userId || "") !== u.uid) {
+    const firebase =
+      await READY;
+
+    const user =
+      await currentUser(true);
+
+    data =
+      data || {};
+
+    if (
+      String(
+        data.userId || ""
+      ) !==
+      String(user.uid)
+    ) {
+
       throw makeError(
         "Invalid customer account."
       );
     }
 
-    const fullName = String(
-      data.fullName || ""
-    ).trim();
+    const fullName =
+      String(
+        data.fullName || ""
+      ).trim();
 
-    const email = String(
-      data.email || u.email || ""
-    ).trim().toLowerCase();
+    const email =
+      String(
+        data.email ||
+        user.email ||
+        ""
+      )
+        .trim()
+        .toLowerCase();
 
-    const mobile = String(
-      data.mobile || ""
-    ).trim();
+    const mobile =
+      String(
+        data.mobile || ""
+      ).trim();
 
     if (!fullName) {
       throw makeError(
@@ -265,103 +473,155 @@
       );
     }
 
-    await f.setDoc(
-      f.doc(
-        f.db,
+    await firebase.setDoc(
+      firebase.doc(
+        firebase.db,
         "users",
-        u.uid
+        user.uid
       ),
       {
-        username: data.username || "",
+
+        username:
+          data.username ||
+          "",
+
         email,
+
         fullName,
+
         mobile,
-        houseUnit: String(
-          data.houseUnit || ""
-        ).trim(),
-        street: String(
-          data.street || ""
-        ).trim(),
-        barangay: String(
-          data.barangay || ""
-        ).trim(),
-        city: String(
-          data.city || ""
-        ).trim(),
-        province: String(
-          data.province || ""
-        ).trim(),
-        postalCode: String(
-          data.postalCode || ""
-        ).trim(),
+
+        houseUnit:
+          String(
+            data.houseUnit ||
+            ""
+          ).trim(),
+
+        street:
+          String(
+            data.street ||
+            ""
+          ).trim(),
+
+        barangay:
+          String(
+            data.barangay ||
+            ""
+          ).trim(),
+
+        city:
+          String(
+            data.city ||
+            ""
+          ).trim(),
+
+        province:
+          String(
+            data.province ||
+            ""
+          ).trim(),
+
+        postalCode:
+          String(
+            data.postalCode ||
+            ""
+          ).trim(),
+
         country:
           String(
-            data.country || "Philippines"
-          ).trim() || "Philippines",
-        region: String(
-          data.region || ""
-        ).trim(),
+            data.country ||
+            "Philippines"
+          ).trim(),
+
+        region:
+          String(
+            data.region ||
+            ""
+          ).trim(),
+
         additionalInstruction:
           String(
-            data.additionalInstruction || ""
+            data.additionalInstruction ||
+            ""
           ).trim(),
-        updatedAt: isoNow()
+
+        updatedAt:
+          isoNow()
       },
       {
         merge: true
       }
     );
 
-    return getProfile(u.uid);
+    return getProfile(
+      user.uid
+    );
   }
+
+
+  // ============================================================
+  // AUTHENTICATION
+  // ============================================================
 
   async function loginUser(
     identifier,
     password
   ) {
-    const f = await READY;
 
-    identifier = String(
-      identifier || ""
-    ).trim().toLowerCase();
+    const firebase =
+      await READY;
 
-    password = String(
-      password || ""
-    );
+    identifier =
+      String(
+        identifier || ""
+      )
+        .trim()
+        .toLowerCase();
 
-    if (!identifier || !password) {
+    password =
+      String(
+        password || ""
+      );
+
+    if (
+      !identifier ||
+      !password
+    ) {
+
       throw makeError(
         "Please enter username/email and password."
       );
     }
 
-    // Firebase Auth signs in by email.
-    // Username login is intentionally disabled
-    // in the standalone version because exposing a
-    // username→email directory would weaken privacy.
-    if (!identifier.includes("@")) {
+    if (
+      !identifier.includes("@")
+    ) {
+
       throw makeError(
         "Please log in using your registered email address."
       );
     }
 
-    const cred =
-      await f.signInWithEmailAndPassword(
-        f.auth,
-        identifier,
-        password
+    const credential =
+      await firebase
+        .signInWithEmailAndPassword(
+          firebase.auth,
+          identifier,
+          password
+        );
+
+    const profile =
+      await getDocById(
+        "users",
+        credential.user.uid
       );
 
-    const p = await getDocById(
-      "users",
-      cred.user.uid
-    );
-
     return profileFromUser(
-      cred.user,
-      p || {}
+      credential.user,
+      profile || {}
     );
   }
+
 
   async function createAccount(
     fullName,
@@ -370,46 +630,60 @@
     password,
     mobile
   ) {
-    const f = await READY;
 
-    const cred =
-      await f.createUserWithEmailAndPassword(
-        f.auth,
-        String(email)
-          .trim()
-          .toLowerCase(),
-        String(password)
-      );
+    const firebase =
+      await READY;
 
-    await f.setDoc(
-      f.doc(
-        f.db,
+    const credential =
+      await firebase
+        .createUserWithEmailAndPassword(
+          firebase.auth,
+          String(email)
+            .trim()
+            .toLowerCase(),
+          String(password)
+        );
+
+    await firebase.setDoc(
+      firebase.doc(
+        firebase.db,
         "users",
-        cred.user.uid
+        credential.user.uid
       ),
       {
-        username: String(
-          username || ""
-        ).trim(),
+
+        username:
+          String(
+            username || ""
+          ).trim(),
 
         email:
-          cred.user.email ||
+          credential.user.email ||
           String(email)
             .trim()
             .toLowerCase(),
 
-        fullName: String(
-          fullName || ""
-        ).trim(),
+        fullName:
+          String(
+            fullName || ""
+          ).trim(),
 
-        mobile: String(
-          mobile || ""
-        ).trim(),
+        mobile:
+          String(
+            mobile || ""
+          ).trim(),
 
-        country: "Philippines",
-        status: "ACTIVE",
-        createdAt: isoNow(),
-        updatedAt: isoNow()
+        country:
+          "Philippines",
+
+        status:
+          "ACTIVE",
+
+        createdAt:
+          isoNow(),
+
+        updatedAt:
+          isoNow()
       },
       {
         merge: true
@@ -417,89 +691,132 @@
     );
 
     try {
-      await f.sendEmailVerification(
-        cred.user
-      );
-    } catch (e) {
+
+      await firebase
+        .sendEmailVerification(
+          credential.user
+        );
+
+    } catch (error) {
+
       console.warn(
         "Verification email could not be sent:",
-        e
+        error
       );
     }
 
     return {
+
       success: true,
+
       message:
         "Account created. Please verify your email, then log in.",
+
       verificationToken:
-        cred.user.uid,
+        credential.user.uid,
+
       email:
-        cred.user.email || email,
-      expiresInSeconds: 600
+        credential.user.email ||
+        email,
+
+      expiresInSeconds:
+        600
     };
   }
+
 
   async function verifyEmailCode(
     token,
     code
   ) {
-    const f = await READY;
-    const u = await currentUser(true);
 
-    await f.auth.currentUser.reload();
+    const firebase =
+      await READY;
 
-    if (!f.auth.currentUser.emailVerified) {
+    await currentUser(true);
+
+    await firebase.auth.currentUser.reload();
+
+    if (
+      !firebase.auth
+        .currentUser
+        .emailVerified
+    ) {
+
       throw makeError(
         "Please open the verification email and click the verification link first."
       );
     }
 
     return {
+
       success: true,
-      message: "Email verified."
+
+      message:
+        "Email verified."
     };
   }
+
 
   async function sendPasswordReset(
     identifier
   ) {
-    const f = await READY;
 
-    const email = String(
-      identifier || ""
-    ).trim().toLowerCase();
+    const firebase =
+      await READY;
+
+    const email =
+      String(
+        identifier || ""
+      )
+        .trim()
+        .toLowerCase();
 
     if (
       !email ||
       !email.includes("@")
     ) {
+
       throw makeError(
         "Please enter your registered email address."
       );
     }
 
-    await f.sendPasswordResetEmail(
-      f.auth,
-      email
-    );
+    await firebase
+      .sendPasswordResetEmail(
+        firebase.auth,
+        email
+      );
 
     return {
+
       success: true,
+
       email,
+
       message:
         "Password reset email sent."
     };
   }
+
 
   async function changePassword(
     userId,
     oldPassword,
     newPassword
   ) {
-    const f = await READY;
-    const u = await currentUser(true);
 
-    if (u.uid !== String(userId)) {
+    const firebase =
+      await READY;
+
+    const user =
+      await currentUser(true);
+
+    if (
+      user.uid !==
+      String(userId)
+    ) {
+
       throw makeError(
         "Invalid customer account."
       );
@@ -507,172 +824,272 @@
 
     if (
       !newPassword ||
-      String(newPassword).length < 6
+      String(newPassword)
+        .length < 6
     ) {
+
       throw makeError(
         "Password must be at least 6 characters."
       );
     }
 
-    if (!u.email) {
+    if (!user.email) {
+
       throw makeError(
         "Your account has no email address."
       );
     }
 
-    const cred =
-      f.EmailAuthProvider.credential(
-        u.email,
-        String(oldPassword || "")
+    const credential =
+      firebase.EmailAuthProvider
+        .credential(
+          user.email,
+          String(
+            oldPassword || ""
+          )
+        );
+
+    await firebase
+      .reauthenticateWithCredential(
+        user,
+        credential
       );
 
-    await f.reauthenticateWithCredential(
-      u,
-      cred
-    );
-
-    await f.updatePassword(
-      u,
-      String(newPassword)
-    );
+    await firebase
+      .updatePassword(
+        user,
+        String(newPassword)
+      );
 
     return {
       success: true
     };
   }
 
-  async function addresses(userId) {
-    const f = await READY;
-    const u = await currentUser(true);
 
-    if (u.uid !== String(userId)) {
+  // ============================================================
+  // ADDRESSES
+  // ============================================================
+
+  async function addresses(
+    userId
+  ) {
+
+    const user =
+      await currentUser(true);
+
+    if (
+      user.uid !==
+      String(userId)
+    ) {
+
       throw makeError(
         "Invalid customer account."
       );
     }
 
     const list =
-      await getCollection("addresses");
+      await getCollection(
+        "addresses"
+      );
 
     return list
       .filter(
-        a =>
-          String(a.userId) ===
-          u.uid
+        address =>
+          String(
+            address.userId
+          ) ===
+          String(user.uid)
       )
       .sort(
         (a, b) =>
-          (b.isDefault ? 1 : 0) -
-          (a.isDefault ? 1 : 0)
-      )
-      .map(a => ({
-        addressId: a.id,
-        userId: a.userId,
-        label:
-          a.label ||
-          "Saved Address",
-        houseUnit:
-          a.houseUnit || "",
-        street:
-          a.street || "",
-        barangay:
-          a.barangay || "",
-        city:
-          a.city || "",
-        province:
-          a.province || "",
-        region:
-          a.region || "",
-        postalCode:
-          a.postalCode || "",
-        country:
-          a.country ||
-          "Philippines",
-        additionalInstruction:
-          a.additionalInstruction ||
-          "",
-        isDefault:
-          !!a.isDefault,
-        createdAt:
-          cleanTimestamp(
-            a.createdAt
-          ),
-        updatedAt:
-          cleanTimestamp(
-            a.updatedAt
+          Number(
+            !!b.isDefault
+          ) -
+          Number(
+            !!a.isDefault
           )
-      }));
+      )
+      .map(
+        address => ({
+
+          addressId:
+            address.id,
+
+          userId:
+            address.userId,
+
+          label:
+            address.label ||
+            "Saved Address",
+
+          houseUnit:
+            address.houseUnit ||
+            "",
+
+          street:
+            address.street ||
+            "",
+
+          barangay:
+            address.barangay ||
+            "",
+
+          city:
+            address.city ||
+            "",
+
+          province:
+            address.province ||
+            "",
+
+          region:
+            address.region ||
+            "",
+
+          postalCode:
+            address.postalCode ||
+            "",
+
+          country:
+            address.country ||
+            "Philippines",
+
+          additionalInstruction:
+            address.additionalInstruction ||
+            "",
+
+          isDefault:
+            !!address.isDefault,
+
+          createdAt:
+            cleanTimestamp(
+              address.createdAt
+            ),
+
+          updatedAt:
+            cleanTimestamp(
+              address.updatedAt
+            )
+        })
+      );
   }
 
-  async function saveAddress(data) {
-    const f = await READY;
-    const u = await currentUser(true);
 
-    data = data || {};
+  async function saveAddress(
+    data
+  ) {
+
+    const firebase =
+      await READY;
+
+    const user =
+      await currentUser(true);
+
+    data =
+      data || {};
 
     if (
-      String(data.userId || "") !==
-      u.uid
+      String(
+        data.userId || ""
+      ) !==
+      String(user.uid)
     ) {
+
       throw makeError(
         "Invalid customer account."
       );
     }
 
     const required = [
-      ["region", "region"],
-      ["province", "province"],
-      ["city", "city/municipality"],
-      ["barangay", "barangay"],
+      [
+        "region",
+        "region"
+      ],
+      [
+        "province",
+        "province"
+      ],
+      [
+        "city",
+        "city/municipality"
+      ],
+      [
+        "barangay",
+        "barangay"
+      ],
       [
         "houseUnit",
         "lot/house/unit number"
       ],
-      ["street", "street"]
+      [
+        "street",
+        "street"
+      ]
     ];
 
     for (
-      const [key, label] of required
+      const [
+        key,
+        label
+      ] of required
     ) {
+
       if (
         !String(
           data[key] || ""
         ).trim()
       ) {
+
         throw makeError(
           "Please select/enter your " +
-            label +
-            "."
+          label +
+          "."
         );
       }
     }
 
-    const all =
-      await addresses(u.uid);
+    const existing =
+      await addresses(
+        user.uid
+      );
 
-    const id = String(
-      data.addressId ||
-        (
-          "ADDR-" +
-          Date.now() +
-          "-" +
-          Math.floor(
-            Math.random() * 10000
-          )
+    const id =
+      String(
+        data.addressId || ""
+      ).trim() ||
+      (
+        "ADDR-" +
+        Date.now() +
+        "-" +
+        Math.floor(
+          Math.random() *
+          10000
         )
-    );
+      );
 
-    if (data.isDefault !== false) {
-      for (const a of all) {
-        if (a.isDefault) {
-          await f.updateDoc(
-            f.doc(
-              f.db,
+    if (
+      data.isDefault !== false
+    ) {
+
+      for (
+        const address of existing
+      ) {
+
+        if (
+          address.isDefault
+        ) {
+
+          await firebase.updateDoc(
+            firebase.doc(
+              firebase.db,
               "addresses",
-              a.addressId
+              address.addressId
             ),
             {
-              isDefault: false,
+              isDefault:
+                false,
+
               updatedAt:
                 isoNow()
             }
@@ -681,57 +1098,75 @@
       }
     }
 
-    await f.setDoc(
-      f.doc(
-        f.db,
+    await firebase.setDoc(
+      firebase.doc(
+        firebase.db,
         "addresses",
         id
       ),
       {
-        userId: u.uid,
 
-        label: String(
-          data.label ||
+        userId:
+          user.uid,
+
+        label:
+          String(
+            data.label ||
             "Saved Address"
-        ).trim(),
+          ).trim(),
 
-        houseUnit: String(
-          data.houseUnit || ""
-        ).trim(),
+        houseUnit:
+          String(
+            data.houseUnit ||
+            ""
+          ).trim(),
 
-        street: String(
-          data.street || ""
-        ).trim(),
+        street:
+          String(
+            data.street ||
+            ""
+          ).trim(),
 
-        barangay: String(
-          data.barangay || ""
-        ).trim(),
+        barangay:
+          String(
+            data.barangay ||
+            ""
+          ).trim(),
 
-        city: String(
-          data.city || ""
-        ).trim(),
+        city:
+          String(
+            data.city ||
+            ""
+          ).trim(),
 
-        province: String(
-          data.province || ""
-        ).trim(),
+        province:
+          String(
+            data.province ||
+            ""
+          ).trim(),
 
-        region: String(
-          data.region || ""
-        ).trim(),
+        region:
+          String(
+            data.region ||
+            ""
+          ).trim(),
 
-        postalCode: String(
-          data.postalCode || ""
-        ).trim(),
+        postalCode:
+          String(
+            data.postalCode ||
+            ""
+          ).trim(),
 
-        country: String(
-          data.country ||
+        country:
+          String(
+            data.country ||
             "Philippines"
-        ).trim(),
+          ).trim(),
 
         additionalInstruction:
           String(
             data.additionalInstruction ||
-              ""
+            ""
           ).trim(),
 
         isDefault:
@@ -749,84 +1184,66 @@
       }
     );
 
-    if (data.isDefault !== false) {
-      await f.setDoc(
-        f.doc(
-          f.db,
-          "users",
-          u.uid
-        ),
-        {
-          houseUnit:
-            data.houseUnit || "",
-          street:
-            data.street || "",
-          barangay:
-            data.barangay || "",
-          city:
-            data.city || "",
-          province:
-            data.province || "",
-          region:
-            data.region || "",
-          postalCode:
-            data.postalCode || "",
-          country:
-            data.country ||
-            "Philippines",
-          additionalInstruction:
-            data.additionalInstruction ||
-            "",
-          updatedAt:
-            isoNow()
-        },
-        {
-          merge: true
-        }
-      );
-    }
-
-    return addresses(u.uid);
+    return addresses(
+      user.uid
+    );
   }
+
 
   async function setDefaultAddress(
     userId,
     addressId
   ) {
-    const f = await READY;
-    const u = await currentUser(true);
 
-    if (u.uid !== String(userId)) {
+    const firebase =
+      await READY;
+
+    const user =
+      await currentUser(true);
+
+    if (
+      user.uid !==
+      String(userId)
+    ) {
+
       throw makeError(
         "Invalid customer account."
       );
     }
 
-    const all =
-      await addresses(u.uid);
+    const list =
+      await addresses(
+        user.uid
+      );
 
-    const selected = all.find(
-      a =>
-        a.addressId ===
-        String(addressId)
-    );
+    const selected =
+      list.find(
+        address =>
+          address.addressId ===
+          String(addressId)
+      );
 
     if (!selected) {
+
       throw makeError(
         "Address not found."
       );
     }
 
-    for (const a of all) {
-      await f.updateDoc(
-        f.doc(
-          f.db,
+    for (
+      const address of list
+    ) {
+
+      await firebase.updateDoc(
+        firebase.doc(
+          firebase.db,
           "addresses",
-          a.addressId
+          address.addressId
         ),
         {
+
           isDefault:
-            a.addressId ===
+            address.addressId ===
             selected.addressId,
 
           updatedAt:
@@ -835,11 +1252,21 @@
       );
     }
 
-    return addresses(u.uid);
+    return addresses(
+      user.uid
+    );
   }
 
+
+  // ============================================================
+  // PRODUCTS
+  // ============================================================
+
   async function getProducts() {
-    const f = await READY;
+
+    // IMPORTANT:
+    // Products are publicly readable according to Firestore Rules.
+    // Do NOT require admin authentication here.
 
     const list =
       await getCollection(
@@ -847,48 +1274,82 @@
       );
 
     return list
-      .filter(p => p.name)
-      .map(p => ({
-        id: p.id,
-        name: p.name,
-        category:
-          p.category ||
-          "Ramen",
-        price:
-          Number(
-            p.price || 0
-          ),
-        image:
-          p.image || "",
-        description:
-          p.description || "",
-        available:
-          p.available !== false,
-        bestSeller:
-          !!p.bestSeller,
-        newProduct:
-          !!p.newProduct
-      }));
+      .filter(
+        product =>
+          product.name
+      )
+      .map(
+        product => ({
+
+          id:
+            product.id,
+
+          name:
+            product.name,
+
+          category:
+            product.category ||
+            "Ramen",
+
+          price:
+            Number(
+              product.price || 0
+            ),
+
+          image:
+            product.image ||
+            "",
+
+          description:
+            product.description ||
+            "",
+
+          available:
+            product.available !==
+            false,
+
+          bestSeller:
+            !!product.bestSeller,
+
+          newProduct:
+            !!product.newProduct
+        })
+      );
   }
 
+
   async function getBrandAssets() {
-    const p =
+
+    const assets =
       await getDocById(
         "brandAssets",
         "main"
       );
 
-    return p || {};
+    return assets || {};
   }
+
 
   async function getRamenLoadingImage() {
-    const p =
+
+    const assets =
       await getBrandAssets();
 
-    return p.ramenLoadingImage || "";
+    return (
+      assets.ramenLoadingImage ||
+      ""
+    );
   }
 
-  function orderAddress(payload) {
+
+  // ============================================================
+  // ORDERS
+  // ============================================================
+
+  function orderAddress(
+    payload
+  ) {
+
     return [
       payload.houseUnit,
       payload.street,
@@ -897,146 +1358,185 @@
       payload.province,
       payload.region
     ]
-      .map(v =>
-        String(v || "").trim()
+      .map(
+        value =>
+          String(
+            value || ""
+          ).trim()
       )
       .filter(Boolean)
       .join(", ");
   }
 
+
   async function saveOrder(
     orderId,
     payload
   ) {
-    const f = await READY;
-    const u = await currentUser(true);
 
-    payload = payload || {};
+    const firebase =
+      await READY;
+
+    const user =
+      await currentUser(true);
+
+    payload =
+      payload || {};
 
     if (
       String(
         payload.userId || ""
-      ) !== u.uid
+      ) !==
+      String(user.uid)
     ) {
+
       throw makeError(
         "Please log in again."
       );
     }
 
-    const cleanItems =
-      Array.isArray(payload.items)
+    const items =
+      Array.isArray(
+        payload.items
+      )
         ? payload.items
-            .map(item => ({
-              productId: String(
-                item.id ||
-                  item.productId ||
-                  ""
-              ),
+            .map(
+              item => ({
 
-              productName:
-                String(
-                  item.name ||
+                productId:
+                  String(
+                    item.id ||
+                    item.productId ||
+                    ""
+                  ),
+
+                productName:
+                  String(
+                    item.name ||
                     item.productName ||
                     "Ramen item"
-                ),
+                  ),
 
-              price:
-                Number(
-                  item.price || 0
-                ),
+                price:
+                  Number(
+                    item.price || 0
+                  ),
 
-              quantity:
-                Number(
-                  item.quantity || 0
-                ),
+                quantity:
+                  Number(
+                    item.quantity || 0
+                  ),
 
-              subtotal:
-                Number(
-                  item.subtotal != null
-                    ? item.subtotal
-                    : Number(
-                        item.price || 0
-                      ) *
-                      Number(
-                        item.quantity || 0
-                      )
-                ),
+                subtotal:
+                  Number(
+                    item.subtotal !=
+                    null
+                      ? item.subtotal
+                      : Number(
+                          item.price ||
+                          0
+                        ) *
+                        Number(
+                          item.quantity ||
+                          0
+                        )
+                  ),
 
-              itemStatus:
-                "Preparing"
-            }))
+                itemStatus:
+                  "Preparing"
+              })
+            )
             .filter(
-              x => x.quantity > 0
+              item =>
+                item.quantity > 0
             )
         : [];
 
-    if (!cleanItems.length) {
+    if (!items.length) {
+
       throw makeError(
         "The order contains no items."
       );
     }
 
     const total =
-      cleanItems.reduce(
-        (s, i) =>
-          s + i.subtotal,
+      items.reduce(
+        (
+          sum,
+          item
+        ) =>
+          sum +
+          item.subtotal,
         0
       );
 
-    const ref = f.doc(
-      f.db,
-      "orders",
-      String(orderId)
-    );
+    const reference =
+      firebase.doc(
+        firebase.db,
+        "orders",
+        String(orderId)
+      );
 
     const existing =
-      await f.getDoc(ref);
+      await firebase.getDoc(
+        reference
+      );
 
-    if (existing.exists()) {
+    if (
+      existing.exists()
+    ) {
+
       return {
+
         success: true,
+
         orderId:
           String(orderId),
+
         duplicate: true
       };
     }
 
-    await f.setDoc(
-      ref,
+    await firebase.setDoc(
+      reference,
       {
+
         orderId:
           String(orderId),
 
         userId:
-          u.uid,
+          user.uid,
 
         customerName:
           String(
-            payload.fullName || ""
+            payload.fullName ||
+            ""
           ),
 
         fullName:
           String(
-            payload.fullName || ""
+            payload.fullName ||
+            ""
           ),
 
         email:
-          u.email || "",
+          user.email ||
+          "",
 
         mobile:
           String(
-            payload.mobile || ""
+            payload.mobile ||
+            ""
           ),
 
-        items:
-          cleanItems,
+        items,
 
         total,
 
         paymentMethod:
           String(
             payload.paymentMethod ||
-              ""
+            ""
           ),
 
         paymentStatus:
@@ -1053,7 +1553,7 @@
         instruction:
           String(
             payload.additionalInstruction ||
-              ""
+            ""
           ),
 
         orderedAt:
@@ -1074,93 +1574,113 @@
     );
 
     return {
+
       success: true,
+
       orderId:
         String(orderId),
+
       status:
         "Preparing"
     };
   }
 
-  function normalizeOrder(o) {
-    if (!o) {
+
+  function normalizeOrder(
+    order
+  ) {
+
+    if (!order) {
       return null;
     }
 
     return {
+
       orderId:
         String(
-          o.orderId ||
-            o.id ||
-            ""
+          order.orderId ||
+          order.id ||
+          ""
         ),
 
       userId:
         String(
-          o.userId || ""
+          order.userId ||
+          ""
         ),
 
       customerName:
-        o.customerName ||
-        o.fullName ||
+        order.customerName ||
+        order.fullName ||
         "Customer",
 
       fullName:
-        o.fullName ||
-        o.customerName ||
+        order.fullName ||
+        order.customerName ||
         "Customer",
 
       email:
-        o.email || "",
+        order.email ||
+        "",
 
       mobile:
-        o.mobile || "",
+        order.mobile ||
+        "",
 
       items:
-        Array.isArray(o.items)
-          ? o.items.map(
-              (it, idx) => ({
+        Array.isArray(
+          order.items
+        )
+          ? order.items.map(
+              (
+                item,
+                index
+              ) => ({
+
                 itemIndex:
-                  idx,
+                  index,
 
                 productId:
                   String(
-                    it.productId ||
-                      it.id ||
-                      ""
+                    item.productId ||
+                    item.id ||
+                    ""
                   ),
 
                 productName:
-                  it.productName ||
-                  it.name ||
+                  item.productName ||
+                  item.name ||
                   "Ramen item",
 
                 price:
                   Number(
-                    it.price || 0
+                    item.price || 0
                   ),
 
                 quantity:
                   Number(
-                    it.quantity || 0
+                    item.quantity || 0
                   ),
 
                 subtotal:
                   Number(
-                    it.subtotal != null
-                      ? it.subtotal
+                    item.subtotal !=
+                    null
+                      ? item.subtotal
                       : Number(
-                          it.price || 0
+                          item.price ||
+                          0
                         ) *
                         Number(
-                          it.quantity || 0
+                          item.quantity ||
+                          0
                         )
                   ),
 
                 itemStatus:
                   String(
-                    it.itemStatus ||
-                      "Preparing"
+                    item.itemStatus ||
+                    "Preparing"
                   )
               })
             )
@@ -1168,68 +1688,76 @@
 
       total:
         Number(
-          o.total || 0
+          order.total || 0
         ),
 
       paymentMethod:
-        o.paymentMethod || "",
+        order.paymentMethod ||
+        "",
 
       paymentStatus:
-        o.paymentStatus ||
+        order.paymentStatus ||
         "Pending",
 
       orderStatus:
-        o.orderStatus ===
+        order.orderStatus ===
         "Pending"
           ? "Preparing"
           : (
-              o.orderStatus ||
+              order.orderStatus ||
               "Preparing"
             ),
 
       address:
-        o.address || "",
+        order.address ||
+        "",
 
       instruction:
-        o.instruction ||
-        o.additionalInstruction ||
+        order.instruction ||
+        order.additionalInstruction ||
         "",
 
       orderedAt:
         cleanTimestamp(
-          o.orderedAt
+          order.orderedAt
         ),
 
       customerConfirmed:
-        !!o.customerConfirmed,
+        !!order.customerConfirmed,
 
       confirmedAt:
         cleanTimestamp(
-          o.confirmedAt
+          order.confirmedAt
         ),
 
       deliveredAt:
         cleanTimestamp(
-          o.deliveredAt
+          order.deliveredAt
         ),
 
       closed:
-        !!o.closed,
+        !!order.closed,
 
       canRate:
-        o.orderStatus ===
+        order.orderStatus ===
           "Delivered" &&
-        !!o.customerConfirmed
+        !!order.customerConfirmed
     };
   }
+
 
   async function getOrdersForUser(
     userId
   ) {
-    const f = await READY;
-    const u = await currentUser(true);
 
-    if (u.uid !== String(userId)) {
+    const user =
+      await currentUser(true);
+
+    if (
+      user.uid !==
+      String(userId)
+    ) {
+
       throw makeError(
         "Invalid customer account."
       );
@@ -1242,11 +1770,15 @@
 
     return list
       .filter(
-        o =>
-          String(o.userId) ===
-          u.uid
+        order =>
+          String(
+            order.userId
+          ) ===
+          String(user.uid)
       )
-      .map(normalizeOrder)
+      .map(
+        normalizeOrder
+      )
       .sort(
         (a, b) =>
           String(
@@ -1259,52 +1791,68 @@
       );
   }
 
+
+  // ============================================================
+  // REVIEWS
+  // ============================================================
+
   async function getReviewsForOrder(
     orderId,
     userId
   ) {
+
     const list =
       await getCollection(
         "reviews"
       );
 
     return list.filter(
-      r =>
-        String(r.orderId) ===
+      review =>
+        String(
+          review.orderId
+        ) ===
           String(orderId) &&
         String(
-          r.customerId ||
-            r.userId
+          review.customerId ||
+          review.userId
         ) ===
           String(userId)
     );
   }
 
+
   async function getReviewForm(
     userId,
     orderId
   ) {
-    const u =
+
+    const user =
       await currentUser(true);
 
-    if (u.uid !== String(userId)) {
+    if (
+      user.uid !==
+      String(userId)
+    ) {
+
       throw makeError(
         "Invalid customer account."
       );
     }
 
+    const orders =
+      await getOrdersForUser(
+        user.uid
+      );
+
     const order =
-      (
-        await getOrdersForUser(
-          u.uid
-        )
-      ).find(
-        o =>
-          o.orderId ===
+      orders.find(
+        item =>
+          item.orderId ===
           String(orderId)
       );
 
     if (!order) {
+
       throw makeError(
         "Order not found."
       );
@@ -1315,6 +1863,7 @@
         "Delivered" ||
       !order.customerConfirmed
     ) {
+
       throw makeError(
         "You can review this order only after it has been delivered and received."
       );
@@ -1323,18 +1872,26 @@
     const reviews =
       await getReviewsForOrder(
         orderId,
-        u.uid
+        user.uid
       );
 
-    const byProduct = {};
+    const reviewed =
+      {};
 
-    reviews.forEach(r => {
-      byProduct[
-        String(r.productId)
-      ] = r;
-    });
+    reviews.forEach(
+      review => {
+
+        reviewed[
+          String(
+            review.productId
+          )
+        ] = review;
+
+      }
+    );
 
     return {
+
       success: true,
 
       orderId:
@@ -1347,6 +1904,7 @@
       items:
         order.items.map(
           item => ({
+
             productId:
               item.productId,
 
@@ -1357,17 +1915,17 @@
               item.quantity,
 
             reviewed:
-              !!byProduct[
+              !!reviewed[
                 item.productId
               ],
 
             existingRating:
-              byProduct[
+              reviewed[
                 item.productId
               ]?.rating || 0,
 
             existingReview:
-              byProduct[
+              reviewed[
                 item.productId
               ]?.review || ""
           })
@@ -1376,12 +1934,13 @@
       completed:
         order.items.every(
           item =>
-            !!byProduct[
+            !!reviewed[
               item.productId
             ]
         )
     };
   }
+
 
   async function submitReview(
     userId,
@@ -1390,32 +1949,48 @@
     rating,
     review
   ) {
-    const f = await READY;
-    const u = await currentUser(true);
 
-    if (u.uid !== String(userId)) {
+    const firebase =
+      await READY;
+
+    const user =
+      await currentUser(true);
+
+    if (
+      user.uid !==
+      String(userId)
+    ) {
+
       throw makeError(
         "Invalid customer account."
       );
     }
 
-    rating = Number(rating);
+    rating =
+      Number(rating);
+
     review =
       String(
         review || ""
       ).trim();
 
     if (
-      !Number.isFinite(rating) ||
+      !Number.isFinite(
+        rating
+      ) ||
       rating < 1 ||
       rating > 5
     ) {
+
       throw makeError(
         "Please select a rating from 1 to 5 stars."
       );
     }
 
-    if (review.length > 1000) {
+    if (
+      review.length > 1000
+    ) {
+
       throw makeError(
         "Review is too long. Please keep it under 1000 characters."
       );
@@ -1423,26 +1998,28 @@
 
     const form =
       await getReviewForm(
-        u.uid,
+        user.uid,
         orderId
       );
 
     const item =
       form.items.find(
-        i =>
+        current =>
           String(
-            i.productId
+            current.productId
           ) ===
           String(productId)
       );
 
     if (!item) {
+
       throw makeError(
         "That menu item was not part of this order."
       );
     }
 
     if (item.reviewed) {
+
       throw makeError(
         "You already reviewed this menu item."
       );
@@ -1453,22 +2030,26 @@
       Date.now() +
       "-" +
       Math.floor(
-        Math.random() * 10000
+        Math.random() *
+        10000
       );
 
-    await f.setDoc(
-      f.doc(
-        f.db,
+    await firebase.setDoc(
+      firebase.doc(
+        firebase.db,
         "reviews",
         id
       ),
       {
-        reviewId: id,
+
+        reviewId:
+          id,
+
         orderId:
           String(orderId),
 
         customerId:
-          u.uid,
+          user.uid,
 
         productId:
           String(productId),
@@ -1477,6 +2058,7 @@
           item.productName,
 
         rating,
+
         review,
 
         customerName:
@@ -1492,15 +2074,19 @@
     );
 
     return {
+
       success: true,
+
       message:
         "Your review has been submitted.",
-      reviewId: id
+
+      reviewId:
+        id
     };
   }
 
+
   async function getPublishedReviews() {
-    const f = await READY;
 
     const list =
       await getCollection(
@@ -1509,61 +2095,79 @@
 
     return list
       .filter(
-        r =>
+        review =>
           String(
-            r.status ||
-              "Published"
+            review.status ||
+            "Published"
           ).toLowerCase() ===
           "published"
       )
       .sort(
         (a, b) =>
           String(
-            b.submittedAt || ""
+            b.submittedAt ||
+            ""
           ).localeCompare(
             String(
-              a.submittedAt || ""
+              a.submittedAt ||
+              ""
             )
           )
       )
-      .slice(0, 12)
-      .map(r => ({
-        reviewId:
-          r.reviewId ||
-          r.id,
+      .slice(
+        0,
+        12
+      )
+      .map(
+        review => ({
 
-        orderId:
-          r.orderId,
+          reviewId:
+            review.reviewId ||
+            review.id,
 
-        productId:
-          r.productId,
+          orderId:
+            review.orderId,
 
-        productName:
-          r.productName,
+          productId:
+            review.productId,
 
-        rating:
-          r.rating,
+          productName:
+            review.productName,
 
-        review:
-          r.review,
+          rating:
+            review.rating,
 
-        customerName:
-          r.customerName,
+          review:
+            review.review,
 
-        submittedAt:
-          cleanTimestamp(
-            r.submittedAt
-          )
-      }));
+          customerName:
+            review.customerName,
+
+          submittedAt:
+            cleanTimestamp(
+              review.submittedAt
+            )
+        })
+      );
   }
+
+
+  // ============================================================
+  // NOTIFICATIONS
+  // ============================================================
 
   async function getNotifications(
     userId
   ) {
-    const f = await READY;
-    const u = await currentUser(true);
 
-    if (u.uid !== String(userId)) {
+    const user =
+      await currentUser(true);
+
+    if (
+      user.uid !==
+      String(userId)
+    ) {
+
       throw makeError(
         "Invalid customer account."
       );
@@ -1576,74 +2180,103 @@
 
     return list
       .filter(
-        n =>
-          String(n.userId) ===
-            u.uid &&
-          !n.readAt
+        notification =>
+          String(
+            notification.userId
+          ) ===
+            String(user.uid) &&
+          !notification.readAt
       )
       .sort(
         (a, b) =>
           new Date(
-            b.createdAt || 0
+            b.createdAt ||
+            0
           ) -
           new Date(
-            a.createdAt || 0
+            a.createdAt ||
+            0
           )
       )
-      .map(n => ({
-        ...n,
+      .map(
+        notification => ({
 
-        notificationId:
-          n.notificationId ||
-          n.id,
+          ...notification,
 
-        createdAt:
-          cleanTimestamp(
-            n.createdAt
-          ),
+          notificationId:
+            notification.notificationId ||
+            notification.id,
 
-        readAt:
-          cleanTimestamp(
-            n.readAt
-          )
-      }));
+          createdAt:
+            cleanTimestamp(
+              notification.createdAt
+            ),
+
+          readAt:
+            cleanTimestamp(
+              notification.readAt
+            )
+        })
+      );
   }
+
 
   async function markNotificationRead(
     userId,
     notificationId
   ) {
-    const f = await READY;
-    const u = await currentUser(true);
 
-    if (u.uid !== String(userId)) {
+    const firebase =
+      await READY;
+
+    const user =
+      await currentUser(true);
+
+    if (
+      user.uid !==
+      String(userId)
+    ) {
+
       throw makeError(
         "Invalid customer account."
       );
     }
 
-    const ref = f.doc(
-      f.db,
-      "notifications",
-      String(notificationId)
-    );
+    const reference =
+      firebase.doc(
+        firebase.db,
+        "notifications",
+        String(notificationId)
+      );
 
-    const snap =
-      await f.getDoc(ref);
+    const snapshot =
+      await firebase.getDoc(
+        reference
+      );
 
     if (
-      !snap.exists() ||
-      String(
-        snap.data().userId
-      ) !== u.uid
+      !snapshot.exists()
     ) {
+
       throw makeError(
         "Notification not found."
       );
     }
 
-    await f.updateDoc(
-      ref,
+    if (
+      String(
+        snapshot.data().userId
+      ) !==
+      String(user.uid)
+    ) {
+
+      throw makeError(
+        "Notification not found."
+      );
+    }
+
+    await firebase.updateDoc(
+      reference,
       {
         readAt:
           isoNow()
@@ -1655,49 +2288,63 @@
     };
   }
 
+
   async function respondReceipt(
     userId,
     orderId,
     received,
     notificationId
   ) {
-    const f = await READY;
-    const u = await currentUser(true);
 
-    if (u.uid !== String(userId)) {
+    const firebase =
+      await READY;
+
+    const user =
+      await currentUser(true);
+
+    if (
+      user.uid !==
+      String(userId)
+    ) {
+
       throw makeError(
         "Invalid customer account."
       );
     }
 
-    const ref = f.doc(
-      f.db,
-      "orders",
-      String(orderId)
-    );
+    const reference =
+      firebase.doc(
+        firebase.db,
+        "orders",
+        String(orderId)
+      );
 
-    const snap =
-      await f.getDoc(ref);
+    const snapshot =
+      await firebase.getDoc(
+        reference
+      );
 
     if (
-      !snap.exists() ||
+      !snapshot.exists() ||
       String(
-        snap.data().userId
-      ) !== u.uid
+        snapshot.data().userId
+      ) !==
+      String(user.uid)
     ) {
+
       throw makeError(
         "Order not found."
       );
     }
 
-    const o =
-      snap.data();
+    const order =
+      snapshot.data();
 
     if (
-      String(
-        o.orderStatus
-      ) !== "Delivered"
+      order.orderStatus !==
+      "Delivered"
     ) {
+
       throw makeError(
         "The order has not been marked as delivered yet."
       );
@@ -1706,9 +2353,10 @@
     const now =
       isoNow();
 
-    await f.updateDoc(
-      ref,
+    await firebase.updateDoc(
+      reference,
       {
+
         customerConfirmed:
           !!received,
 
@@ -1723,16 +2371,21 @@
     );
 
     if (notificationId) {
+
       try {
+
         await markNotificationRead(
-          u.uid,
+          user.uid,
           notificationId
         );
-      } catch (e) {}
+
+      } catch (error) {}
     }
 
     return {
+
       success: true,
+
       received:
         !!received,
 
@@ -1740,6 +2393,7 @@
         !!received,
 
       contact: {
+
         phone:
           "09123456789",
 
@@ -1752,24 +2406,39 @@
     };
   }
 
-  async function getAdminProducts() {
-    await requireAdmin();
+
+  // ============================================================
+  // ADMIN — PRODUCTS
+  // ============================================================
+
+  async function adminGetProducts() {
+
+    // Products are publicly readable.
+    // Admin authentication is NOT needed just to read them.
+
+    const products =
+      await getProducts();
 
     return {
+
       success: true,
-      products:
-        await getProducts()
+
+      products
     };
   }
+
 
   async function saveProduct(
     data
   ) {
-    const f = await READY;
+
+    const firebase =
+      await READY;
 
     await requireAdmin();
 
-    data = data || {};
+    data =
+      data || {};
 
     const name =
       String(
@@ -1783,44 +2452,54 @@
 
     const description =
       String(
-        data.description || ""
+        data.description ||
+        ""
       ).trim();
 
     const price =
-      Number(data.price);
+      Number(
+        data.price
+      );
 
     if (!name) {
+
       throw makeError(
         "Product name is required."
       );
     }
 
     if (!category) {
+
       throw makeError(
         "Product category is required."
       );
     }
 
     if (
-      !Number.isFinite(price) ||
+      !Number.isFinite(
+        price
+      ) ||
       price < 0
     ) {
+
       throw makeError(
         "Please enter a valid product price."
       );
     }
 
-    let image =
+    const image =
       String(
         data.imageUrl ||
-          data.image ||
-          ""
+        data.image ||
+        ""
       ).trim();
 
     if (
-      image &&
-      image.startsWith("data:")
+      image.startsWith(
+        "data:"
+      )
     ) {
+
       throw makeError(
         "This standalone version uses an image URL. Upload the image to the GitHub images folder, then paste its URL here."
       );
@@ -1835,21 +2514,27 @@
         Date.now()
       );
 
-    await f.setDoc(
-      f.doc(
-        f.db,
+    await firebase.setDoc(
+      firebase.doc(
+        firebase.db,
         "products",
         id
       ),
       {
+
         name,
+
         category,
+
         price,
+
         image,
+
         description,
 
         available:
-          data.available !== false,
+          data.available !==
+          false,
 
         bestSeller:
           !!data.bestSeller,
@@ -1866,17 +2551,24 @@
     );
 
     return {
+
       success: true,
-      productId: id,
+
+      productId:
+        id,
+
       products:
         await getProducts()
     };
   }
 
+
   async function deleteProduct(
     id
   ) {
-    const f = await READY;
+
+    const firebase =
+      await READY;
 
     await requireAdmin();
 
@@ -1886,27 +2578,36 @@
       ).trim();
 
     if (!id) {
+
       throw makeError(
         "Product ID is required."
       );
     }
 
-    await f.deleteDoc(
-      f.doc(
-        f.db,
+    await firebase.deleteDoc(
+      firebase.doc(
+        firebase.db,
         "products",
         id
       )
     );
 
     return {
+
       success: true,
+
       products:
         await getProducts()
     };
   }
 
+
+  // ============================================================
+  // ADMIN — ORDERS
+  // ============================================================
+
   async function adminOrders() {
+
     await requireAdmin();
 
     const list =
@@ -1924,61 +2625,72 @@
         "reviews"
       );
 
-    const notes =
+    const notifications =
       await getCollection(
         "notifications"
       );
 
-    orders.forEach(o => {
-      const rs =
-        reviews.filter(
-          r =>
-            String(
-              r.orderId
-            ) === o.orderId
-        );
+    orders.forEach(
+      order => {
 
-      const productIds =
-        new Set(
-          rs.map(
-            r =>
+        const orderReviews =
+          reviews.filter(
+            review =>
               String(
-                r.productId
-              )
-          )
-        );
-
-      o.reviewTotal =
-        o.items.length;
-
-      o.reviewedCount =
-        o.items.filter(
-          i =>
-            productIds.has(
+                review.orderId
+              ) ===
               String(
-                i.productId
+                order.orderId
               )
+          );
+
+        const productIds =
+          new Set(
+            orderReviews.map(
+              review =>
+                String(
+                  review.productId
+                )
             )
-        ).length;
+          );
 
-      o.reviewCompleted =
-        o.reviewTotal > 0 &&
-        o.reviewedCount >=
-          o.reviewTotal;
+        order.reviewTotal =
+          order.items.length;
 
-      o.reviewRequested =
-        notes.some(
-          n =>
-            String(
-              n.orderId
-            ) === o.orderId &&
-            n.type ===
-              "REVIEW_REQUEST"
-        );
-    });
+        order.reviewedCount =
+          order.items.filter(
+            item =>
+              productIds.has(
+                String(
+                  item.productId
+                )
+              )
+          ).length;
+
+        order.reviewCompleted =
+          order.reviewTotal > 0 &&
+          order.reviewedCount >=
+            order.reviewTotal;
+
+        order.reviewRequested =
+          notifications.some(
+            notification =>
+              String(
+                notification.orderId
+              ) ===
+                String(
+                  order.orderId
+                ) &&
+              notification.type ===
+                "REVIEW_REQUEST"
+          );
+      }
+    );
 
     return {
+
       success: true,
+
       orders:
         orders.sort(
           (a, b) =>
@@ -1993,147 +2705,159 @@
     };
   }
 
+
   async function updateOrderItemStatus(
     orderId,
     index,
     status
   ) {
-    const f = await READY;
+
+    const firebase =
+      await READY;
 
     await requireAdmin();
 
-    const ref = f.doc(
-      f.db,
-      "orders",
-      String(orderId)
-    );
+    const reference =
+      firebase.doc(
+        firebase.db,
+        "orders",
+        String(orderId)
+      );
 
-    const snap =
-      await f.getDoc(ref);
+    const snapshot =
+      await firebase.getDoc(
+        reference
+      );
 
-    if (!snap.exists()) {
+    if (
+      !snapshot.exists()
+    ) {
+
       throw makeError(
         "Order not found."
       );
     }
 
-    const o =
-      snap.data();
+    const order =
+      snapshot.data();
 
     if (
-      o.orderStatus ===
+      order.orderStatus ===
         "Delivered" ||
-      o.closed
+      order.closed
     ) {
+
       throw makeError(
         "This order is already closed and can no longer be changed."
       );
     }
 
     const items =
-      Array.isArray(o.items)
-        ? o.items.map(
-            x => ({
-              ...x
+      Array.isArray(
+        order.items
+      )
+        ? order.items.map(
+            item => ({
+              ...item
             })
           )
         : [];
 
-    const i =
+    const itemIndex =
       Number(index);
 
-    if (!items[i]) {
+    if (!items[itemIndex]) {
+
       throw makeError(
         "Order item not found."
       );
     }
 
-    const current =
-      String(
-        items[i].itemStatus ||
-          "Preparing"
-      );
-
-    if (
-      current === "Ready" &&
-      String(status) !==
-        "Ready"
-    ) {
-      return {
-        success: true,
-        order:
-          normalizeOrder(o)
-      };
-    }
-
-    items[i].itemStatus =
+    items[
+      itemIndex
+    ].itemStatus =
       String(status) ===
       "Ready"
         ? "Ready"
         : "Preparing";
 
-    await f.updateDoc(
-      ref,
+    await firebase.updateDoc(
+      reference,
       {
+
         items,
+
         updatedAt:
           isoNow()
       }
     );
 
     const fresh =
-      (
-        await f.getDoc(ref)
-      ).data();
+      await firebase.getDoc(
+        reference
+      );
 
     return {
+
       success: true,
+
       order:
         normalizeOrder(
-          fresh
+          fresh.data()
         )
     };
   }
+
 
   async function updateOrderStatus(
     orderId,
     status
   ) {
-    const f = await READY;
+
+    const firebase =
+      await READY;
 
     await requireAdmin();
 
-    const ref = f.doc(
-      f.db,
-      "orders",
-      String(orderId)
-    );
+    const reference =
+      firebase.doc(
+        firebase.db,
+        "orders",
+        String(orderId)
+      );
 
-    const snap =
-      await f.getDoc(ref);
+    const snapshot =
+      await firebase.getDoc(
+        reference
+      );
 
-    if (!snap.exists()) {
+    if (
+      !snapshot.exists()
+    ) {
+
       throw makeError(
         "Order not found."
       );
     }
 
-    const o =
-      snap.data();
+    const order =
+      snapshot.data();
 
     const current =
-      o.orderStatus ===
-        "Pending"
+      order.orderStatus ===
+      "Pending"
         ? "Preparing"
         : (
-            o.orderStatus ||
+            order.orderStatus ||
             "Preparing"
           );
 
     if (
-      current === "Delivered" ||
-      o.closed
+      current ===
+        "Delivered" ||
+      order.closed
     ) {
+
       throw makeError(
         "This order is already closed and can no longer be changed."
       );
@@ -2144,11 +2868,16 @@
         status || ""
       );
 
-    if (next === "Ready") {
+    if (
+      next ===
+      "Ready"
+    ) {
+
       if (
         current !==
         "Preparing"
       ) {
+
         throw makeError(
           "Order must be in Preparing before it can be marked Ready."
         );
@@ -2156,17 +2885,19 @@
 
       if (
         !Array.isArray(
-          o.items
+          order.items
         ) ||
-        !o.items.length ||
-        !o.items.every(
-          i =>
+        !order.items.length ||
+        !order.items.every(
+          item =>
             String(
-              i.itemStatus ||
-                "Preparing"
-            ) === "Ready"
+              item.itemStatus ||
+              "Preparing"
+            ) ===
+            "Ready"
         )
       ) {
+
         throw makeError(
           "All menu items must be Ready before the order can be moved On the Way."
         );
@@ -2174,33 +2905,37 @@
 
       next =
         "On the Way";
+    }
 
-    } else if (
+    else if (
       next ===
         "On the Way" &&
-      current !== "Ready"
+      current !==
+        "Ready"
     ) {
-      // Kept for compatibility;
-      // admin UI normally jumps
-      // Ready -> On the Way.
+
       throw makeError(
         "Order must be Ready before it can be moved On the Way."
       );
+    }
 
-    } else if (
+    else if (
       next ===
         "Delivered" &&
       current !==
         "On the Way"
     ) {
+
       throw makeError(
         "Order must be On the Way before it can be marked Delivered."
       );
     }
 
-    const patch = {
+    const update = {
+
       orderStatus:
         next,
+
       updatedAt:
         isoNow()
     };
@@ -2209,47 +2944,49 @@
       next ===
       "Delivered"
     ) {
-      patch.deliveredAt =
+
+      update.deliveredAt =
         isoNow();
 
-      patch.customerConfirmed =
+      update.customerConfirmed =
         false;
 
-      patch.closed =
+      update.closed =
         false;
     }
 
-    await f.updateDoc(
-      ref,
-      patch
+    await firebase.updateDoc(
+      reference,
+      update
     );
 
     if (
       next ===
         "Delivered" &&
-      o.userId
+      order.userId
     ) {
-      const nid =
+
+      const notificationId =
         "NTF-" +
         Date.now() +
         "-" +
         Math.floor(
           Math.random() *
-            10000
+          10000
         );
 
-      await f.setDoc(
-        f.doc(
-          f.db,
+      await firebase.setDoc(
+        firebase.doc(
+          firebase.db,
           "notifications",
-          nid
+          notificationId
         ),
         {
-          notificationId:
-            nid,
+
+          notificationId,
 
           userId:
-            o.userId,
+            order.userId,
 
           orderId:
             String(
@@ -2274,20 +3011,29 @@
       );
     }
 
+    const fresh =
+      await firebase.getDoc(
+        reference
+      );
+
     return {
+
       success: true,
+
       order:
         normalizeOrder(
-          (
-            await f.getDoc(
-              ref
-            )
-          ).data()
+          fresh.data()
         )
     };
   }
 
+
+  // ============================================================
+  // ADMIN — REVIEWS
+  // ============================================================
+
   async function adminReviews() {
+
     await requireAdmin();
 
     const reviews =
@@ -2297,21 +3043,25 @@
 
     const published =
       reviews.filter(
-        r =>
+        review =>
           String(
-            r.status ||
-              "Published"
+            review.status ||
+            "Published"
           ).toLowerCase() ===
           "published"
       );
 
-    const avg =
+    const average =
       published.length
         ? published.reduce(
-            (s, r) =>
-              s +
+            (
+              sum,
+              review
+            ) =>
+              sum +
               Number(
-                r.rating || 0
+                review.rating ||
+                0
               ),
             0
           ) /
@@ -2319,6 +3069,7 @@
         : 0;
 
     return {
+
       success: true,
 
       reviews:
@@ -2327,51 +3078,55 @@
             (a, b) =>
               String(
                 b.submittedAt ||
-                  ""
+                ""
               ).localeCompare(
                 String(
                   a.submittedAt ||
-                    ""
+                  ""
                 )
               )
           )
-          .map(r => ({
-            reviewId:
-              r.reviewId ||
-              r.id,
+          .map(
+            review => ({
 
-            orderId:
-              r.orderId,
+              reviewId:
+                review.reviewId ||
+                review.id,
 
-            customerId:
-              r.customerId,
+              orderId:
+                review.orderId,
 
-            productId:
-              r.productId,
+              customerId:
+                review.customerId,
 
-            productName:
-              r.productName,
+              productId:
+                review.productId,
 
-            rating:
-              r.rating,
+              productName:
+                review.productName,
 
-            review:
-              r.review,
+              rating:
+                review.rating,
 
-            customerName:
-              r.customerName,
+              review:
+                review.review,
 
-            submittedAt:
-              cleanTimestamp(
-                r.submittedAt
-              ),
+              customerName:
+                review.customerName,
 
-            status:
-              r.status ||
-              "Published"
-          })),
+              submittedAt:
+                cleanTimestamp(
+                  review.submittedAt
+                ),
+
+              status:
+                review.status ||
+                "Published"
+            })
+          ),
 
       stats: {
+
         total:
           reviews.length,
 
@@ -2384,93 +3139,118 @@
 
         average:
           Math.round(
-            avg * 10
+            average * 10
           ) / 10
       }
     };
   }
 
+
   async function updateReviewStatus(
     id,
     status
   ) {
-    const f = await READY;
+
+    const firebase =
+      await READY;
 
     await requireAdmin();
+
+    status =
+      String(
+        status || ""
+      );
 
     if (
       ![
         "Published",
         "Hidden"
       ].includes(
-        String(status)
+        status
       )
     ) {
+
       throw makeError(
         "Invalid review status."
       );
     }
 
-    const ref = f.doc(
-      f.db,
-      "reviews",
-      String(id)
-    );
+    const reference =
+      firebase.doc(
+        firebase.db,
+        "reviews",
+        String(id)
+      );
 
-    const snap =
-      await f.getDoc(ref);
+    const snapshot =
+      await firebase.getDoc(
+        reference
+      );
 
-    if (!snap.exists()) {
+    if (
+      !snapshot.exists()
+    ) {
+
       throw makeError(
         "Review not found."
       );
     }
 
-    await f.updateDoc(
-      ref,
+    await firebase.updateDoc(
+      reference,
       {
-        status:
-          String(status)
+        status
       }
     );
 
     return {
+
       success: true,
-      status:
-        String(status)
+
+      status
     };
   }
+
 
   async function notifyCustomerReview(
     orderId,
     forceResend
   ) {
-    const f = await READY;
+
+    const firebase =
+      await READY;
 
     await requireAdmin();
 
-    const orderSnap =
-      await f.getDoc(
-        f.doc(
-          f.db,
-          "orders",
-          String(orderId)
-        )
+    const orderReference =
+      firebase.doc(
+        firebase.db,
+        "orders",
+        String(orderId)
       );
 
-    if (!orderSnap.exists()) {
+    const orderSnapshot =
+      await firebase.getDoc(
+        orderReference
+      );
+
+    if (
+      !orderSnapshot.exists()
+    ) {
+
       throw makeError(
         "Order not found."
       );
     }
 
     const order =
-      orderSnap.data();
+      orderSnapshot.data();
 
     if (
       order.orderStatus !==
       "Delivered"
     ) {
+
       throw makeError(
         "The customer can only be notified after the order is Delivered."
       );
@@ -2479,6 +3259,7 @@
     if (
       !order.customerConfirmed
     ) {
+
       throw makeError(
         "Wait for the customer to confirm that the order was received before sending the review request."
       );
@@ -2499,15 +3280,15 @@
       ).every(
         item =>
           reviews.some(
-            r =>
+            review =>
               String(
-                r.orderId
+                review.orderId
               ) ===
                 String(
                   orderId
                 ) &&
               String(
-                r.productId
+                review.productId
               ) ===
                 String(
                   item.productId
@@ -2516,42 +3297,53 @@
       );
 
     if (complete) {
+
       return {
+
         success: true,
+
         sent: false,
+
         completed: true,
+
         message:
           "Customer has already reviewed this order."
       };
     }
 
-    const notes =
+    const notifications =
       await getCollection(
         "notifications"
       );
 
     const existing =
-      notes.find(
-        n =>
+      notifications.find(
+        notification =>
           String(
-            n.orderId
+            notification.orderId
           ) ===
             String(
               orderId
             ) &&
-          n.type ===
+          notification.type ===
             "REVIEW_REQUEST" &&
-          !n.readAt
+          !notification.readAt
       );
 
     if (
       existing &&
       !forceResend
     ) {
+
       return {
+
         success: true,
+
         sent: false,
-        alreadyNotified: true,
+
+        alreadyNotified:
+          true,
+
         notificationId:
           existing.notificationId ||
           existing.id,
@@ -2565,9 +3357,10 @@
       forceResend &&
       existing
     ) {
-      await f.updateDoc(
-        f.doc(
-          f.db,
+
+      await firebase.updateDoc(
+        firebase.doc(
+          firebase.db,
           "notifications",
           existing.id
         ),
@@ -2578,24 +3371,24 @@
       );
     }
 
-    const nid =
+    const notificationId =
       "NTF-" +
       Date.now() +
       "-" +
       Math.floor(
         Math.random() *
-          10000
+        10000
       );
 
-    await f.setDoc(
-      f.doc(
-        f.db,
+    await firebase.setDoc(
+      firebase.doc(
+        firebase.db,
         "notifications",
-        nid
+        notificationId
       ),
       {
-        notificationId:
-          nid,
+
+        notificationId,
 
         userId:
           String(
@@ -2625,13 +3418,15 @@
     );
 
     return {
+
       success: true,
+
       sent: true,
+
       resent:
         !!forceResend,
 
-      notificationId:
-        nid,
+      notificationId,
 
       message:
         forceResend
@@ -2640,8 +3435,91 @@
     };
   }
 
-  async function psgc(url) {
-    const r =
+
+  // ============================================================
+  // ADMIN LOGIN
+  // ============================================================
+
+  async function adminLogin(
+    email,
+    password
+  ) {
+
+    const firebase =
+      await READY;
+
+    email =
+      String(
+        email || ""
+      )
+        .trim()
+        .toLowerCase();
+
+    password =
+      String(
+        password || ""
+      );
+
+    if (
+      !email ||
+      !password
+    ) {
+
+      throw makeError(
+        "Email and password are required."
+      );
+    }
+
+    const credential =
+      await firebase
+        .signInWithEmailAndPassword(
+          firebase.auth,
+          email,
+          password
+        );
+
+    if (
+      credential.user.uid !==
+      ADMIN_UID
+    ) {
+
+      await firebase.signOut(
+        firebase.auth
+      );
+
+      throw makeError(
+        "This Firebase account is not authorized as McKenzie Ramen House Admin."
+      );
+    }
+
+    const token =
+      await credential.user
+        .getIdToken();
+
+    return {
+
+      success: true,
+
+      token,
+
+      email:
+        credential.user.email,
+
+      uid:
+        credential.user.uid
+    };
+  }
+
+
+  // ============================================================
+  // PHILIPPINE ADDRESS API
+  // ============================================================
+
+  async function psgc(
+    url
+  ) {
+
+    const response =
       await fetch(
         url,
         {
@@ -2652,27 +3530,37 @@
         }
       );
 
-    if (!r.ok) {
+    if (!response.ok) {
+
       throw makeError(
         "Unable to load Philippine location data."
       );
     }
 
-    return r.json();
+    return response.json();
   }
+
+
+  // ============================================================
+  // DISPATCH
+  // ============================================================
 
   async function dispatch(
     name,
     args
   ) {
-    args = args || [];
+
+    args =
+      args || [];
 
     switch (name) {
+
       case "loginUser":
         return loginUser(
           args[0],
           args[1]
         );
+
 
       case "requestEmailVerification":
         return createAccount(
@@ -2683,36 +3571,43 @@
           args[4]
         );
 
+
       case "verifyEmailCode":
         return verifyEmailCode(
           args[0],
           args[1]
         );
 
+
       case "getUserProfile":
         return getProfile(
           args[0]
         );
+
 
       case "updateUserProfile":
         return saveProfile(
           args[0]
         );
 
+
       case "getCheckoutCustomerById":
         return getProfile(
           args[0]
         );
+
 
       case "getCustomerAddresses":
         return addresses(
           args[0]
         );
 
+
       case "saveCustomerAddress":
         return saveAddress(
           args[0]
         );
+
 
       case "setDefaultCustomerAddress":
         return setDefaultAddress(
@@ -2720,14 +3615,18 @@
           args[1]
         );
 
+
       case "getProducts":
         return getProducts();
+
 
       case "getBrandAssets":
         return getBrandAssets();
 
+
       case "getRamenLoadingImage":
         return getRamenLoadingImage();
+
 
       case "recordCompletedCustomerOrder":
         return saveOrder(
@@ -2735,43 +3634,52 @@
           args[1]
         );
 
+
       case "recordOrder":
         return saveOrder(
           args[0],
           args[1]
         );
 
+
       case "getCustomerOrderHistory":
         return getOrdersForUser(
           args[0]
         );
 
+
       case "getCustomerPaymentHistory":
+
         return (
           await getOrdersForUser(
             args[0]
           )
-        ).map(o => ({
-          orderId:
-            o.orderId,
+        ).map(
+          order => ({
 
-          total:
-            o.total,
+            orderId:
+              order.orderId,
 
-          paymentMethod:
-            o.paymentMethod,
+            total:
+              order.total,
 
-          paymentStatus:
-            o.paymentStatus,
+            paymentMethod:
+              order.paymentMethod,
 
-          orderStatus:
-            o.orderStatus,
+            paymentStatus:
+              order.paymentStatus,
 
-          orderedAt:
-            o.orderedAt
-        }));
+            orderStatus:
+              order.orderStatus,
+
+            orderedAt:
+              order.orderedAt
+          })
+        );
+
 
       case "confirmCustomerOrderReceived":
+
         return respondReceipt(
           args[0],
           args[1],
@@ -2779,7 +3687,9 @@
           ""
         );
 
+
       case "respondCustomerReceipt":
+
         return respondReceipt(
           args[0],
           args[1],
@@ -2790,13 +3700,17 @@
           args[3]
         );
 
+
       case "getCustomerReviewForm":
+
         return getReviewForm(
           args[0],
           args[1]
         );
 
+
       case "submitCustomerReview":
+
         return submitReview(
           args[0],
           args[1],
@@ -2805,219 +3719,266 @@
           args[4]
         );
 
+
       case "getPublishedReviews":
+
         return getPublishedReviews();
 
+
       case "getCustomerNotifications":
+
         return getNotifications(
           args[0]
         );
 
+
       case "markCustomerNotificationRead":
+
         return markNotificationRead(
           args[0],
           args[1]
         );
 
+
       case "requestPasswordResetOtp":
+
         return sendPasswordReset(
           args[0]
         );
 
+
       case "requestPasswordResetOtpForUser": {
-        const p =
+
+        const profile =
           await getProfile(
             args[0]
           );
 
         return sendPasswordReset(
-          p.email
+          profile.email
         );
       }
 
+
       case "resetPasswordWithOtp":
+
         throw makeError(
           "Please use the password-reset link sent to your email."
         );
 
+
       case "changePassword":
+
         return changePassword(
           args[0],
           args[1],
           args[2]
         );
 
+
       case "getAddressRegions":
+
         return psgc(
           "https://psgc.cloud/api/regions"
         );
 
+
       case "getAddressProvinces":
+
         return psgc(
           "https://psgc.cloud/api/regions/" +
-            encodeURIComponent(
-              args[0]
-            ) +
-            "/provinces"
+          encodeURIComponent(
+            args[0]
+          ) +
+          "/provinces"
         );
+
 
       case "getAddressCities":
+
         return psgc(
           "https://psgc.cloud/api/provinces/" +
-            encodeURIComponent(
-              args[0]
-            ) +
-            "/cities-municipalities"
+          encodeURIComponent(
+            args[0]
+          ) +
+          "/cities-municipalities"
         );
+
 
       case "getAddressBarangays":
+
         return psgc(
           "https://psgc.cloud/api/cities-municipalities/" +
-            encodeURIComponent(
-              args[0]
-            ) +
-            "/barangays"
+          encodeURIComponent(
+            args[0]
+          ) +
+          "/barangays"
         );
 
-      case "adminLogin": {
-        const f =
-          await READY;
 
-        const cred =
-          await f.signInWithEmailAndPassword(
-            f.auth,
-            String(
-              args[0] || ""
-            )
-              .trim()
-              .toLowerCase(),
-            String(
-              args[1] || ""
-            )
-          );
+      // --------------------------------------------------------
+      // ADMIN
+      // --------------------------------------------------------
 
-        if (!(await isAdmin())) {
-          await f.signOut(
-            f.auth
-          );
+      case "adminLogin":
 
-          throw makeError(
-            "This Firebase account is not configured as the McKenzie admin."
-          );
-        }
+        return adminLogin(
+          args[0],
+          args[1]
+        );
 
-        return {
-          success: true,
-          token:
-            await cred.user.getIdToken(),
-          email:
-            cred.user.email
-        };
-      }
 
       case "adminGetProducts":
-        return getAdminProducts();
+
+        return adminGetProducts();
+
 
       case "adminSaveProduct":
+
         return saveProduct(
           args[0]
         );
 
+
       case "adminDeleteProduct":
+
         return deleteProduct(
           args[1]
         );
 
+
       case "adminGetOrders":
+
         return adminOrders();
 
+
       case "adminUpdateOrderItemStatus":
+
         return updateOrderItemStatus(
           args[1],
           args[2],
           args[3]
         );
 
+
       case "adminUpdateOrderStatus":
+
         return updateOrderStatus(
           args[1],
           args[2]
         );
 
+
       case "adminGetReviews":
+
         return adminReviews();
 
+
       case "adminUpdateReviewStatus":
+
         return updateReviewStatus(
           args[1],
           args[2]
         );
 
+
       case "adminNotifyCustomerReview":
+
         return notifyCustomerReview(
           args[1],
           args[2]
         );
 
+
       default:
+
         throw makeError(
           "Standalone backend function not implemented: " +
-            name
+          name
         );
     }
   }
 
-  // Immediate browser-compatible replacement for google.script.run.
-  // Existing UI calls are queued until Firebase modules finish loading.
-  const runner = {
-    _success: null,
-    _failure: null,
 
-    withSuccessHandler(fn) {
-      this._success = fn;
+  // ============================================================
+  // GOOGLE SCRIPT RUN COMPATIBILITY
+  // ============================================================
+
+  const runner = {
+
+    _success:
+      null,
+
+    _failure:
+      null,
+
+
+    withSuccessHandler(
+      callback
+    ) {
+
+      this._success =
+        callback;
+
       return this;
     },
 
-    withFailureHandler(fn) {
-      this._failure = fn;
+
+    withFailureHandler(
+      callback
+    ) {
+
+      this._failure =
+        callback;
+
       return this;
     }
   };
 
+
   window.google =
-    window.google || {};
+    window.google ||
+    {};
+
 
   window.google.script =
-    window.google.script || {};
+    window.google.script ||
+    {};
+
 
   window.google.script.run =
     new Proxy(
       runner,
       {
+
         get(
           target,
-          prop
+          property
         ) {
+
           if (
-            prop in target
+            property in
+            target
           ) {
-            return target[prop];
+
+            return target[
+              property
+            ];
           }
 
           return function () {
+
             const args =
               Array.from(
                 arguments
               );
 
-            const ok =
+            const success =
               target._success;
 
-            const fail =
+            const failure =
               target._failure;
 
-            // Reset handlers per invocation,
-            // matching google.script.run's behavior.
             target._success =
               null;
 
@@ -3028,23 +3989,41 @@
               .then(
                 () =>
                   dispatch(
-                    String(prop),
+                    String(
+                      property
+                    ),
                     args
                   )
               )
               .then(
-                v => {
-                  if (ok) {
-                    ok(v);
+                result => {
+
+                  if (
+                    success
+                  ) {
+
+                    success(
+                      result
+                    );
                   }
                 }
               )
               .catch(
-                e => {
-                  if (fail) {
-                    fail(e);
-                  } else {
-                    console.error(e);
+                error => {
+
+                  console.error(
+                    "McKenzie Firebase function error:",
+                    property,
+                    error
+                  );
+
+                  if (
+                    failure
+                  ) {
+
+                    failure(
+                      error
+                    );
                   }
                 }
               );
@@ -3055,9 +4034,41 @@
       }
     );
 
-  window.dispatchEvent(
-    new Event(
-      "mckenzie-firebase-ready"
+
+  // ============================================================
+  // READY EVENT
+  // ============================================================
+
+  READY
+    .then(
+      function () {
+
+        window.dispatchEvent(
+          new Event(
+            "mckenzie-firebase-ready"
+          )
+        );
+
+      }
     )
-  );
+    .catch(
+      function (error) {
+
+        console.error(
+          "McKenzie Firebase is unavailable:",
+          error
+        );
+
+        window.dispatchEvent(
+          new CustomEvent(
+            "mckenzie-firebase-error",
+            {
+              detail:
+                error
+            }
+          )
+        );
+      }
+    );
+
 })();
