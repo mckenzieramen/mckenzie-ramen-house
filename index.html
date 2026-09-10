@@ -6783,5 +6783,48 @@ document.addEventListener('DOMContentLoaded',function(){
   });
 })();
 </script>
+
+<style id="mckenzie-admin-launcher-style">
+#mckAdminLauncher{position:fixed;right:18px;bottom:18px;z-index:999990;padding:11px 15px;border:1px solid rgba(233,173,53,.7);border-radius:999px;background:#3a0709;color:#fff8e8;font:800 12px Arial,sans-serif;box-shadow:0 10px 30px rgba(0,0,0,.22);cursor:pointer}
+#mckAdminLauncher:hover{transform:translateY(-1px)}
+#mckAdminModal{display:none;position:fixed;inset:0;z-index:9999999;background:rgba(10,2,3,.78);backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px);padding:12px}
+#mckAdminModal.show{display:flex;align-items:center;justify-content:center}
+#mckAdminFrameBox{position:relative;width:min(1400px,100%);height:min(94vh,950px);background:#fff;border-radius:18px;overflow:hidden;box-shadow:0 30px 100px rgba(0,0,0,.45)}
+#mckAdminFrame{width:100%;height:100%;border:0;display:block;background:#fff}
+#mckAdminClose{position:absolute;right:10px;top:10px;z-index:3;width:38px;height:38px;border:0;border-radius:50%;background:#3a0709;color:#fff;font-size:24px;line-height:1;cursor:pointer;box-shadow:0 5px 18px rgba(0,0,0,.25)}
+@media(max-width:600px){#mckAdminLauncher{right:12px;bottom:12px}#mckAdminModal{padding:0}#mckAdminFrameBox{height:100vh;border-radius:0}}
+</style>
+
+
+<button id="mckAdminLauncher" type="button" aria-label="Open Admin">🔐 Admin</button>
+<div id="mckAdminModal" aria-hidden="true">
+  <div id="mckAdminFrameBox">
+    <button id="mckAdminClose" type="button" aria-label="Close Admin">×</button>
+    <iframe id="mckAdminFrame" title="McKenzie Ramen House Admin" loading="lazy"></iframe>
+  </div>
+</div>
+
+
+<script id="mck-admin-launcher-script">
+(function(){
+  const API = (typeof MCKENZIE_ORDER_API_URL !== 'undefined' && MCKENZIE_ORDER_API_URL) ? MCKENZIE_ORDER_API_URL : '';
+  const openBtn=document.getElementById('mckAdminLauncher');
+  const modal=document.getElementById('mckAdminModal');
+  const frame=document.getElementById('mckAdminFrame');
+  const closeBtn=document.getElementById('mckAdminClose');
+  if(!openBtn||!modal||!frame)return;
+  function openAdmin(){
+    if(!API){ alert('Admin connection is not configured.'); return; }
+    frame.src=API + (API.indexOf('?')>=0?'&':'?') + 'page=admin';
+    modal.classList.add('show'); modal.setAttribute('aria-hidden','false'); document.body.style.overflow='hidden';
+  }
+  function closeAdmin(){ modal.classList.remove('show'); modal.setAttribute('aria-hidden','true'); document.body.style.overflow=''; }
+  openBtn.addEventListener('click',openAdmin);
+  closeBtn.addEventListener('click',closeAdmin);
+  modal.addEventListener('click',function(e){if(e.target===modal)closeAdmin();});
+  document.addEventListener('keydown',function(e){if(e.key==='Escape'&&modal.classList.contains('show'))closeAdmin();});
+})();
+</script>
+
 </body>
 </html>
