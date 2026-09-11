@@ -575,6 +575,21 @@ async function login(){
   }
 })();
 
+function normalizeAvailability(value){
+  if(value===true || value===1) return true;
+  if(typeof value==='string'){
+    const v=value.trim().toLowerCase();
+    return v==='true' || v==='1' || v==='available' || v==='yes' || v==='on';
+  }
+  if(value && typeof value==='object'){
+    if(value.booleanValue===true) return true;
+    if(value.booleanValue===false) return false;
+    if(typeof value.stringValue==='string') return normalizeAvailability(value.stringValue);
+    if(typeof value.integerValue==='string') return normalizeAvailability(value.integerValue);
+  }
+  return false;
+}
+
 function loadProducts(afterLoad){
   run('adminGetProducts',[token],function(v,e){
     if(e||!v||!v.success){
@@ -582,7 +597,7 @@ function loadProducts(afterLoad){
       return;
     }
     products=(v.products||[]).map(function(p){
-      p.available=(p.available===true || p.available==='true' || p.available===1 || p.available==='1');
+      p.available=normalizeAvailability(p.available);
       p.image=p.image||'';
       return p;
     });
@@ -590,7 +605,7 @@ function loadProducts(afterLoad){
     if(typeof afterLoad==='function')afterLoad(products);
   });
 }
-function render(){const q=document.getElementById('search').value.toLowerCase();const list=products.filter(p=>(p.name+' '+p.category).toLowerCase().includes(q));document.getElementById('total').textContent=products.length;document.getElementById('available').textContent=products.filter(p=>p.available).length;document.getElementById('best').textContent=products.filter(p=>p.bestSeller).length;document.getElementById('new').textContent=products.filter(p=>p.newProduct).length;document.getElementById('products').innerHTML=list.length?list.map(p=>`<article class="product"><img src="${escAttr(p.image||'')}" onerror="this.style.visibility='hidden'" alt=""><div class="pbody">${p.bestSeller?'<span class="badge">BEST SELLER</span>':''}${p.newProduct?'<span class="badge">NEW</span>':''}<h3>${esc(p.name)}</h3><div class="price">₱${Number(p.price||0).toLocaleString()}</div><div class="meta">${esc(p.category)} · ${p.available?'Available':'Unavailable'}</div><div class="actions"><button class="edit" onclick="editProduct('${esc(p.id)}')">Edit</button><button class="del" onclick="deleteProduct('${esc(p.id)}')">Delete</button></div></div></article>`).join(''):'<div class="empty">No products found.</div>'; }
+function render(){const q=document.getElementById('search').value.toLowerCase();const list=products.filter(p=>(p.name+' '+p.category).toLowerCase().includes(q));document.getElementById('total').textContent=products.length;document.getElementById('available').textContent=products.filter(p=>normalizeAvailability(p.available)).length;document.getElementById('best').textContent=products.filter(p=>p.bestSeller).length;document.getElementById('new').textContent=products.filter(p=>p.newProduct).length;document.getElementById('products').innerHTML=list.length?list.map(p=>`<article class="product"><img src="${escAttr(p.image||'')}" onerror="this.style.visibility='hidden'" alt=""><div class="pbody">${p.bestSeller?'<span class="badge">BEST SELLER</span>':''}${p.newProduct?'<span class="badge">NEW</span>':''}<h3>${esc(p.name)}</h3><div class="price">₱${Number(p.price||0).toLocaleString()}</div><div class="meta">${esc(p.category)} · ${normalizeAvailability(p.available)?'Available':'Unavailable'}</div><div class="actions"><button class="edit" onclick="editProduct('${esc(p.id)}')">Edit</button><button class="del" onclick="deleteProduct('${esc(p.id)}')">Delete</button></div></div></article>`).join(''):'<div class="empty">No products found.</div>'; }
 function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
 function escAttr(s){return String(s??'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");}
 function setProductPreview(src){
@@ -606,7 +621,7 @@ function openModal(p=null){
   document.getElementById('name').value=p.name||'';
   document.getElementById('price').value=p.price??'';
   document.getElementById('category').value=p.category||'Ramen';
-  document.getElementById('available').value=p.available?'true':'false';
+  document.getElementById('available').value=normalizeAvailability(p.available!==undefined?p.available:(p.status!==undefined?p.status:p.availability))?'true':'false';
   document.getElementById('description').value=p.description||'';
   document.getElementById('bestSeller').checked=!!p.bestSeller;
   document.getElementById('newProduct').checked=!!p.newProduct;
@@ -668,7 +683,7 @@ async function saveProduct(){
       name,
       price:Number(price),
       category:document.getElementById('category').value,
-      available:document.getElementById('available').value==='true',
+      available:normalizeAvailability(document.getElementById('available').value),
       description:document.getElementById('description').value.trim(),
       bestSeller:document.getElementById('bestSeller').checked,
       newProduct:document.getElementById('newProduct').checked
@@ -682,7 +697,7 @@ async function saveProduct(){
     const saved=await new Promise((resolve,reject)=>run('adminSaveProduct',[data],(v,e)=>e?reject(new Error(e)):(!v||!v.success)?reject(new Error('Unable to save product.')):resolve(v)));
     if(saved && Array.isArray(saved.products)){
       products=(saved.products||[]).map(function(p){
-        p.available=(p.available===true || p.available==='true' || p.available===1 || p.available==='1');
+        p.available=normalizeAvailability(p.available);
         p.image=p.image||'';
         return p;
       });
