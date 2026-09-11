@@ -3671,6 +3671,34 @@ function switchCreateAccountToLogin() {
   openLoginModal();
 }
 
+const MCKENZIE_VERIFICATION_FUNCTION_BASE = "https://us-central1-mckenzie-ramen-house.cloudfunctions.net";
+
+async function mckenzieVerificationRequest_(endpoint, payload) {
+  const controller = new AbortController();
+  const timer = setTimeout(function(){ controller.abort(); }, 20000);
+  try {
+    const response = await fetch(MCKENZIE_VERIFICATION_FUNCTION_BASE + "/" + endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload || {}),
+      signal: controller.signal
+    });
+    let result = {};
+    try { result = await response.json(); } catch (_) {}
+    if (!response.ok || !result.success) {
+      throw new Error(result.message || "Verification service could not process the request.");
+    }
+    return result;
+  } catch (error) {
+    if (error && error.name === "AbortError") {
+      throw new Error("The verification service timed out. Please try again.");
+    }
+    throw error;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 function submitCreateAccountPopup(event) {
   event.preventDefault();
   const fullName = String(document.getElementById("createFullName").value || "").trim();
@@ -3696,32 +3724,28 @@ function submitCreateAccountPopup(event) {
 
   showLoginRamenLoader_();
 
-  google.script.run
-    .withSuccessHandler(function(result) {
-      if (result && result.success && result.verificationToken) {
-        try { localStorage.setItem("mckenziePendingVerification", JSON.stringify({ token: result.verificationToken, email: email })); } catch (error) {}
-        document.getElementById("createPassword").value = "";
-        document.getElementById("createConfirmPassword").value = "";
-        button.disabled = false;
-        button.textContent = "Create Account";
-        hideLoginRamenLoader_();
-        closeCreateAccountModal();
-        openEmailVerificationModal_(result.verificationToken, email);
-      } else {
-        hideLoginRamenLoader_();
-        msg(result && result.message ? result.message : "Unable to send verification code.");
-        button.disabled = false;
-        button.textContent = "Create Account";
-      }
-    })
-    .withFailureHandler(function(error) {
-      console.error("Verification request error:", error);
-      hideLoginRamenLoader_();
-      msg(error && error.message ? error.message : "Something went wrong. Please try again.");
-      button.disabled = false;
-      button.textContent = "Create Account";
-    })
-    .requestEmailVerification(fullName, email, username, password, mobile);
+  mckenzieVerificationRequest_("requestEmailVerification", {
+    fullName: fullName,
+    email: email,
+    username: username,
+    password: password,
+    mobile: mobile
+  }).then(function(result) {
+    try { localStorage.setItem("mckenziePendingVerification", JSON.stringify({ token: result.verificationToken, email: email })); } catch (error) {}
+    document.getElementById("createPassword").value = "";
+    document.getElementById("createConfirmPassword").value = "";
+    button.disabled = false;
+    button.textContent = "Create Account";
+    hideLoginRamenLoader_();
+    closeCreateAccountModal();
+    openEmailVerificationModal_(result.verificationToken, email);
+  }).catch(function(error) {
+    console.error("Verification request error:", error);
+    hideLoginRamenLoader_();
+    msg(error && error.message ? error.message : "Unable to send verification code.");
+    button.disabled = false;
+    button.textContent = "Create Account";
+  });
 }
 
 /* =========================================================
@@ -3786,32 +3810,26 @@ function verifyEmailCode_() {
 
   showLoginRamenLoader_();
 
-  google.script.run
-    .withSuccessHandler(function(result) {
-      if (result && result.success) {
-        hideLoginRamenLoader_();
-        if (message) { message.style.color = "#198754"; message.textContent = "Email verified! Your account has been created."; }
-        try { localStorage.removeItem("mckenziePendingVerification"); } catch (error) {}
-        setTimeout(function() {
-          closeEmailVerificationModal();
-          verificationToken_ = "";
-          openLoginModal();
-          const loginMessage = document.getElementById("popupLoginMessage");
-          if (loginMessage) { loginMessage.style.color = "#198754"; loginMessage.textContent = "Account created successfully. Please log in."; }
-          if (button) { button.disabled = false; button.textContent = "Verify Email"; }
-        }, 700);
-      } else {
-        hideLoginRamenLoader_();
-        if (message) { message.style.color = "#a51620"; message.textContent = result && result.message ? result.message : "Invalid verification code."; }
-        if (button) { button.disabled = false; button.textContent = "Verify Email"; }
-      }
-    })
-    .withFailureHandler(function(error) {
-      hideLoginRamenLoader_();
-      if (message) { message.style.color = "#a51620"; message.textContent = error && error.message ? error.message : "Verification failed. Please try again."; }
+  mckenzieVerificationRequest_("verifyEmailCode", {
+    token: verificationToken_,
+    code: code
+  }).then(function(result) {
+    hideLoginRamenLoader_();
+    if (message) { message.style.color = "#198754"; message.textContent = "Email verified! Your account has been created."; }
+    try { localStorage.removeItem("mckenziePendingVerification"); } catch (error) {}
+    setTimeout(function() {
+      closeEmailVerificationModal();
+      verificationToken_ = "";
+      openLoginModal();
+      const loginMessage = document.getElementById("popupLoginMessage");
+      if (loginMessage) { loginMessage.style.color = "#198754"; loginMessage.textContent = "Account created successfully. Please log in."; }
       if (button) { button.disabled = false; button.textContent = "Verify Email"; }
-    })
-    .verifyEmailCode(verificationToken_, code);
+    }, 700);
+  }).catch(function(error) {
+    hideLoginRamenLoader_();
+    if (message) { message.style.color = "#a51620"; message.textContent = error && error.message ? error.message : "Verification failed. Please try again."; }
+    if (button) { button.disabled = false; button.textContent = "Verify Email"; }
+  });
 }
 
 function resendVerificationCode_() {
@@ -3820,22 +3838,18 @@ function resendVerificationCode_() {
   if (!verificationToken_) { if (message) message.textContent = "Verification session expired. Please create the account again."; return; }
   if (button) { button.disabled = true; button.textContent = "Sending..."; }
   if (message) { message.style.color = "#a51620"; message.textContent = ""; }
-  google.script.run
-    .withSuccessHandler(function(result) {
-      if (result && result.success) {
-        hideLoginRamenLoader_();
-        if (message) { message.style.color = "#198754"; message.textContent = "A new verification code has been sent."; }
-        startVerificationCountdown_(600);
-        const input = document.getElementById("verificationCodeInput");
-        if (input) { input.value = ""; input.focus(); }
-      } else if (message) message.textContent = result && result.message ? result.message : "Unable to resend the code.";
-      if (button) { button.disabled = false; button.textContent = "Resend Code"; }
-    })
-    .withFailureHandler(function(error) {
-      if (message) message.textContent = error && error.message ? error.message : "Unable to resend the code.";
-      if (button) { button.disabled = false; button.textContent = "Resend Code"; }
-    })
-    .resendVerificationCode(verificationToken_);
+  mckenzieVerificationRequest_("resendVerificationCode", {
+    token: verificationToken_
+  }).then(function(result) {
+    if (message) { message.style.color = "#198754"; message.textContent = "A new verification code has been sent."; }
+    startVerificationCountdown_(600);
+    const input = document.getElementById("verificationCodeInput");
+    if (input) { input.value = ""; input.focus(); }
+    if (button) { button.disabled = false; button.textContent = "Resend Code"; }
+  }).catch(function(error) {
+    if (message) { message.style.color = "#a51620"; message.textContent = error && error.message ? error.message : "Unable to resend the code."; }
+    if (button) { button.disabled = false; button.textContent = "Resend Code"; }
+  });
 }
 
 
