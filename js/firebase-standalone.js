@@ -310,7 +310,7 @@
     const list = await getCollection("products");
     return list.filter(p => p.name).map(p => ({
       id:p.id, name:p.name, category:p.category || "Ramen", price:Number(p.price || 0),
-      image:p.image || "", description:p.description || "", available:p.available !== false,
+      image:p.image || "", description:p.description || "", available:p.available !== true,
       bestSeller:!!p.bestSeller, newProduct:!!p.newProduct
     }));
   }
