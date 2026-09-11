@@ -8,6 +8,11 @@
 
   <title>Mckenzie Ramen House</title>
 
+  <!-- Firebase standalone bridge for GitHub Pages. This creates the
+       google.script.run compatibility layer used by the existing customer UI. -->
+  <script src="js/firebase-config.js"></script>
+  <script type="module" src="js/firebase-standalone.js"></script>
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 
@@ -698,6 +703,7 @@ button {
 ========================================================= */
 
 .hero-logo {
+  background: transparent !important;
   width: min(390px, 48vw);
   max-height: 280px;
 
@@ -2503,7 +2509,7 @@ body.quick-loading {
 
     <img
       id="loaderRamenImage"
-      src=""
+      src="images/ramen-loading.png"
       alt="Preparing ramen"
       class="animate"
       decoding="async"
@@ -3088,8 +3094,9 @@ body.quick-loading {
     <img
       id="brandLogo"
       class="hero-logo"
+      src="images/mckenzie-logo.png"
       alt="Mckenzie Ramen House Logo"
-      style="display:none;">
+      style="display:block;background:transparent;">
 
 
     <h1 class="hero-title">
@@ -3372,8 +3379,9 @@ body.quick-loading {
   <img
     id="footerLogo"
     class="footer-logo"
+    src="images/mckenzie-logo.png"
     alt="Mckenzie Ramen House"
-    style="display:none;">
+    style="display:block;background:transparent;">
 
 
   <div class="footer-title">
@@ -3406,6 +3414,15 @@ body.quick-loading {
 <script>
 // Apps Script backend used by the customer site when this page is hosted on GitHub Pages.
 const MCKENZIE_ORDER_API_URL = "https://script.google.com/macros/s/AKfycbxHuXpTYPCSQ_Uj1-LqC7jAjGEcbQ8uKvwX3tmy_ZqOb_bvdFgvQ-IwTjumY713SuF8Hw/exec";
+
+/* =========================================================
+   GITHUB CUSTOMER BRAND ASSETS
+   These are the default high-resolution assets. Firebase brand
+   assets can still override them when saved from Admin Settings.
+========================================================= */
+const MCKENZIE_DEFAULT_LOGO = "images/mckenzie-logo.png";
+const MCKENZIE_DEFAULT_BACKGROUND = "images/mckenzie-background.jpg";
+const MCKENZIE_DEFAULT_LOADING = "images/ramen-loading.png";
 
 
 
@@ -5703,62 +5720,102 @@ function maybeClosePageLoader_() {
   }
 }
 
+/* =========================================================
+   INSTANT PUBLIC BRAND ASSETS
+   Reads the public brandAssets documents directly from Firestore.
+   This makes the logo/background/loading image available on the
+   customer homepage without opening Admin Settings first.
+========================================================= */
+const MCKENZIE_FIRESTORE_PUBLIC_BASE =
+  'https://firestore.googleapis.com/v1/projects/mckenzie-ramen-house/databases/(default)/documents/brandAssets/';
+
+function readPublicBrandAsset_(key) {
+  return fetch(MCKENZIE_FIRESTORE_PUBLIC_BASE + encodeURIComponent(key), {
+    method: 'GET',
+    cache: 'no-store'
+  }).then(function(response) {
+    if (!response.ok) return {};
+    return response.json();
+  }).then(function(doc) {
+    const fields = doc && doc.fields ? doc.fields : {};
+    function value(name) {
+      const f = fields[name];
+      return f && typeof f.stringValue === 'string' ? f.stringValue : '';
+    }
+    return {
+      logo: value('logo') || value('imageUrl'),
+      background: value('background') || value('imageUrl'),
+      loading: value('loading') || value('ramenLoadingImage') || value('imageUrl')
+    };
+  }).catch(function() { return {}; });
+}
+
+function loadPublicBrandAssetsImmediately_() {
+  Promise.all([
+    readPublicBrandAsset_('logo'),
+    readPublicBrandAsset_('background'),
+    readPublicBrandAsset_('loading')
+  ]).then(function(items) {
+    const assets = {
+      logo: items[0].logo || '',
+      background: items[1].background || '',
+      loading: items[2].loading || ''
+    };
+    if (assets.logo) {
+      applyBrandAssets_({logo: assets.logo});
+    }
+    if (assets.background) {
+      applyBrandAssets_({background: assets.background});
+    }
+    if (assets.loading) {
+      window.mckenziePublicLoadingImage = assets.loading;
+      const loaderImage = document.getElementById('loaderRamenImage');
+      if (loaderImage && loaderImage.src.indexOf(MCKENZIE_DEFAULT_LOADING) !== -1) {
+        const probe = new Image();
+        probe.onload = function() {
+          if (loaderImage && !window._pageLoaderState?.closed) {
+            loaderImage.src = assets.loading;
+          }
+        };
+        probe.src = assets.loading;
+      }
+    }
+    try {
+      localStorage.setItem('mckenzieBrandAssets', JSON.stringify(assets));
+    } catch (e) {}
+  });
+}
+
 function startHomepageRamenLoader_() {
   const img = document.getElementById('loaderRamenImage');
   if (!img) return;
 
-  /* Never show the old low-resolution embedded fallback.
-     The loader appears only after the real Products!I9 image is fully decoded. */
+  /* Show the local loading artwork immediately. It is never a broken image. */
+  img.src = MCKENZIE_DEFAULT_LOADING;
+  img.alt = 'McKenzie Ramen House loading';
+  img.style.display = 'block';
+  img.style.opacity = '1';
   img.classList.remove('animate', 'sipping', 'loader-ready');
-  img.style.display = 'none';
-  img.style.opacity = '0';
+  void img.offsetWidth;
+  img.classList.add('loader-ready', 'sipping');
+  markPageAssetReady_('loader');
 
-  const showClearI9_ = function(url) {
-    if (!url) return false;
-    const clear = new Image();
-    clear.decoding = 'async';
-    clear.onload = function() {
-      try {
-        img.src = clear.src;
+  /* If Admin has saved a custom loading image, replace the local image
+     as soon as the public Firebase document is available. */
+  readPublicBrandAsset_('loading').then(function(asset) {
+    const custom = asset && asset.loading ? asset.loading : '';
+    if (!custom) return;
+    const probe = new Image();
+    probe.onload = function() {
+      if (img && !(window._pageLoaderState && window._pageLoaderState.closed)) {
+        img.src = custom;
         img.style.display = 'block';
         img.style.opacity = '1';
-        img.classList.add('loader-ready', 'sipping');
-      } catch (e) {
-        console.warn('Unable to display I9 loader image:', e);
       }
     };
-    clear.onerror = function() {
-      console.warn('Products!I9 loader image failed to load.');
-    };
-    clear.src = String(url);
-    if (clear.complete && clear.naturalWidth > 0) clear.onload();
-    return true;
-  };
-
-  /* Use a cached I9 URL first when available, so repeat visits can show the
-     clear ramen almost immediately. */
-  try {
-    const cachedI9 = localStorage.getItem('mckenzieRamenLoaderI9');
-    if (cachedI9) showClearI9_(cachedI9);
-  } catch (e) {}
-
-  try {
-    google.script.run
-      .withSuccessHandler(function(url) {
-        if (url) {
-          try { localStorage.setItem('mckenzieRamenLoaderI9', String(url)); } catch (e) {}
-          showClearI9_(String(url));
-        }
-      })
-      .withFailureHandler(function(err) {
-        console.warn('I9 loader image unavailable.', err);
-      })
-      .getRamenLoadingImage();
-  } catch (e) {
-    console.warn('Unable to request Products!I9 loader image.', e);
-  }
-
-  markPageAssetReady_('loader');
+    probe.onerror = function() {};
+    probe.src = custom;
+  });
 }
 
 /* Safety only: never trap a customer forever if Google Apps Script itself fails. */
@@ -5852,80 +5909,75 @@ function getCachedProducts_() {
   } catch (e) { return null; }
 }
 
+function applyDefaultBrandAssets_() {
+  applyBrandAssets_({
+    logo: MCKENZIE_DEFAULT_LOGO,
+    background: MCKENZIE_DEFAULT_BACKGROUND
+  });
+}
+
 function loadBrandAssets() {
+  /* Always paint the local logo/background first so there is no broken
+     image while Firebase is loading. */
+  applyDefaultBrandAssets_();
+
   const cached = getCachedBrandAssets_();
   if (cached) applyBrandAssets_(cached);
 
-  google.script.run
-    .withSuccessHandler(function (assets) {
-      assets = assets || {};
-      applyBrandAssets_(assets);
-      try { localStorage.setItem('mckenzieBrandAssets', JSON.stringify(assets)); } catch (e) {}
+  /* Direct public Firestore read: the Admin branding documents are public-read. */
+  Promise.all([
+    readPublicBrandAsset_('logo'),
+    readPublicBrandAsset_('background'),
+    readPublicBrandAsset_('loading')
+  ]).then(function(items) {
+    const assets = {
+      logo: items[0].logo || '',
+      background: items[1].background || '',
+      loading: items[2].loading || ''
+    };
+    if (assets.logo) applyBrandAssets_({logo: assets.logo});
+    if (assets.background) applyBrandAssets_({background: assets.background});
+    if (assets.loading) window.mckenziePublicLoadingImage = assets.loading;
+    try { localStorage.setItem('mckenzieBrandAssets', JSON.stringify(assets)); } catch (e) {}
 
-      /* Apply URLs immediately so the browser can paint them while the ramen is visible. */
-      if (assets.logo) {
-        const logo = document.getElementById('brandLogo');
-        const footerLogo = document.getElementById('footerLogo');
-        const stickyLogo = document.getElementById('siteStickyLogo');
-        if (logo) { logo.src = assets.logo; logo.style.display = 'block'; }
-        if (footerLogo) { footerLogo.src = assets.logo; footerLogo.style.display = 'block'; }
-        if (stickyLogo) { stickyLogo.src = assets.logo; stickyLogo.classList.add('ready'); }
-      }
-
-      if (assets.background) {
-        const hero = document.getElementById('home');
-        const bg = 'url("' + String(assets.background).replace(/"/g, '\\"') + '")';
-        document.documentElement.style.setProperty('--hero-image', bg);
-        if (hero) {
-          hero.style.backgroundImage =
-            'linear-gradient(rgba(0,0,0,.38), rgba(0,0,0,.62)), ' + bg;
-          hero.style.backgroundSize = 'cover';
-          hero.style.backgroundPosition = 'center';
-          hero.style.backgroundRepeat = 'no-repeat';
-        }
-      }
-
-      if (assets.sakura) {
-        document.documentElement.style.setProperty(
-          '--sakura-image',
-          "url('" + String(assets.sakura).replace(/'/g, "\\'") + "')"
-        );
-      }
-
-      /* Preload the visible assets in parallel, but never block forever. */
-      const urls = [assets.logo, assets.background, assets.sakura].filter(Boolean);
-      if (!urls.length) {
-        markPageAssetReady_('brand');
-        return;
-      }
-
-      let remaining = urls.length;
-      let marked = false;
-      const done = function() {
-        remaining--;
-        if (remaining <= 0 && !marked) {
-          marked = true;
-          markPageAssetReady_('brand');
-        }
-      };
-
-      urls.forEach(function(url) {
-        preloadPageImage_(url, done);
-      });
-
-      /* If Google's image proxy is slow, don't make the customer stare at the loader. */
-      setTimeout(function() {
-        if (!marked) {
-          marked = true;
-          markPageAssetReady_('brand');
-        }
-      }, 3500);
-    })
-    .withFailureHandler(function(error) {
-      console.error('Brand assets error:', error);
+    const urls = [assets.logo, assets.background, assets.loading].filter(Boolean);
+    if (!urls.length) {
       markPageAssetReady_('brand');
-    })
-    .getBrandAssets();
+      return;
+    }
+    let remaining = urls.length;
+    let marked = false;
+    const done = function() {
+      remaining--;
+      if (remaining <= 0 && !marked) {
+        marked = true;
+        markPageAssetReady_('brand');
+      }
+    };
+    urls.forEach(function(url) { preloadPageImage_(url, done); });
+    setTimeout(function() {
+      if (!marked) {
+        marked = true;
+        markPageAssetReady_('brand');
+      }
+    }, 2500);
+  }).catch(function() {
+    markPageAssetReady_('brand');
+  });
+
+  /* Keep the existing Firebase compatibility path as a secondary source. */
+  try {
+    google.script.run
+      .withSuccessHandler(function (assets) {
+        assets = assets || {};
+        applyBrandAssets_(assets);
+        try { localStorage.setItem('mckenzieBrandAssets', JSON.stringify(assets)); } catch (e) {}
+      })
+      .withFailureHandler(function (error) {
+        console.warn('Firebase brand bridge fallback:', error);
+      })
+      .getBrandAssets();
+  } catch (e) {}
 }
 
 /* =========================================================
@@ -6497,10 +6549,37 @@ createPetals();
 updateHeroAccountButton_();
 updateStickyCartButton_();
 
-/* Show the I9 ramen loader while the actual page assets finish loading. */
+/* Show the ramen loader immediately, then wait for Firebase bridge readiness
+   before any legacy google.script.run call is made. This prevents
+   "google is not defined" on GitHub Pages during a cold load. */
 startHomepageRamenLoader_();
-loadBrandAssets();
-loadProducts();
+loadPublicBrandAssetsImmediately_();
+
+function startCustomerFirebase_() {
+  try {
+    loadBrandAssets();
+    loadProducts();
+  } catch (error) {
+    console.error("Customer Firebase startup error:", error);
+  }
+}
+
+if (window.MckenzieFirebaseReady && typeof window.MckenzieFirebaseReady.then === "function") {
+  window.MckenzieFirebaseReady.then(startCustomerFirebase_).catch(function(error) {
+    console.error("Firebase bridge failed; using local/default customer assets.", error);
+    applyDefaultBrandAssets_();
+    markPageAssetReady_('brand');
+  });
+} else {
+  window.addEventListener("mckenzie-firebase-ready", startCustomerFirebase_, { once: true });
+  setTimeout(function() {
+    if (!window.MckenzieFirebaseReady) {
+      console.warn("Firebase bridge did not load; customer page will use local/default assets.");
+      applyDefaultBrandAssets_();
+      markPageAssetReady_('brand');
+    }
+  }, 5000);
+}
 
 </script>
 
