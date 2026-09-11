@@ -288,7 +288,7 @@ button,input,select,textarea{font:inherit}
 
   <section class="panel">
     <div class="toolbar"><strong>Menu Products</strong><input class="search" id="search" placeholder="Search products..." oninput="render()"></div>
-    <div class="products" id="products"><div class="empty">Loading products…</div></div>
+    <div class="products" id="products"></div>
   </section>
 
   <section class="panel orders-wrap" id="ordersSection">
@@ -368,7 +368,7 @@ button,input,select,textarea{font:inherit}
     <div class="field"><label>Product Name *</label><input id="name" placeholder="e.g. Tonkotsu Ramen"></div>
     <div class="field"><label>Price *</label><input id="price" type="number" min="0" step="0.01" placeholder="329"></div>
     <div class="field"><label>Category *</label><select id="category"><option>Ramen</option><option>Rice Meals</option><option>Side Dishes</option><option>Drinks</option><option>Desserts</option><option>Promos</option></select></div>
-    <div class="field"><label>Status</label><select id="available"><option value="true">Available</option><option value="false">Unavailable</option></select></div>
+    <div class="field"><label>Status</label><select id="productAvailable"><option value="true">Available</option><option value="false">Unavailable</option></select></div>
     <div class="field full"><label>Product Photo <span id="productPhotoRequired" style="color:#a51620">*</span></label>
       <label class="upload" for="image"><strong>📷 Choose Product Photo</strong><small id="productPhotoHint">JPG, PNG, WEBP · Required for a new product. For edits, keep the existing photo or use × to remove/replace it.</small><input id="image" type="file" accept="image/png,image/jpeg,image/webp" hidden onchange="previewImage(event)"></label>
       <div class="brand-preview-wrap"><img id="preview" class="preview"><button id="removeProductImageBtn" class="image-remove-btn" type="button" onclick="removeProductImage()" aria-label="Remove product photo" hidden>×</button></div>
@@ -384,8 +384,8 @@ button,input,select,textarea{font:inherit}
 </div>
 </div>
 
-<script src="js/firebase-config.js?v=20260911-2"></script>
-<script src="js/firebase-standalone.js?v=20260911-2"></script>
+<script src="js/firebase-config.js"></script>
+<script src="js/firebase-standalone.js"></script>
 <script>
 /* McKenzie Ramen House — GitHub/Firebase Admin UI */
 (function(){
@@ -564,22 +564,8 @@ async function login(){
   }
 })();
 
-function loadProducts(afterLoad){
-  run('adminGetProducts',[token],function(v,e){
-    if(e||!v||!v.success){
-      if(token)alert(e||'Unable to load products.');
-      return;
-    }
-    products=(v.products||[]).map(function(p){
-      p.available=(p.available===true || p.available==='true' || p.available===1 || p.available==='1');
-      p.image=p.image||'';
-      return p;
-    });
-    render();
-    if(typeof afterLoad==='function')afterLoad(products);
-  });
-}
-function render(){const q=document.getElementById('search').value.toLowerCase();const list=products.filter(p=>(p.name+' '+p.category).toLowerCase().includes(q));document.getElementById('total').textContent=products.length;document.getElementById('available').textContent=products.filter(p=>p.available).length;document.getElementById('best').textContent=products.filter(p=>p.bestSeller).length;document.getElementById('new').textContent=products.filter(p=>p.newProduct).length;document.getElementById('products').innerHTML=list.length?list.map(p=>`<article class="product"><img src="${escAttr(p.image||'')}" onerror="this.style.visibility='hidden'" alt=""><div class="pbody">${p.bestSeller?'<span class="badge">BEST SELLER</span>':''}${p.newProduct?'<span class="badge">NEW</span>':''}<h3>${esc(p.name)}</h3><div class="price">₱${Number(p.price||0).toLocaleString()}</div><div class="meta">${esc(p.category)} · ${p.available?'Available':'Unavailable'}</div><div class="actions"><button class="edit" onclick="editProduct('${esc(p.id)}')">Edit</button><button class="del" onclick="deleteProduct('${esc(p.id)}')">Delete</button></div></div></article>`).join(''):'<div class="empty">No products found.</div>'; }
+function loadProducts(){run('adminGetProducts',[token],function(v,e){if(e||!v||!v.success){if(token)alert(e||'Unable to load products.');return;}products=(v.products||[]).map(function(p){p.available=(p.available===true || p.available==='true' || p.available===1 || p.available==='1');return p;});render();});}
+function render(){const q=document.getElementById('search').value.toLowerCase();const list=products.filter(p=>(p.name+' '+p.category).toLowerCase().includes(q));document.getElementById('total').textContent=products.length;document.getElementById('available').textContent=products.filter(p=>p.available).length;document.getElementById('best').textContent=products.filter(p=>p.bestSeller).length;document.getElementById('new').textContent=products.filter(p=>p.newProduct).length;document.getElementById('products').innerHTML=list.length?list.map(p=>`<article class="product"><img src="${p.image||''}" onerror="this.style.visibility='hidden'" alt=""><div class="pbody">${p.bestSeller?'<span class="badge">BEST SELLER</span>':''}${p.newProduct?'<span class="badge">NEW</span>':''}<h3>${esc(p.name)}</h3><div class="price">₱${Number(p.price||0).toLocaleString()}</div><div class="meta">${esc(p.category)} · ${p.available?'Available':'Unavailable'}</div><div class="actions"><button class="edit" onclick="editProduct('${esc(p.id)}')">Edit</button><button class="del" onclick="deleteProduct('${esc(p.id)}')">Delete</button></div></div></article>`).join(''):'<div class="empty">No products found.</div>'; }
 function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
 function escAttr(s){return String(s??'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");}
 function setProductPreview(src){
@@ -595,7 +581,7 @@ function openModal(p=null){
   document.getElementById('name').value=p.name||'';
   document.getElementById('price').value=p.price??'';
   document.getElementById('category').value=p.category||'Ramen';
-  document.getElementById('available').value=p.available?'true':'false';
+  document.getElementById('productAvailable').value=p.available?'true':'false';
   document.getElementById('description').value=p.description||'';
   document.getElementById('bestSeller').checked=!!p.bestSeller;
   document.getElementById('newProduct').checked=!!p.newProduct;
@@ -657,7 +643,7 @@ async function saveProduct(){
       name,
       price:Number(price),
       category:document.getElementById('category').value,
-      available:document.getElementById('available').value==='true',
+      available:document.getElementById('productAvailable').value==='true',
       description:document.getElementById('description').value.trim(),
       bestSeller:document.getElementById('bestSeller').checked,
       newProduct:document.getElementById('newProduct').checked
@@ -668,15 +654,7 @@ async function saveProduct(){
     }else if(removeProductImageFlag){
       data.image='';
     }
-    const saved=await new Promise((resolve,reject)=>run('adminSaveProduct',[data],(v,e)=>e?reject(new Error(e)):(!v||!v.success)?reject(new Error('Unable to save product.')):resolve(v)));
-    if(saved && Array.isArray(saved.products)){
-      products=(saved.products||[]).map(function(p){
-        p.available=(p.available===true || p.available==='true' || p.available===1 || p.available==='1');
-        p.image=p.image||'';
-        return p;
-      });
-      render();
-    }
+    await new Promise((resolve,reject)=>run('adminSaveProduct',[data],(v,e)=>e?reject(new Error(e)):(!v||!v.success)?reject(new Error('Unable to save product.')):resolve(v)));
     closeModal();
     loadProducts();
     showCenteredUpdate('Product Updated','The product was saved successfully.');
