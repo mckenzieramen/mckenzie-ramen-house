@@ -207,7 +207,7 @@ button,input,select,textarea{font:inherit}
 </style>
 
 <style id="brand-settings-style">
-.settings-wrap{display:none}.settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}.settings-card{background:#fff;border:1px solid var(--line);border-radius:17px;padding:22px}.settings-card h3{margin:0 0 6px;font-family:'Cormorant Garamond',serif;font-size:28px;color:#60151f}.settings-card p{margin:0 0 16px;color:var(--muted);font-size:12px}.brand-upload{border:2px dashed #d8c4b7;border-radius:14px;padding:15px;text-align:center;background:#fffaf5;cursor:pointer}.brand-upload input{display:none}.brand-preview{display:none;width:100%;height:210px;object-fit:contain;border:1px solid var(--line);border-radius:12px;background:#fff;margin-top:12px}.background-preview{object-fit:cover}.settings-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:18px}.settings-save{border:0;background:var(--red);color:#fff;padding:11px 20px;border-radius:10px;font-weight:800;cursor:pointer}.settings-save:disabled{opacity:.55;cursor:wait}.settings-msg{font-size:12px;color:#23824a;margin-top:10px;min-height:18px}.settings-note{margin-top:14px;padding:11px 13px;background:#fff7ec;border:1px solid var(--line);border-radius:10px;font-size:11px;color:#756965;line-height:1.5}.settings-current{font-size:10px;color:#756965;margin-top:7px;word-break:break-all}@media(max-width:800px){.settings-grid{grid-template-columns:1fr}}
+.settings-wrap{display:none}.settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}.settings-card{background:#fff;border:1px solid var(--line);border-radius:17px;padding:22px}.settings-card h3{margin:0 0 6px;font-family:'Cormorant Garamond',serif;font-size:28px;color:#60151f}.settings-card p{margin:0 0 16px;color:var(--muted);font-size:12px}.brand-upload{border:2px dashed #d8c4b7;border-radius:14px;padding:15px;text-align:center;background:#fffaf5;cursor:pointer}.brand-upload input{display:none}.brand-preview{display:none;width:100%;height:210px;object-fit:contain;border:1px solid var(--line);border-radius:12px;background:#fff;margin-top:12px}.background-preview{object-fit:cover}.brand-preview-wrap{position:relative;margin-top:12px}.brand-preview-wrap .brand-preview{margin-top:0}.image-remove-btn{position:absolute;top:8px;right:8px;width:32px;height:32px;border:0;border-radius:50%;background:#b91e35;color:#fff;font-size:21px;line-height:32px;text-align:center;cursor:pointer;box-shadow:0 5px 14px rgba(0,0,0,.22);z-index:2}.image-remove-btn:hover{background:#8e1528}.image-remove-btn[hidden]{display:none!important}.upload.has-image{border-color:#b91e35;background:#fff7f8}.settings-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:18px}.settings-save{border:0;background:var(--red);color:#fff;padding:11px 20px;border-radius:10px;font-weight:800;cursor:pointer}.settings-save:disabled{opacity:.55;cursor:wait}.settings-msg{font-size:12px;color:#23824a;margin-top:10px;min-height:18px}.settings-note{margin-top:14px;padding:11px 13px;background:#fff7ec;border:1px solid var(--line);border-radius:10px;font-size:11px;color:#756965;line-height:1.5}.settings-current{font-size:10px;color:#756965;margin-top:7px;word-break:break-all}@media(max-width:800px){.settings-grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -325,7 +325,7 @@ button,input,select,textarea{font:inherit}
           <small>JPG, PNG, or WEBP</small>
           <input id="brandLogoFile" type="file" accept="image/png,image/jpeg,image/webp">
         </label>
-        <img id="brandLogoPreview" class="brand-preview" alt="Website logo preview">
+        <div class="brand-preview-wrap"><img id="brandLogoPreview" class="brand-preview" alt="Website logo preview"><button id="removeBrandLogoBtn" class="image-remove-btn" type="button" onclick="removeBrandAsset('logo')" aria-label="Remove logo" hidden>×</button></div>
         <div id="brandLogoCurrent" class="settings-current"></div>
       </div>
       <div class="settings-card">
@@ -336,7 +336,7 @@ button,input,select,textarea{font:inherit}
           <small>JPG, PNG, or WEBP</small>
           <input id="brandBackgroundFile" type="file" accept="image/png,image/jpeg,image/webp">
         </label>
-        <img id="brandBackgroundPreview" class="brand-preview background-preview" alt="Website background preview">
+        <div class="brand-preview-wrap"><img id="brandBackgroundPreview" class="brand-preview background-preview" alt="Website background preview"><button id="removeBrandBackgroundBtn" class="image-remove-btn" type="button" onclick="removeBrandAsset('background')" aria-label="Remove background" hidden>×</button></div>
         <div id="brandBackgroundCurrent" class="settings-current"></div>
       </div>
     </div>
@@ -359,7 +359,7 @@ button,input,select,textarea{font:inherit}
     <div class="field"><label>Status</label><select id="available"><option value="true">Available</option><option value="false">Unavailable</option></select></div>
     <div class="field full"><label>Product Photo *</label>
       <label class="upload" for="image"><strong>📷 Choose Product Photo</strong><small>JPG, PNG, WEBP · The owner uploads the actual image here.</small><input id="image" type="file" accept="image/png,image/jpeg,image/webp" hidden onchange="previewImage(event)"></label>
-      <img id="preview" class="preview">
+      <div class="brand-preview-wrap"><img id="preview" class="preview"><button id="removeProductImageBtn" class="image-remove-btn" type="button" onclick="removeProductImage()" aria-label="Remove product photo" hidden>×</button></div>
     </div>
     <div class="field full"><label>Description</label><textarea id="description" placeholder="Describe the ramen..."></textarea></div>
     <div class="field full"><label>Product Labels</label><div class="checks">
@@ -381,7 +381,8 @@ button,input,select,textarea{font:inherit}
   window.alert=function(message){try{if(typeof window.showAdminToast==='function')window.showAdminToast('⚠ Notice',String(message||''));else nativeAlert(message);}catch(e){}};
 })();
 let token=sessionStorage.getItem('mck_admin_token')||'';
-let products=[]; let selectedImage=null; let editing=null;
+let products=[]; let selectedImage=null; let editing=null; let removeProductImageFlag=false;
+let removeBrandLogoFlag=false; let removeBrandBackgroundFlag=false;
 let orders=[]; let reviews=[];
 let lastOrderIds=new Set(); let orderPollTimer=null; let firstOrderLoad=true;
 const savingOrderItems=new Set(); const savingOrderStatuses=new Set();
@@ -555,12 +556,70 @@ function loadProducts(){run('adminGetProducts',[token],function(v,e){if(e||!v||!
 function render(){const q=document.getElementById('search').value.toLowerCase();const list=products.filter(p=>(p.name+' '+p.category).toLowerCase().includes(q));document.getElementById('total').textContent=products.length;document.getElementById('available').textContent=products.filter(p=>p.available).length;document.getElementById('best').textContent=products.filter(p=>p.bestSeller).length;document.getElementById('new').textContent=products.filter(p=>p.newProduct).length;document.getElementById('products').innerHTML=list.length?list.map(p=>`<article class="product"><img src="${p.image||''}" onerror="this.style.visibility='hidden'" alt=""><div class="pbody">${p.bestSeller?'<span class="badge">BEST SELLER</span>':''}${p.newProduct?'<span class="badge">NEW</span>':''}<h3>${esc(p.name)}</h3><div class="price">₱${Number(p.price||0).toLocaleString()}</div><div class="meta">${esc(p.category)} · ${p.available?'Available':'Unavailable'}</div><div class="actions"><button class="edit" onclick="editProduct('${esc(p.id)}')">Edit</button><button class="del" onclick="deleteProduct('${esc(p.id)}')">Delete</button></div></div></article>`).join(''):'<div class="empty">No products found.</div>'; }
 function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
 function escAttr(s){return String(s??'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");}
-function openModal(p=null){editing=p;p=p||{};document.getElementById('modal').classList.add('open');document.getElementById('modalTitle').textContent=p.id?'Edit Product':'Add New Product';document.getElementById('productId').value=p.id||'';document.getElementById('name').value=p.name||'';document.getElementById('price').value=p.price??'';document.getElementById('category').value=p.category||'Ramen';document.getElementById('available').value=p.available?'true':'false';document.getElementById('description').value=p.description||'';document.getElementById('bestSeller').checked=!!p.bestSeller;document.getElementById('newProduct').checked=!!p.newProduct;selectedImage=null;document.getElementById('image').value='';const pr=document.getElementById('preview');pr.src=p.image||'';pr.style.display=p.image?'block':'none';document.getElementById('saveMsg').textContent='';}
+function setProductPreview(src){
+  const pr=document.getElementById('preview'), btn=document.getElementById('removeProductImageBtn');
+  if(pr){pr.src=src||'';pr.style.display=src?'block':'none';}
+  if(btn)btn.hidden=!src;
+}
+function openModal(p=null){
+  editing=p;p=p||{};
+  document.getElementById('modal').classList.add('open');
+  document.getElementById('modalTitle').textContent=p.id?'Edit Product':'Add New Product';
+  document.getElementById('productId').value=p.id||'';
+  document.getElementById('name').value=p.name||'';
+  document.getElementById('price').value=p.price??'';
+  document.getElementById('category').value=p.category||'Ramen';
+  document.getElementById('available').value=p.available?'true':'false';
+  document.getElementById('description').value=p.description||'';
+  document.getElementById('bestSeller').checked=!!p.bestSeller;
+  document.getElementById('newProduct').checked=!!p.newProduct;
+  selectedImage=null;
+  removeProductImageFlag=false;
+  document.getElementById('image').value='';
+  setProductPreview(p.image||'');
+  document.getElementById('saveMsg').textContent=p.image?'Current product photo is loaded. You can keep it, replace it, or click × to remove it.':'';
+}
 function closeModal(){document.getElementById('modal').classList.remove('open')}
 function editProduct(id){const p=products.find(x=>String(x.id)===String(id));if(p)openModal(p)}
-function previewImage(e){const file=e.target.files[0];if(!file)return;if(file.size>6*1024*1024){alert('Please use an image smaller than 6 MB.');e.target.value='';return}selectedImage=file;const r=new FileReader();r.onload=()=>{const p=document.getElementById('preview');p.src=r.result;p.style.display='block'};r.readAsDataURL(file)}
+function previewImage(e){
+  const file=e.target.files&&e.target.files[0];
+  if(!file)return;
+  if(file.size>6*1024*1024){alert('Please use an image smaller than 6 MB.');e.target.value='';return}
+  selectedImage=file;
+  removeProductImageFlag=false;
+  const r=new FileReader();
+  r.onload=()=>setProductPreview(r.result);
+  r.readAsDataURL(file);
+}
+function removeProductImage(){
+  selectedImage=null;
+  removeProductImageFlag=true;
+  const input=document.getElementById('image');if(input)input.value='';
+  setProductPreview('');
+  document.getElementById('saveMsg').textContent='Product photo removed. Choose a new photo if you want to replace it, then save.';
+}
 function fileData(file){return new Promise((resolve,reject)=>{if(!file)return resolve(null);const r=new FileReader();r.onload=()=>resolve({name:file.name,type:file.type,base64:String(r.result).split(',')[1]});r.onerror=reject;r.readAsDataURL(file)})}
-async function saveProduct(){const name=document.getElementById('name').value.trim(),price=document.getElementById('price').value;if(!name||price===''){document.getElementById('saveMsg').textContent='Product name and price are required.';return}document.getElementById('saveMsg').textContent='Saving product and uploading image...';const image=await fileData(selectedImage);const data={token,id:document.getElementById('productId').value,name,price:Number(price),category:document.getElementById('category').value,available:document.getElementById('available').value==='true',description:document.getElementById('description').value.trim(),bestSeller:document.getElementById('bestSeller').checked,newProduct:document.getElementById('newProduct').checked,image};run('adminSaveProduct',[data],function(v,e){if(e||!v||!v.success){document.getElementById('saveMsg').textContent=e||'Unable to save product.';return}closeModal();loadProducts();});}
+async function clearProductImageInFirestore(id){
+  const idToken=token||sessionStorage.getItem('mck_admin_token')||'';
+  if(!idToken||!id)return;
+  const url='https://firestore.googleapis.com/v1/projects/mckenzie-ramen-house/databases/(default)/documents/products/'+encodeURIComponent(String(id))+'?updateMask.fieldPaths=image';
+  const r=await fetch(url,{method:'PATCH',headers:{'Authorization':'Bearer '+idToken,'Content-Type':'application/json'},body:JSON.stringify({fields:{image:{stringValue:''}}})});
+  if(!r.ok){let t=await r.text();let d={};try{d=JSON.parse(t)}catch(e){};throw new Error(d.error&&d.error.message?d.error.message:'Unable to remove the product photo.')}
+}
+async function saveProduct(){
+  const name=document.getElementById('name').value.trim(),price=document.getElementById('price').value;
+  if(!name||price===''){document.getElementById('saveMsg').textContent='Product name and price are required.';return}
+  const saveMsg=document.getElementById('saveMsg');
+  saveMsg.textContent=removeProductImageFlag?'Saving product and removing photo…':'Saving product…';
+  try{
+    const image=await fileData(selectedImage);
+    const id=document.getElementById('productId').value;
+    const data={token,id,name,price:Number(price),category:document.getElementById('category').value,available:document.getElementById('available').value==='true',description:document.getElementById('description').value.trim(),bestSeller:document.getElementById('bestSeller').checked,newProduct:document.getElementById('newProduct').checked,image};
+    const result=await new Promise((resolve,reject)=>run('adminSaveProduct',[data],(v,e)=>e?reject(new Error(e)):(!v||!v.success)?reject(new Error('Unable to save product.')):resolve(v)));
+    if(removeProductImageFlag&&id)await clearProductImageInFirestore(id);
+    closeModal();loadProducts();
+  }catch(e){saveMsg.textContent=e&&e.message?e.message:String(e)}
+}
 function deleteProduct(id){if(!confirm('Delete this product?'))return;run('adminDeleteProduct',[token,id],function(v,e){if(e||!v||!v.success){alert(e||'Delete failed.');return}loadProducts()})}
 
 function showSection(section){const productsPanel=document.querySelector('.main > .panel:not(#ordersSection):not(#reviewsSection):not(#settingsSection)'),productsStats=document.querySelector('.main > .stats'),productsTop=document.querySelector('.main > .top'),ordersSection=document.getElementById('ordersSection'),reviewsSection=document.getElementById('reviewsSection'),settingsSection=document.getElementById('settingsSection'),navProducts=document.getElementById('navProducts'),navOrders=document.getElementById('navOrders'),navReviews=document.getElementById('navReviews'),navSettings=document.getElementById('navSettings');const isOrders=section==='orders',isReviews=section==='reviews',isSettings=section==='settings';if(productsPanel)productsPanel.style.display=(isOrders||isReviews||isSettings)?'none':'';if(productsStats)productsStats.style.display=(isOrders||isReviews||isSettings)?'none':'';if(productsTop)productsTop.style.display=(isOrders||isReviews||isSettings)?'none':'';if(ordersSection)ordersSection.style.display=isOrders?'block':'none';if(reviewsSection)reviewsSection.style.display=isReviews?'block':'none';if(settingsSection)settingsSection.style.display=isSettings?'block':'none';if(navProducts)navProducts.classList.toggle('active',!isOrders&&!isReviews&&!isSettings);if(navOrders)navOrders.classList.toggle('active',isOrders);if(navReviews)navReviews.classList.toggle('active',isReviews);if(navSettings)navSettings.classList.toggle('active',isSettings);if(isOrders)loadOrders();if(isReviews)loadReviews();if(isSettings)loadBrandAssets();}
@@ -569,55 +628,73 @@ function showSection(section){const productsPanel=document.querySelector('.main 
 // WEBSITE BRANDING
 // ============================================================
 let selectedBrandLogo=null;let selectedBrandBackground=null;let currentBrandAssets={};
-function previewBrandFile(file,previewId){if(!file)return;if(file.size>6*1024*1024){alert('Please use an image smaller than 6 MB.');return}const r=new FileReader();r.onload=function(){const img=document.getElementById(previewId);if(img){img.src=r.result;img.style.display='block';}};r.readAsDataURL(file);}
+
+function previewBrandFile(file,id){const img=document.getElementById(id);if(!img)return;if(!file){img.src='';img.style.display='none';return}const r=new FileReader();r.onload=function(){img.src=r.result;img.style.display='block'};r.readAsDataURL(file)}
+function updateBrandRemoveButtons(){
+  const logo=currentBrandAssets.logo||currentBrandAssets.logoUrl||'';
+  const bg=currentBrandAssets.background||currentBrandAssets.backgroundUrl||'';
+  const lp=document.getElementById('brandLogoPreview'),bp=document.getElementById('brandBackgroundPreview');
+  const lbtn=document.getElementById('removeBrandLogoBtn'),bbtn=document.getElementById('removeBrandBackgroundBtn');
+  if(lbtn)lbtn.hidden=!(selectedBrandLogo||(!removeBrandLogoFlag&&logo));
+  if(bbtn)bbtn.hidden=!(selectedBrandBackground||(!removeBrandBackgroundFlag&&bg));
+  const lf=document.getElementById('brandLogoFile'),bf=document.getElementById('brandBackgroundFile');
+  if(lf)lf.closest('.brand-upload')?.classList.toggle('has-image',!!(selectedBrandLogo||(!removeBrandLogoFlag&&logo)));
+  if(bf)bf.closest('.brand-upload')?.classList.toggle('has-image',!!(selectedBrandBackground||(!removeBrandBackgroundFlag&&bg)));
+}
 function loadBrandAssets(){
   const msg=document.getElementById('brandAssetsMsg');if(msg)msg.textContent='Loading current website branding…';
-  // Read through the Firebase bridge. The revised bridge exposes getBrandAssets.
   run('getBrandAssets',[],function(v,e){
     if(e){if(msg)msg.textContent='Unable to load current branding: '+e;return;}
     currentBrandAssets=v||{};
+    removeBrandLogoFlag=false;removeBrandBackgroundFlag=false;selectedBrandLogo=null;selectedBrandBackground=null;
     const logo=currentBrandAssets.logo||currentBrandAssets.logoUrl||'';
     const bg=currentBrandAssets.background||currentBrandAssets.backgroundUrl||'';
     const lp=document.getElementById('brandLogoPreview'),bp=document.getElementById('brandBackgroundPreview');
     const lc=document.getElementById('brandLogoCurrent'),bc=document.getElementById('brandBackgroundCurrent');
     if(lp){lp.src=logo;lp.style.display=logo?'block':'none';}
     if(bp){bp.src=bg;bp.style.display=bg?'block':'none';}
-    const sidebarLogo=document.getElementById('adminSidebarLogo');
-    const loginLogo=document.getElementById('adminLoginLogo');
+    const sidebarLogo=document.getElementById('adminSidebarLogo'),loginLogo=document.getElementById('adminLoginLogo');
     const fallbackLogo='images/mckenzie-logo.png';
-    if(sidebarLogo)sidebarLogo.src=logo||fallbackLogo;
-    if(loginLogo)loginLogo.src=logo||fallbackLogo;
-    if(lc)lc.textContent=logo?'Current logo saved in Firebase.':'Using local logo. Upload a new logo to replace it.';
-    if(bc)bc.textContent=bg?'Current background saved in Firebase.':'No background saved yet.';
-    if(msg)msg.textContent='';
+    if(sidebarLogo)sidebarLogo.src=logo||fallbackLogo;if(loginLogo)loginLogo.src=logo||fallbackLogo;
+    if(lc)lc.textContent=logo?'Current logo saved in Firebase. Click × to remove it or choose a new one.':'No custom logo saved. The local logo is being used.';
+    if(bc)bc.textContent=bg?'Current background saved in Firebase. Click × to remove it or choose a new one.':'No custom background saved yet.';
+    updateBrandRemoveButtons();if(msg)msg.textContent='';
   });
 }
-function compressBrandImage(file,maxSide,quality){return new Promise(function(resolve,reject){if(!file)return resolve('');const r=new FileReader();r.onload=function(){const img=new Image();img.onload=function(){try{const scale=Math.min(1,maxSide/Math.max(img.width||1,img.height||1));const c=document.createElement('canvas');c.width=Math.max(1,Math.round((img.width||1)*scale));c.height=Math.max(1,Math.round((img.height||1)*scale));const ctx=c.getContext('2d',{alpha:false});ctx.fillStyle='#fff';ctx.fillRect(0,0,c.width,c.height);ctx.drawImage(img,0,0,c.width,c.height);let q=quality||.72;let out=c.toDataURL('image/jpeg',q);while(out.length>700000&&q>.35){q-=.06;out=c.toDataURL('image/jpeg',q)}if(out.length>360000)reject(new Error('Image is still too large after compression. Please choose a smaller image.'));else resolve(out)}catch(e){reject(e)}};img.onerror=function(){reject(new Error('Unable to read the selected image.'))};img.src=r.result};r.onerror=reject;r.readAsDataURL(file)})}
-function saveBrandAssets(){
-  const btn=document.getElementById('saveBrandAssetsBtn'),msg=document.getElementById('brandAssetsMsg');
-  if(btn){btn.disabled=true;btn.textContent='Saving Branding…'}if(msg)msg.textContent='Preparing images…';
-  Promise.all([compressBrandImage(selectedBrandLogo,1400,.76),compressBrandImage(selectedBrandBackground,1600,.68)]).then(function(vals){
-    const logo=vals[0]||currentBrandAssets.logo||currentBrandAssets.logoUrl||'';const background=vals[1]||currentBrandAssets.background||currentBrandAssets.backgroundUrl||'';
-    if(!logo&&!background)throw new Error('Please choose a logo or background image first.');
-    if(msg)msg.textContent='Saving to Firebase…';
-    const idToken=token||sessionStorage.getItem('mck_admin_token')||'';
-    if(!idToken)throw new Error('Admin session expired. Please log in again.');
-    const fields={};
-    if(logo)fields.logo={stringValue:logo};
-    if(background)fields.background={stringValue:background};
-    fields.updatedAt={stringValue:new Date().toISOString()};
-    fetch('https://firestore.googleapis.com/v1/projects/mckenzie-ramen-house/databases/(default)/documents/brandAssets/main',{
-      method:'PATCH',
-      headers:{'Authorization':'Bearer '+idToken,'Content-Type':'application/json'},
-      body:JSON.stringify({fields:fields})
-    }).then(function(r){return r.text().then(function(t){let data={};try{data=t?JSON.parse(t):{}}catch(e){}if(!r.ok)throw new Error(data.error&&data.error.message?data.error.message:('Firebase returned HTTP '+r.status));return data;});}).then(function(){
-      currentBrandAssets={logo:logo,background:background};
-      if(msg)msg.textContent='✓ Website logo/background saved successfully.';
-      loadBrandAssets();if(btn){btn.disabled=false;btn.textContent='Save Website Branding'}
-    }).catch(function(e){if(msg)msg.textContent=e&&e.message?e.message:String(e);if(btn){btn.disabled=false;btn.textContent='Save Website Branding'}});
-  }).catch(function(e){if(msg)msg.textContent=e&&e.message?e.message:String(e);if(btn){btn.disabled=false;btn.textContent='Save Website Branding'}});
+function removeBrandAsset(kind){
+  if(kind==='logo'){selectedBrandLogo=null;removeBrandLogoFlag=true;const f=document.getElementById('brandLogoFile');if(f)f.value='';const p=document.getElementById('brandLogoPreview');if(p){p.src='';p.style.display='none';}const b=document.getElementById('removeBrandLogoBtn');if(b)b.hidden=true;}
+  if(kind==='background'){selectedBrandBackground=null;removeBrandBackgroundFlag=true;const f=document.getElementById('brandBackgroundFile');if(f)f.value='';const p=document.getElementById('brandBackgroundPreview');if(p){p.src='';p.style.display='none';}const b=document.getElementById('removeBrandBackgroundBtn');if(b)b.hidden=true;}
+  const msg=document.getElementById('brandAssetsMsg');if(msg)msg.textContent=(kind==='logo'?'Logo':'Background')+' marked for removal. Click Save Website Branding to apply.';
 }
-(function(){const lf=document.getElementById('brandLogoFile'),bf=document.getElementById('brandBackgroundFile');if(lf)lf.addEventListener('change',function(){selectedBrandLogo=this.files&&this.files[0]?this.files[0]:null;previewBrandFile(selectedBrandLogo,'brandLogoPreview')});if(bf)bf.addEventListener('change',function(){selectedBrandBackground=this.files&&this.files[0]?this.files[0]:null;previewBrandFile(selectedBrandBackground,'brandBackgroundPreview')});})();
+function compressBrandImage(file,maxSide,quality){return new Promise(function(resolve,reject){if(!file)return resolve('');const r=new FileReader();r.onload=function(){const img=new Image();img.onload=function(){try{const scale=Math.min(1,maxSide/Math.max(img.width||1,img.height||1));const c=document.createElement('canvas');c.width=Math.max(1,Math.round((img.width||1)*scale));c.height=Math.max(1,Math.round((img.height||1)*scale));const ctx=c.getContext('2d',{alpha:false});ctx.fillStyle='#fff';ctx.fillRect(0,0,c.width,c.height);ctx.drawImage(img,0,0,c.width,c.height);let q=quality||.72;let out=c.toDataURL('image/jpeg',q);while(out.length>700000&&q>.35){q-=.06;out=c.toDataURL('image/jpeg',q)}if(out.length>360000)reject(new Error('Image is still too large after compression. Please choose a smaller image.'));else resolve(out)}catch(e){reject(e)}};img.onerror=function(){reject(new Error('Unable to read the selected image.'))};img.src=r.result};r.onerror=reject;r.readAsDataURL(file)})}
+async function brandPatch(fields){
+  const idToken=token||sessionStorage.getItem('mck_admin_token')||'';if(!idToken)throw new Error('Admin session expired. Please log in again.');
+  const r=await fetch('https://firestore.googleapis.com/v1/projects/mckenzie-ramen-house/databases/(default)/documents/brandAssets/main',{method:'PATCH',headers:{'Authorization':'Bearer '+idToken,'Content-Type':'application/json'},body:JSON.stringify({fields})});
+  if(!r.ok){let t=await r.text(),d={};try{d=JSON.parse(t)}catch(e){};throw new Error(d.error&&d.error.message?d.error.message:'Unable to save website branding.')}
+}
+async function deleteBrandDoc(key){
+  const idToken=token||sessionStorage.getItem('mck_admin_token')||'';if(!idToken)return;
+  const r=await fetch('https://firestore.googleapis.com/v1/projects/mckenzie-ramen-house/databases/(default)/documents/brandAssets/'+key,{method:'DELETE',headers:{'Authorization':'Bearer '+idToken}});
+  if(!r.ok&&r.status!==404){let t=await r.text(),d={};try{d=JSON.parse(t)}catch(e){};throw new Error(d.error&&d.error.message?d.error.message:'Unable to update website branding.')}
+}
+async function saveBrandAssets(){
+  const btn=document.getElementById('saveBrandAssetsBtn'),msg=document.getElementById('brandAssetsMsg');if(btn){btn.disabled=true;btn.textContent='Saving Branding…'}if(msg)msg.textContent='Preparing images…';
+  try{
+    const vals=await Promise.all([compressBrandImage(selectedBrandLogo,1400,.76),compressBrandImage(selectedBrandBackground,1600,.68)]);
+    const oldLogo=currentBrandAssets.logo||currentBrandAssets.logoUrl||'',oldBg=currentBrandAssets.background||currentBrandAssets.backgroundUrl||'';
+    const logo=vals[0] || (removeBrandLogoFlag?'':oldLogo);
+    const background=vals[1] || (removeBrandBackgroundFlag?'':oldBg);
+    if(msg)msg.textContent='Saving to Firebase…';
+    await brandPatch({logo:{stringValue:logo},background:{stringValue:background},updatedAt:{stringValue:new Date().toISOString()}});
+    // Remove legacy per-asset documents so they cannot override the new main branding.
+    await Promise.all([deleteBrandDoc('logo'),deleteBrandDoc('background')]);
+    currentBrandAssets={logo,background};removeBrandLogoFlag=false;removeBrandBackgroundFlag=false;selectedBrandLogo=null;selectedBrandBackground=null;
+    if(document.getElementById('brandLogoFile'))document.getElementById('brandLogoFile').value='';if(document.getElementById('brandBackgroundFile'))document.getElementById('brandBackgroundFile').value='';
+    if(msg)msg.textContent='✓ Website logo/background saved successfully.';
+    loadBrandAssets();
+  }catch(e){if(msg)msg.textContent=e&&e.message?e.message:String(e)}finally{if(btn){btn.disabled=false;btn.textContent='Save Website Branding'}}
+}
+(function(){const lf=document.getElementById('brandLogoFile'),bf=document.getElementById('brandBackgroundFile');if(lf)lf.addEventListener('change',function(){selectedBrandLogo=this.files&&this.files[0]?this.files[0]:null;removeBrandLogoFlag=false;previewBrandFile(selectedBrandLogo,'brandLogoPreview');updateBrandRemoveButtons()});if(bf)bf.addEventListener('change',function(){selectedBrandBackground=this.files&&this.files[0]?this.files[0]:null;removeBrandBackgroundFlag=false;previewBrandFile(selectedBrandBackground,'brandBackgroundPreview');updateBrandRemoveButtons()});})();
 
 function loadOrders(options){
   options = options || {};
