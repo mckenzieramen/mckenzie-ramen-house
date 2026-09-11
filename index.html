@@ -12,6 +12,30 @@
        google.script.run compatibility layer used by the existing customer UI. -->
   <script src="js/firebase-config.js"></script>
   <script type="module" src="js/firebase-standalone.js?v=20260912-brand-products-final"></script>
+  <script>
+  /* HARD LOADER WATCHDOG: never trap the customer on the ramen loading screen. */
+  (function(){
+    var tries=0;
+    var timer=setInterval(function(){
+      tries++;
+      var el=document.getElementById("pageLoader");
+      if(el){
+        setTimeout(function(){
+          try{
+            el.classList.add("hide");
+            el.style.opacity="0";
+            el.style.visibility="hidden";
+            el.style.pointerEvents="none";
+            document.documentElement.classList.remove("quick-loading");
+            if(document.body) document.body.classList.remove("quick-loading");
+          }catch(e){}
+        },3200);
+        clearInterval(timer);
+      }
+      if(tries>80) clearInterval(timer);
+    },100);
+  })();
+  </script>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -4292,22 +4316,14 @@ function confirmPlaceOrder_() {
     })
   };
 
-  // Save the exact customer/order details on the restaurant server.
-  // Local Order History is updated ONLY after the server confirms success.
-  google.script.run
-    .withSuccessHandler(function(updated) {
-      if (updated && updated.success) {
-        try { localStorage.setItem("mckenzieUser", JSON.stringify(updated)); } catch (e) {}
-      }
-    })
-    .withFailureHandler(function(error) {
-      console.warn("Unable to update customer profile during checkout:", error);
-    })
-    .updateUserProfile(payload);
+  // Save the exact order directly to Firebase so GitHub Pages does not depend on the legacy Apps Script endpoint.
+  customerSaveOrderDirect_(orderId,payload).then(function(result){
+    if(result&&result.success) finishSuccessfulOrderSave_(result);
+    else failOrderSave_(result||{message:"The restaurant server rejected the order."});
+  }).catch(function(error){
+    failOrderSave_({message:error&&error.message?error.message:"The restaurant server could not be reached."});
+  });
 
-  // Save the order on the server FIRST so the Admin Orders page can receive it.
-  // If this page is hosted by Apps Script, use google.script.run.
-  // If this page is hosted by GitHub Pages, use the public JSONP order API.
   function finishSuccessfulOrderSave_(result) {
     if (!result || !result.success) {
       if (yes) { yes.disabled = false; yes.textContent = "Confirm Order"; }
@@ -4349,61 +4365,7 @@ function confirmPlaceOrder_() {
     );
   }
 
-  // When hosted by Google Apps Script, call the SAME backend directly.
-  // This avoids the JSONP request that can fail under Apps Script concurrency limits.
-  if (window.google && google.script && google.script.run) {
-    google.script.run
-      .withSuccessHandler(function(result){
-        if (result && result.success) finishSuccessfulOrderSave_(result);
-        else failOrderSave_(result || {message:"The restaurant server rejected the order."});
-      })
-      .withFailureHandler(function(error){
-        failOrderSave_({message:error && error.message ? error.message : "The restaurant server could not be reached."});
-      })
-      .recordCompletedCustomerOrder(orderId, payload);
-    return;
-  }
 
-  // External-host fallback (GitHub Pages): keep the existing JSONP API.
-  // ALWAYS send the order to the current live Order API first.
-  // The customer page may be running from an older Apps Script deployment;
-  // using google.script.run there would send the order to that old deployment.
-  // The API URL below points to the same live backend used by Admin Orders.
-  {
-    // Apps Script receives this through doGet(api=recordOrder).
-    const callbackName = "mckenzieOrderCallback_" + Date.now() + "_" + Math.floor(Math.random() * 100000);
-    const script = document.createElement("script");
-    let settled = false;
-
-    function cleanup() {
-      try { delete window[callbackName]; } catch (e) {}
-      if (script.parentNode) script.parentNode.removeChild(script);
-    }
-
-    window[callbackName] = function(result) {
-      if (settled) return;
-      settled = true;
-      cleanup();
-      if (result && result.success) finishSuccessfulOrderSave_(result);
-      else failOrderSave_(result || { message: "The restaurant server rejected the order." });
-    };
-
-    script.onerror = function() {
-      if (settled) return;
-      settled = true;
-      cleanup();
-      failOrderSave_({ message: "The restaurant server could not be reached." });
-    };
-
-    const encodedPayload = encodeURIComponent(JSON.stringify(payload));
-    script.src = MCKENZIE_ORDER_API_URL +
-      "?api=recordOrder" +
-      "&orderId=" + encodeURIComponent(orderId) +
-      "&payload=" + encodedPayload +
-      "&callback=" + encodeURIComponent(callbackName);
-
-    document.head.appendChild(script);
-  }
 }
 
 function renderAllCartControls_() {
@@ -4477,40 +4439,114 @@ function accountMenuLogin_() {
   openLoginModal();
 }
 
+
+/* =========================================================
+   CUSTOMER FIREBASE DIRECT HELPERS
+   Avoids legacy bridge waits for profile/order navigation.
+========================================================= */
+function customerFirebaseWithTimeout_(work, message, ms) {
+  ms = Number(ms || 8000);
+  return new Promise(function(resolve, reject) {
+    var timer = setTimeout(function(){ reject(new Error(message || "Request timed out. Please try again.")); }, ms);
+    Promise.resolve(window.MckenzieFirebaseReady)
+      .then(function(f){ return work(f); })
+      .then(function(v){ clearTimeout(timer); resolve(v); })
+      .catch(function(e){ clearTimeout(timer); reject(e); });
+  });
+}
+
+function customerCurrentUserId_() {
+  var saved = getSavedUser_() || {};
+  return String(saved.userId || "").trim();
+}
+
+async function customerGetProfileDirect_() {
+  var uid = customerCurrentUserId_();
+  if(!uid) throw new Error("Please log in again.");
+  return customerFirebaseWithTimeout_(async function(f){
+    var u=f.auth.currentUser;
+    if(!u || String(u.uid)!==uid) throw new Error("Please log in again.");
+    var snap=await f.getDoc(f.doc(f.db,"users",uid));
+    var d=snap.exists()?snap.data():{};
+    return {success:true,userId:uid,username:d.username||"",email:u.email||d.email||"",mobile:d.mobile||"",fullName:d.fullName||u.displayName||"",houseUnit:d.houseUnit||"",street:d.street||"",barangay:d.barangay||"",city:d.city||"",province:d.province||"",postalCode:d.postalCode||"",country:d.country||"Philippines",region:d.region||"",additionalInstruction:d.additionalInstruction||""};
+  },"Unable to load your profile right now.");
+}
+
+async function customerSaveProfileDirect_(payload) {
+  var uid=customerCurrentUserId_();
+  if(!uid) throw new Error("Please log in again.");
+  return customerFirebaseWithTimeout_(async function(f){
+    var u=f.auth.currentUser;
+    if(!u || String(u.uid)!==uid) throw new Error("Please log in again.");
+    await f.setDoc(f.doc(f.db,"users",uid),{
+      username:String(payload.username||""),email:String(payload.email||u.email||"").trim().toLowerCase(),fullName:String(payload.fullName||"").trim(),mobile:String(payload.mobile||"").trim(),
+      houseUnit:String(payload.houseUnit||"").trim(),street:String(payload.street||"").trim(),barangay:String(payload.barangay||"").trim(),city:String(payload.city||"").trim(),province:String(payload.province||"").trim(),postalCode:String(payload.postalCode||"").trim(),country:"Philippines",region:String(payload.region||"").trim(),additionalInstruction:String(payload.additionalInstruction||"").trim(),updatedAt:new Date().toISOString()
+    },{merge:true});
+    var snap=await f.getDoc(f.doc(f.db,"users",uid));
+    var d=snap.exists()?snap.data():{};
+    return {success:true,userId:uid,username:d.username||"",email:u.email||d.email||"",mobile:d.mobile||"",fullName:d.fullName||"",houseUnit:d.houseUnit||"",street:d.street||"",barangay:d.barangay||"",city:d.city||"",province:d.province||"",postalCode:d.postalCode||"",country:d.country||"Philippines",region:d.region||"",additionalInstruction:d.additionalInstruction||""};
+  },"Unable to save your profile right now.");
+}
+
+async function customerGetOrdersDirect_() {
+  var uid=customerCurrentUserId_();
+  if(!uid) throw new Error("Please log in again.");
+  return customerFirebaseWithTimeout_(async function(f){
+    var u=f.auth.currentUser;
+    if(!u || String(u.uid)!==uid) throw new Error("Please log in again.");
+    var snap=await f.getDocs(f.collection(f.db,"orders"));
+    return snap.docs.map(function(doc){var o=doc.data()||{};return {orderId:String(o.orderId||doc.id),userId:String(o.userId||""),customerName:o.customerName||o.fullName||"Customer",fullName:o.fullName||o.customerName||"Customer",email:o.email||u.email||"",mobile:o.mobile||"",items:Array.isArray(o.items)?o.items.map(function(it,idx){return {itemIndex:idx,productId:String(it.productId||it.id||""),productName:it.productName||it.name||"Ramen item",price:Number(it.price||0),quantity:Number(it.quantity||0),subtotal:Number(it.subtotal!=null?it.subtotal:Number(it.price||0)*Number(it.quantity||0)),itemStatus:String(it.itemStatus||"Preparing")};}):[],total:Number(o.total||0),paymentMethod:o.paymentMethod||"",paymentStatus:o.paymentStatus||"Pending",orderStatus:o.orderStatus==="Pending"?"Preparing":(o.orderStatus||"Preparing"),address:o.address||"",instruction:o.instruction||o.additionalInstruction||"",orderedAt:o.orderedAt&&o.orderedAt.toDate?o.orderedAt.toDate().toISOString():String(o.orderedAt||""),customerConfirmed:!!o.customerConfirmed,confirmedAt:o.confirmedAt&&o.confirmedAt.toDate?o.confirmedAt.toDate().toISOString():String(o.confirmedAt||""),deliveredAt:o.deliveredAt&&o.deliveredAt.toDate?o.deliveredAt.toDate().toISOString():String(o.deliveredAt||""),closed:!!o.closed,canRate:o.orderStatus==="Delivered"&&!!o.customerConfirmed};}).filter(function(o){return o.userId===uid;}).sort(function(a,b){return String(b.orderedAt).localeCompare(String(a.orderedAt));});
+  },"Unable to load your orders right now.");
+}
+
+async function customerConfirmReceiptDirect_(orderId) {
+  var uid=customerCurrentUserId_();
+  return customerFirebaseWithTimeout_(async function(f){
+    var u=f.auth.currentUser;if(!u||String(u.uid)!==uid) throw new Error("Please log in again.");
+    var ref=f.doc(f.db,"orders",String(orderId)),snap=await f.getDoc(ref);
+    if(!snap.exists()||String(snap.data().userId)!==uid) throw new Error("Order not found.");
+    var o=snap.data();if(String(o.orderStatus)!=="Delivered") throw new Error("The order has not been marked as delivered yet.");
+    await f.updateDoc(ref,{customerConfirmed:true,confirmedAt:new Date().toISOString(),closed:true});
+    return {success:true};
+  },"Unable to confirm the order right now.");
+}
+
+async function customerSaveOrderDirect_(orderId,payload) {
+  var uid=customerCurrentUserId_();
+  return customerFirebaseWithTimeout_(async function(f){
+    var u=f.auth.currentUser;if(!u||String(u.uid)!==uid) throw new Error("Please log in again.");
+    var cleanItems=(payload.items||[]).map(function(item){return {productId:String(item.id||item.productId||""),productName:String(item.name||item.productName||"Ramen item"),price:Number(item.price||0),quantity:Number(item.quantity||0),subtotal:Number(item.price||0)*Number(item.quantity||0),itemStatus:"Preparing"};}).filter(function(x){return x.quantity>0;});
+    if(!cleanItems.length) throw new Error("The order contains no items.");
+    var total=cleanItems.reduce(function(sum,it){return sum+it.subtotal;},0);
+    var ref=f.doc(f.db,"orders",String(orderId));
+    var existing=await f.getDoc(ref);
+    if(existing.exists()) return {success:true,orderId:String(orderId),duplicate:true};
+    var address=[payload.houseUnit,payload.street,payload.barangay,payload.city,payload.province,payload.region].filter(Boolean).join(", ");
+    await f.setDoc(ref,{orderId:String(orderId),userId:uid,customerName:String(payload.fullName||""),fullName:String(payload.fullName||""),email:u.email||String(payload.email||""),mobile:String(payload.mobile||""),items:cleanItems,total:total,paymentMethod:String(payload.paymentMethod||""),paymentStatus:"Pending",orderStatus:"Preparing",address:address,instruction:String(payload.additionalInstruction||""),orderedAt:new Date().toISOString(),customerConfirmed:false,confirmedAt:"",deliveredAt:"",closed:false});
+    return {success:true,orderId:String(orderId),status:"Preparing"};
+  },"Unable to save your order right now. Please try again.");
+}
+
+function fetchPsgcList_(url, timeoutMessage) {
+  var controller=typeof AbortController!=="undefined"?new AbortController():null;
+  var timer=controller?setTimeout(function(){controller.abort();},8000):null;
+  return fetch(url,{headers:{Accept:"application/json"},signal:controller?controller.signal:undefined,cache:"no-store"})
+    .then(function(r){if(!r.ok) throw new Error("Location service returned HTTP "+r.status+".");return r.json();})
+    .then(function(data){clearTimeout(timer);return Array.isArray(data)?data:(data&&Array.isArray(data.data)?data.data:[]);})
+    .catch(function(e){clearTimeout(timer);throw new Error(timeoutMessage||"Unable to load Philippine location data.");});
+}
+
+function normalizePsgcItems_(items){return (items||[]).map(function(x){return {code:x.code||x.psgc_code||x.id||"",name:x.name||x.label||""};}).filter(function(x){return x.code&&x.name;});}
+
 function openEditProfile_() {
-  if (!isLoggedIn_()) {
-    accountMenuLogin_();
-    return;
-  }
-
+  if (!isLoggedIn_()) { accountMenuLogin_(); return; }
   closeAccountMenu_();
-
-  const modal = document.getElementById("editProfileModal");
-  const loading = document.getElementById("profileLoading");
-  const form = document.getElementById("profileForm");
-  if (!modal) return;
-
-  if (loading) loading.style.display = "block";
-  if (form) form.style.display = "none";
-  modal.classList.add("show");
-  document.body.style.overflow = "hidden";
-
-  google.script.run
-    .withSuccessHandler(function(user) {
-      if (!user || !user.success) {
-        showProfileMessage_("Unable to load your profile.", true);
-        return;
-      }
-
-      populateProfileForm_(user);
-      if (loading) loading.style.display = "none";
-      if (form) form.style.display = "block";
-    })
-    .withFailureHandler(function(error) {
-      if (loading) loading.style.display = "none";
-      showProfileMessage_(error && error.message ? error.message : "Unable to load your profile.", true);
-    })
-    .getUserProfile(getSavedUser_()?.userId || "");
+  const modal=document.getElementById("editProfileModal"), loading=document.getElementById("profileLoading"), form=document.getElementById("profileForm");
+  if(!modal)return;
+  if(loading){loading.style.display="block";loading.textContent="Loading your profile…";}
+  if(form)form.style.display="none";
+  modal.classList.add("show");document.body.style.overflow="hidden";
+  customerGetProfileDirect_().then(function(user){populateProfileForm_(user);if(loading)loading.style.display="none";if(form)form.style.display="block";}).catch(function(error){if(loading){loading.style.display="block";loading.textContent="Unable to load your profile. Please close and try again.";}showProfileMessage_(error&&error.message?error.message:"Unable to load your profile.",true);});
 }
 
 function populateProfileForm_(user) {
@@ -4543,62 +4579,14 @@ function populateProfileForm_(user) {
 }
 
 function saveProfile_() {
-  const user = getSavedUser_() || {};
-  const fullName = document.getElementById("profileFullName")?.value.trim() || "";
-  const email = document.getElementById("profileEmail")?.value.trim() || "";
-  const mobile = document.getElementById("profileMobile")?.value.trim() || "";
-
-  if (!fullName || !email || !mobile) {
-    showProfileMessage_("Full Name, Email Address, and Phone Number are required.", true);
-    return;
-  }
-
-  const button = document.getElementById("profileSaveButton");
-  if (button) {
-    button.disabled = true;
-    button.textContent = "Saving...";
-  }
-
-  const payload = {
-    userId: user.userId || "",
-    fullName: fullName,
-    email: email,
-    mobile: mobile,
-    houseUnit: document.getElementById("profileHouseUnit")?.value.trim() || "",
-    street: document.getElementById("profileStreet")?.value.trim() || "",
-    barangay: getSelectedText_("profileBarangay"),
-    city: getSelectedText_("profileCity"),
-    province: getSelectedText_("profileProvince"),
-    postalCode: document.getElementById("profilePostalCode")?.value.trim() || "",
-    region: getSelectedText_("profileRegion"),
-    additionalInstruction: document.getElementById("profileAdditionalInstruction")?.value.trim() || ""
-  };
-
-  google.script.run
-    .withSuccessHandler(function(updated) {
-      if (button) {
-        button.disabled = false;
-        button.textContent = "Save Changes";
-      }
-
-      try {
-        localStorage.setItem("mckenzieUser", JSON.stringify(updated));
-      } catch (error) {}
-
-      updateAccountMenu_();
-      showProfileMessage_("Profile saved successfully.", false);
-      setTimeout(function() {
-        closeAccountSubmodal_("editProfileModal");
-      }, 500);
-    })
-    .withFailureHandler(function(error) {
-      if (button) {
-        button.disabled = false;
-        button.textContent = "Save Changes";
-      }
-      showProfileMessage_(error && error.message ? error.message : "Unable to save your profile.", true);
-    })
-    .updateUserProfile(payload);
+  const user=getSavedUser_()||{};
+  const fullName=document.getElementById("profileFullName")?.value.trim()||"";
+  const email=document.getElementById("profileEmail")?.value.trim()||"";
+  const mobile=document.getElementById("profileMobile")?.value.trim()||"";
+  if(!fullName||!email||!mobile){showProfileMessage_("Full Name, Email Address, and Phone Number are required.",true);return;}
+  const button=document.getElementById("profileSaveButton");if(button){button.disabled=true;button.textContent="Saving...";}
+  const payload={userId:user.userId||"",username:document.getElementById("profileUsername")?.value.trim()||user.username||"",fullName,email,mobile,houseUnit:document.getElementById("profileHouseUnit")?.value.trim()||"",street:document.getElementById("profileStreet")?.value.trim()||"",barangay:getSelectedText_("profileBarangay"),city:getSelectedText_("profileCity"),province:getSelectedText_("profileProvince"),postalCode:document.getElementById("profilePostalCode")?.value.trim()||"",region:getSelectedText_("profileRegion"),additionalInstruction:document.getElementById("profileAdditionalInstruction")?.value.trim()||""};
+  customerSaveProfileDirect_(payload).then(function(updated){if(button){button.disabled=false;button.textContent="Save Changes";}try{localStorage.setItem("mckenzieUser",JSON.stringify(updated));}catch(e){}updateAccountMenu_();showProfileMessage_("Profile saved successfully.",false);setTimeout(function(){closeAccountSubmodal_("editProfileModal");},500);}).catch(function(error){if(button){button.disabled=false;button.textContent="Save Changes";}showProfileMessage_(error&&error.message?error.message:"Unable to save your profile.",true);});
 }
 
 function showProfileMessage_(text, error) {
@@ -4653,117 +4641,40 @@ function findCodeByName_(items, name) {
 }
 
 function bindAddressChain_(prefix) {
-  const region = document.getElementById(prefix + "Region");
-  const province = document.getElementById(prefix + "Province");
-  const city = document.getElementById(prefix + "City");
-  const barangay = document.getElementById(prefix + "Barangay");
-  if (!region || !province || !city || !barangay) return;
-
-  region.onchange = function() {
-    setSelectOptions_(prefix + "Province", [], "Loading provinces...");
-    setSelectOptions_(prefix + "City", [], "Select city / municipality");
-    setSelectOptions_(prefix + "Barangay", [], "Select barangay");
-
-    google.script.run
-      .withSuccessHandler(function(items) {
-        setSelectOptions_(prefix + "Province", items, "Select province");
-      })
-      .withFailureHandler(function(error) {
-        setSelectOptions_(prefix + "Province", [], "Unable to load provinces");
-        console.error(error);
-      })
-      .getAddressProvinces(region.value);
+  const region=document.getElementById(prefix+"Region"),province=document.getElementById(prefix+"Province"),city=document.getElementById(prefix+"City"),barangay=document.getElementById(prefix+"Barangay");
+  if(!region||!province||!city||!barangay)return;
+  region.onchange=function(){
+    setSelectOptions_(prefix+"Province",[],"Loading provinces…");setSelectOptions_(prefix+"City",[],"Select city / municipality");setSelectOptions_(prefix+"Barangay",[],"Select barangay");
+    fetchPsgcList_("https://psgc.cloud/api/regions/"+encodeURIComponent(region.value)+"/provinces","Unable to load provinces. Please try again.").then(function(items){setSelectOptions_(prefix+"Province",normalizePsgcItems_(items),"Select province");}).catch(function(e){setSelectOptions_(prefix+"Province",[],"Unable to load provinces");console.error(e);});
   };
-
-  province.onchange = function() {
-    setSelectOptions_(prefix + "City", [], "Loading cities / municipalities...");
-    setSelectOptions_(prefix + "Barangay", [], "Select barangay");
-
-    google.script.run
-      .withSuccessHandler(function(items) {
-        setSelectOptions_(prefix + "City", items, "Select city / municipality");
-      })
-      .withFailureHandler(function(error) {
-        setSelectOptions_(prefix + "City", [], "Unable to load cities");
-        console.error(error);
-      })
-      .getAddressCities(province.value);
+  province.onchange=function(){
+    setSelectOptions_(prefix+"City",[],"Loading cities / municipalities…");setSelectOptions_(prefix+"Barangay",[],"Select barangay");
+    fetchPsgcList_("https://psgc.cloud/api/provinces/"+encodeURIComponent(province.value)+"/cities-municipalities","Unable to load cities. Please try again.").then(function(items){setSelectOptions_(prefix+"City",normalizePsgcItems_(items),"Select city / municipality");}).catch(function(e){setSelectOptions_(prefix+"City",[],"Unable to load cities");console.error(e);});
   };
-
-  city.onchange = function() {
-    setSelectOptions_(prefix + "Barangay", [], "Loading barangays...");
-
-    google.script.run
-      .withSuccessHandler(function(items) {
-        setSelectOptions_(prefix + "Barangay", items, "Select barangay");
-      })
-      .withFailureHandler(function(error) {
-        setSelectOptions_(prefix + "Barangay", [], "Unable to load barangays");
-        console.error(error);
-      })
-      .getAddressBarangays(city.value);
+  city.onchange=function(){
+    setSelectOptions_(prefix+"Barangay",[],"Loading barangays…");
+    fetchPsgcList_("https://psgc.cloud/api/cities-municipalities/"+encodeURIComponent(city.value)+"/barangays","Unable to load barangays. Please try again.").then(function(items){setSelectOptions_(prefix+"Barangay",normalizePsgcItems_(items),"Select barangay");}).catch(function(e){setSelectOptions_(prefix+"Barangay",[],"Unable to load barangays");console.error(e);});
   };
 }
 
-function loadAddressChain_(prefix, saved) {
+function loadAddressChain_(prefix,saved) {
   bindAddressChain_(prefix);
-
-  const region = document.getElementById(prefix + "Region");
-  if (!region) return;
-
-  setSelectOptions_(prefix + "Region", [], "Loading regions...");
-
-  google.script.run
-    .withSuccessHandler(function(regions) {
-      setSelectOptions_(prefix + "Region", regions, "Select region");
-
-      const regionCode = findCodeByName_(regions, saved && saved.region);
-      if (!regionCode) return;
-
-      region.value = regionCode;
-      google.script.run
-        .withSuccessHandler(function(provinces) {
-          setSelectOptions_(prefix + "Province", provinces, "Select province");
-
-          const provinceCode = findCodeByName_(provinces, saved && saved.province);
-          if (!provinceCode) return;
-
-          const province = document.getElementById(prefix + "Province");
-          province.value = provinceCode;
-
-          google.script.run
-            .withSuccessHandler(function(cities) {
-              setSelectOptions_(prefix + "City", cities, "Select city / municipality");
-
-              const cityCode = findCodeByName_(cities, saved && saved.city);
-              if (!cityCode) return;
-
-              const city = document.getElementById(prefix + "City");
-              city.value = cityCode;
-
-              google.script.run
-                .withSuccessHandler(function(barangays) {
-                  setSelectOptions_(prefix + "Barangay", barangays, "Select barangay");
-
-                  const barangayCode = findCodeByName_(barangays, saved && saved.barangay);
-                  if (barangayCode) {
-                    document.getElementById(prefix + "Barangay").value = barangayCode;
-                  }
-                })
-                .withFailureHandler(console.error)
-                .getAddressBarangays(cityCode);
-            })
-            .withFailureHandler(console.error)
-            .getAddressCities(provinceCode);
-        })
-        .withFailureHandler(console.error)
-        .getAddressProvinces(regionCode);
-    })
-    .withFailureHandler(function(error) {
-      setSelectOptions_(prefix + "Region", [], "Unable to load regions");
-      console.error(error);
-    })
-    .getAddressRegions();
+  const region=document.getElementById(prefix+"Region");if(!region)return;
+  setSelectOptions_(prefix+"Region",[],"Loading regions…");
+  fetchPsgcList_("https://psgc.cloud/api/regions","Unable to load regions. Please refresh and try again.").then(function(rawRegions){
+    const regions=normalizePsgcItems_(rawRegions);setSelectOptions_(prefix+"Region",regions,"Select region");
+    const regionCode=findCodeByName_(regions,saved&&saved.region);if(!regionCode)return;
+    region.value=regionCode;
+    return fetchPsgcList_("https://psgc.cloud/api/regions/"+encodeURIComponent(regionCode)+"/provinces","Unable to load provinces.").then(function(rawProvinces){
+      const provinces=normalizePsgcItems_(rawProvinces);setSelectOptions_(prefix+"Province",provinces,"Select province");const provinceCode=findCodeByName_(provinces,saved&&saved.province);if(!provinceCode)return;
+      const province=document.getElementById(prefix+"Province");province.value=provinceCode;
+      return fetchPsgcList_("https://psgc.cloud/api/provinces/"+encodeURIComponent(provinceCode)+"/cities-municipalities","Unable to load cities.").then(function(rawCities){
+        const cities=normalizePsgcItems_(rawCities);setSelectOptions_(prefix+"City",cities,"Select city / municipality");const cityCode=findCodeByName_(cities,saved&&saved.city);if(!cityCode)return;
+        const city=document.getElementById(prefix+"City");city.value=cityCode;
+        return fetchPsgcList_("https://psgc.cloud/api/cities-municipalities/"+encodeURIComponent(cityCode)+"/barangays","Unable to load barangays.").then(function(rawBarangays){const barangays=normalizePsgcItems_(rawBarangays);setSelectOptions_(prefix+"Barangay",barangays,"Select barangay");const barangayCode=findCodeByName_(barangays,saved&&saved.barangay);if(barangayCode)document.getElementById(prefix+"Barangay").value=barangayCode;});
+      });
+    });
+  }).catch(function(error){setSelectOptions_(prefix+"Region",[],"Unable to load regions");console.error("PSGC location error:",error);});
 }
 
 function populateCheckoutProfile_(user) {
@@ -4976,28 +4887,15 @@ function saveFirstCheckoutAddressIfNeeded_(done) {
 }
 
 function openOrderHistory_() {
-  if (!isLoggedIn_()) { accountMenuLogin_(); return; }
+  if(!isLoggedIn_()){accountMenuLogin_();return;}
   closeAccountMenu_();
-  const content = document.getElementById("orderHistoryContent");
-  const modal = document.getElementById("orderHistoryModal");
-  if (modal) { modal.classList.add("show"); document.body.style.overflow="hidden"; }
-  if (content) content.innerHTML = '<div class="order-feature-loading">Loading your orders…</div>';
-
-  const user = getSavedUser_() || {};
-  if (!user.userId) { if(content) content.innerHTML='<div class="order-feature-error">Please log in again.</div>'; return; }
-
-  google.script.run
-    .withSuccessHandler(function(orders) {
-      if (!Array.isArray(orders) || !orders.length) {
-        content.innerHTML = '<div class="order-feature-empty">No orders found yet.<br>Your orders will appear here after checkout. 🍜</div>';
-        return;
-      }
-      content.innerHTML = orders.map(renderCustomerOrderCard_).join("");
-    })
-    .withFailureHandler(function(error) {
-      content.innerHTML = '<div class="order-feature-error">' + escapeHtml(error && error.message ? error.message : "Unable to load order history.") + '</div>';
-    })
-    .getCustomerOrderHistory(String(user.userId));
+  const content=document.getElementById("orderHistoryContent"),modal=document.getElementById("orderHistoryModal");
+  if(modal){modal.classList.add("show");document.body.style.overflow="hidden";}
+  if(content)content.innerHTML='<div class="order-feature-loading">Loading your orders…</div>';
+  customerGetOrdersDirect_().then(function(orders){
+    if(!Array.isArray(orders)||!orders.length){content.innerHTML='<div class="order-feature-empty"><strong>No orders yet.</strong><br>Your orders will appear here after checkout. 🍜</div>';return;}
+    content.innerHTML=orders.map(renderCustomerOrderCard_).join("");
+  }).catch(function(error){content.innerHTML='<div class="order-feature-error">'+escapeHtml(error&&error.message?error.message:"Unable to load order history. Please try again.")+'</div>';});
 }
 
 function orderStatusIndex_(status) {
@@ -5046,20 +4944,10 @@ function backToOrderList_() {
   openOrderHistory_();
 }
 
-function confirmOrderReceived_(orderId, button) {
-  const user = getSavedUser_() || {};
-  if (!user.userId) { accountMenuLogin_(); return; }
-  if (button) { button.disabled=true; button.textContent="Confirming…"; }
-  google.script.run
-    .withSuccessHandler(function(){
-      // After the customer confirms receipt, take them directly to the survey/rating page.
-      openRatingPage_(orderId);
-    })
-    .withFailureHandler(function(error){
-      if(button){button.disabled=false;button.textContent="✓ Yes, I Received My Order";}
-      alert(error && error.message ? error.message : "Unable to confirm the order.");
-    })
-    .confirmCustomerOrderReceived(String(user.userId), String(orderId));
+function confirmOrderReceived_(orderId,button){
+  if(!customerCurrentUserId_()){accountMenuLogin_();return;}
+  if(button){button.disabled=true;button.textContent="Confirming…";}
+  customerConfirmReceiptDirect_(orderId).then(function(){openRatingPage_(orderId);}).catch(function(error){if(button){button.disabled=false;button.textContent="✓ Yes, I Received My Order";}alert(error&&error.message?error.message:"Unable to confirm the order.");});
 }
 
 function renderCustomerOrderCard_(order) {
@@ -5078,26 +4966,10 @@ function renderCustomerOrderCard_(order) {
     '</div>';
 }
 
-function openOrderDetailByKey_(encodedOrderId) {
-  const id = decodeURIComponent(String(encodedOrderId || ""));
-  const user = getSavedUser_() || {};
-  if (!user.userId || !id) return;
-  const content = document.getElementById("orderHistoryContent");
-  if (content) content.innerHTML = '<div class="order-feature-loading">Loading order details…</div>';
-  google.script.run
-    .withSuccessHandler(function(orders){
-      const list = Array.isArray(orders) ? orders : [];
-      const order = list.find(function(item){ return String(item.orderId || "") === id; });
-      if (!order) {
-        if (content) content.innerHTML = '<div class="order-feature-error">Order details could not be found.</div>';
-        return;
-      }
-      openOrderDetail_(order);
-    })
-    .withFailureHandler(function(error){
-      if (content) content.innerHTML = '<div class="order-feature-error">' + escapeHtml(error && error.message ? error.message : "Unable to load order details.") + '</div>';
-    })
-    .getCustomerOrderHistory(String(user.userId));
+function openOrderDetailByKey_(encodedOrderId){
+  const id=decodeURIComponent(String(encodedOrderId||""));if(!id)return;
+  const content=document.getElementById("orderHistoryContent");if(content)content.innerHTML='<div class="order-feature-loading">Loading order details…</div>';
+  customerGetOrdersDirect_().then(function(orders){const order=(orders||[]).find(function(item){return String(item.orderId||"")===id;});if(!order){if(content)content.innerHTML='<div class="order-feature-error">Order details could not be found.</div>';return;}openOrderDetail_(order);}).catch(function(error){if(content)content.innerHTML='<div class="order-feature-error">'+escapeHtml(error&&error.message?error.message:"Unable to load order details.")+'</div>';});
 }
 
 function renderCustomerOrderDetail_(order) {
@@ -5126,21 +4998,16 @@ function renderCustomerOrderDetail_(order) {
     '</div>';
 }
 
-function openPaymentHistory_() {
-  if (!isLoggedIn_()) { accountMenuLogin_(); return; }
+function openPaymentHistory_(){
+  if(!isLoggedIn_()){accountMenuLogin_();return;}
   closeAccountMenu_();
-  const modal=document.getElementById("paymentHistoryModal"), content=document.getElementById("paymentHistoryContent");
+  const modal=document.getElementById("paymentHistoryModal"),content=document.getElementById("paymentHistoryContent");
   if(modal){modal.classList.add("show");document.body.style.overflow="hidden";}
   if(content)content.innerHTML='<div class="order-feature-loading">Loading payment history…</div>';
-  const user=getSavedUser_()||{};
-  google.script.run.withSuccessHandler(function(rows){
-    if(!rows||!rows.length){content.innerHTML='<div class="order-feature-empty">No payment records yet.</div>';return;}
-    content.innerHTML=rows.map(function(r){
-      const ps=String(r.paymentStatus||"Pending").toLowerCase();
-      const cls=ps.indexOf("paid")>=0?"paid":(ps.indexOf("refund")>=0?"refunded":"pending");
-      return '<div class="payment-history-card"><div class="payment-history-row"><span><b>#'+escapeHtml(r.orderId)+'</b></span><strong>₱'+formatPrice(r.total||0)+'</strong></div><div class="payment-history-row"><span>Payment Method</span><span class="payment-history-method">'+escapeHtml(r.paymentMethod||"Not specified")+'</span></div><div class="payment-history-row"><span>Payment Status</span><span class="payment-status '+cls+'">'+escapeHtml(r.paymentStatus||"Pending")+'</span></div><div class="payment-history-row"><span>Order Status</span><span>'+escapeHtml(r.orderStatus||"Preparing")+'</span></div><div class="payment-history-row" style="color:#806c65;font-size:9px">'+escapeHtml(r.orderedAt?new Date(r.orderedAt).toLocaleString():"")+'</div></div>';
-    }).join("");
-  }).withFailureHandler(function(e){content.innerHTML='<div class="order-feature-error">'+escapeHtml(e&&e.message?e.message:"Unable to load payment history.")+'</div>'}).getCustomerPaymentHistory(String(user.userId));
+  customerGetOrdersDirect_().then(function(rows){
+    if(!rows||!rows.length){content.innerHTML='<div class="order-feature-empty"><strong>No payment records yet.</strong><br>Your payment history will appear here after you place an order.</div>';return;}
+    content.innerHTML=rows.map(function(r){const ps=String(r.paymentStatus||"Pending").toLowerCase(),cls=ps.indexOf("paid")>=0?"paid":(ps.indexOf("refund")>=0?"refunded":"pending");return '<div class="payment-history-card"><div class="payment-history-row"><span><b>#'+escapeHtml(r.orderId)+'</b></span><strong>₱'+formatPrice(r.total||0)+'</strong></div><div class="payment-history-row"><span>Payment Method</span><span class="payment-history-method">'+escapeHtml(r.paymentMethod||"Not specified")+'</span></div><div class="payment-history-row"><span>Payment Status</span><span class="payment-status '+cls+'">'+escapeHtml(r.paymentStatus||"Pending")+'</span></div><div class="payment-history-row"><span>Order Status</span><span>'+escapeHtml(r.orderStatus||"Preparing")+'</span></div><div class="payment-history-row" style="color:#806c65;font-size:9px">'+escapeHtml(r.orderedAt?new Date(r.orderedAt).toLocaleString():"")+'</div></div>';}).join("");
+  }).catch(function(e){content.innerHTML='<div class="order-feature-error">'+escapeHtml(e&&e.message?e.message:"Unable to load payment history.")+'</div>';});
 }
 
 function openCoupons_() {
@@ -5902,7 +5769,7 @@ setTimeout(function() {
     markPageAssetReady_('products');
     closeQuickLoader_();
   }
-}, 2800);
+}, 3200);
 
 /* =========================================================
    BRAND ASSETS
@@ -6337,8 +6204,7 @@ function loadProducts() {
 
 }
 
-/* Do not close the ramen loader early while product photos are still loading.
-   The global 12-second safety timeout is the only emergency fallback. */
+/* Loader is intentionally fail-safe: product images may continue loading after the page is usable. */
 
 
 /* =========================================================
