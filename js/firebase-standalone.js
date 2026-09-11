@@ -10,9 +10,10 @@
 (function () {
   "use strict";
 
-  // The Firebase config is embedded as a fallback so the admin page still
-  // works even if GitHub Pages serves js/firebase-config.js from cache or
-  // fails to load that helper file.
+  // ============================================================
+  // VERIFIED FIREBASE CONSOLE CONFIGURATION
+  // ============================================================
+
   const EMBEDDED_CONFIG = {
     apiKey: "AIzaSyDnLMhAhkAw1JMlbTxN4u8vB6poip5dt94",
     authDomain: "mckenzie-ramen-house.firebaseapp.com",
@@ -23,25 +24,48 @@
     measurementId: "G-C2KDRE88ZW"
   };
 
-  // Use the verified Firebase Console web config as the source of truth.
-  // This prevents an old/stale firebase-config.js from causing auth/api-key errors.
+  // Use the verified Firebase Console configuration as the source of truth.
+  // This prevents an old/stale firebase-config.js from overriding the working key.
   const cfg = EMBEDDED_CONFIG;
+
   window.MCKENZIE_FIREBASE_CONFIG = EMBEDDED_CONFIG;
-  window.MCKENZIE_ADMIN_UID = window.MCKENZIE_ADMIN_UID || "OHDs2DV4jyO3eBrww8d0gUQkNli2";
+
+  window.MCKENZIE_ADMIN_UID =
+    window.MCKENZIE_ADMIN_UID ||
+    "OHDs2DV4jyO3eBrww8d0gUQkNli2";
+
+  // ============================================================
+  // FIREBASE INITIALIZATION
+  // ============================================================
 
   const READY = (async function () {
     try {
-      const appMod = await import("https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js");
-      const authMod = await import("https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js");
-      const fsMod = await import("https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js");
+      const appMod =
+        await import(
+          "https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js"
+        );
 
-      const app = appMod.initializeApp(
-        cfg,
-        "mckenzie-ramen-house"
-      );
+      const authMod =
+        await import(
+          "https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js"
+        );
 
-      const auth = authMod.getAuth(app);
-      const db = fsMod.getFirestore(app);
+      const fsMod =
+        await import(
+          "https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js"
+        );
+
+      const app =
+        appMod.initializeApp(
+          cfg,
+          "mckenzie-ramen-house"
+        );
+
+      const auth =
+        authMod.getAuth(app);
+
+      const db =
+        fsMod.getFirestore(app);
 
       console.log(
         "McKenzie Ramen House Firebase initialized successfully."
@@ -67,13 +91,18 @@
 
   window.MckenzieFirebaseReady = READY;
 
+  // ============================================================
+  // GENERAL HELPERS
+  // ============================================================
+
   function makeError(message) {
-    const e = new Error(
-      String(
-        message ||
-        "Firebase request failed."
-      )
-    );
+    const e =
+      new Error(
+        String(
+          message ||
+          "Firebase request failed."
+        )
+      );
 
     return e;
   }
@@ -83,9 +112,12 @@
   }
 
   async function currentUser(required) {
-    const f = await READY;
+    const f =
+      await READY;
 
-    if (f.auth.currentUser) {
+    if (
+      f.auth.currentUser
+    ) {
       return f.auth.currentUser;
     }
 
@@ -99,30 +131,40 @@
   }
 
   async function isAdmin() {
-    const f = await READY;
-    const u = f.auth.currentUser;
+    const f =
+      await READY;
+
+    const u =
+      f.auth.currentUser;
 
     if (!u) {
       return false;
     }
 
-    const configuredUid = String(
-      window.MCKENZIE_ADMIN_UID || ""
-    ).trim();
+    const configuredUid =
+      String(
+        window.MCKENZIE_ADMIN_UID ||
+        ""
+      ).trim();
 
     if (
       configuredUid &&
       configuredUid !==
         "PASTE_ADMIN_USER_UID_HERE"
     ) {
-      return u.uid === configuredUid;
+      return (
+        u.uid ===
+        configuredUid
+      );
     }
 
     return false;
   }
 
   async function requireAdmin() {
-    if (!(await isAdmin())) {
+    if (
+      !(await isAdmin())
+    ) {
       throw makeError(
         "Admin access is not configured for this account."
       );
@@ -136,18 +178,26 @@
       return "";
     }
 
-    if (typeof v === "string") {
+    if (
+      typeof v ===
+      "string"
+    ) {
       return v;
     }
 
     if (
       v &&
-      typeof v.toDate === "function"
+      typeof v.toDate ===
+        "function"
     ) {
-      return v.toDate().toISOString();
+      return v
+        .toDate()
+        .toISOString();
     }
 
-    if (v instanceof Date) {
+    if (
+      v instanceof Date
+    ) {
       return v.toISOString();
     }
 
@@ -157,7 +207,8 @@
   function docData(snap) {
     return snap.exists()
       ? {
-          id: snap.id,
+          id:
+            snap.id,
           ...snap.data()
         }
       : null;
@@ -167,15 +218,17 @@
     collectionName,
     id
   ) {
-    const f = await READY;
+    const f =
+      await READY;
 
-    const snap = await f.getDoc(
-      f.doc(
-        f.db,
-        collectionName,
-        String(id)
-      )
-    );
+    const snap =
+      await f.getDoc(
+        f.doc(
+          f.db,
+          collectionName,
+          String(id)
+        )
+      );
 
     return docData(snap);
   }
@@ -184,75 +237,103 @@
     collectionName,
     queryConstraint
   ) {
-    const f = await READY;
+    const f =
+      await READY;
 
-    const ref = f.collection(
-      f.db,
-      collectionName
-    );
+    const ref =
+      f.collection(
+        f.db,
+        collectionName
+      );
 
-    const snap = queryConstraint
-      ? await f.getDocs(
-          f.query(
-            ref,
-            queryConstraint
+    const snap =
+      queryConstraint
+        ? await f.getDocs(
+            f.query(
+              ref,
+              queryConstraint
+            )
           )
-        )
-      : await f.getDocs(ref);
+        : await f.getDocs(
+            ref
+          );
 
     return snap.docs.map(
       d => ({
-        id: d.id,
+        id:
+          d.id,
         ...d.data()
       })
     );
   }
 
+  // ============================================================
+  // USER PROFILE
+  // ============================================================
+
   function profileFromUser(
     u,
     data
   ) {
-    const p = data || {};
+    const p =
+      data || {};
 
     return {
       success: true,
-      userId: u.uid,
-      username: p.username || "",
+
+      userId:
+        u.uid,
+
+      username:
+        p.username ||
+        "",
+
       email:
         u.email ||
         p.email ||
         "",
+
       mobile:
         p.mobile ||
         "",
+
       fullName:
         p.fullName ||
         u.displayName ||
         "",
+
       houseUnit:
         p.houseUnit ||
         "",
+
       street:
         p.street ||
         "",
+
       barangay:
         p.barangay ||
         "",
+
       city:
         p.city ||
         "",
+
       province:
         p.province ||
         "",
+
       postalCode:
         p.postalCode ||
         "",
+
       country:
         p.country ||
         "Philippines",
+
       region:
         p.region ||
         "",
+
       additionalInstruction:
         p.additionalInstruction ||
         ""
@@ -263,7 +344,9 @@
     userId
   ) {
     const u =
-      await currentUser(true);
+      await currentUser(
+        true
+      );
 
     if (
       String(userId) !==
@@ -289,11 +372,16 @@
   async function saveProfile(
     data
   ) {
-    const f = await READY;
-    const u =
-      await currentUser(true);
+    const f =
+      await READY;
 
-    data = data || {};
+    const u =
+      await currentUser(
+        true
+      );
+
+    data =
+      data || {};
 
     if (
       String(
@@ -307,7 +395,8 @@
 
     const fullName =
       String(
-        data.fullName || ""
+        data.fullName ||
+        ""
       ).trim();
 
     const email =
@@ -321,7 +410,8 @@
 
     const mobile =
       String(
-        data.mobile || ""
+        data.mobile ||
+        ""
       ).trim();
 
     if (!fullName) {
@@ -350,39 +440,49 @@
       ),
       {
         username:
-          data.username || "",
+          data.username ||
+          "",
+
         email,
+
         fullName,
+
         mobile,
 
         houseUnit:
           String(
-            data.houseUnit || ""
+            data.houseUnit ||
+            ""
           ).trim(),
 
         street:
           String(
-            data.street || ""
+            data.street ||
+            ""
           ).trim(),
 
         barangay:
           String(
-            data.barangay || ""
+            data.barangay ||
+            ""
           ).trim(),
 
         city:
           String(
-            data.city || ""
+            data.city ||
+            ""
           ).trim(),
 
         province:
           String(
-            data.province || ""
+            data.province ||
+            ""
           ).trim(),
 
         postalCode:
           String(
-            data.postalCode || ""
+            data.postalCode ||
+            ""
           ).trim(),
 
         country:
@@ -394,7 +494,8 @@
 
         region:
           String(
-            data.region || ""
+            data.region ||
+            ""
           ).trim(),
 
         additionalInstruction:
@@ -416,22 +517,29 @@
     );
   }
 
+  // ============================================================
+  // AUTHENTICATION
+  // ============================================================
+
   async function loginUser(
     identifier,
     password
   ) {
-    const f = await READY;
+    const f =
+      await READY;
 
     identifier =
       String(
-        identifier || ""
+        identifier ||
+        ""
       )
         .trim()
         .toLowerCase();
 
     password =
       String(
-        password || ""
+        password ||
+        ""
       );
 
     if (
@@ -444,7 +552,9 @@
     }
 
     if (
-      !identifier.includes("@")
+      !identifier.includes(
+        "@"
+      )
     ) {
       throw makeError(
         "Please log in using your registered email address."
@@ -477,7 +587,8 @@
     password,
     mobile
   ) {
-    const f = await READY;
+    const f =
+      await READY;
 
     const cred =
       await f.createUserWithEmailAndPassword(
@@ -497,7 +608,8 @@
       {
         username:
           String(
-            username || ""
+            username ||
+            ""
           ).trim(),
 
         email:
@@ -508,12 +620,14 @@
 
         fullName:
           String(
-            fullName || ""
+            fullName ||
+            ""
           ).trim(),
 
         mobile:
           String(
-            mobile || ""
+            mobile ||
+            ""
           ).trim(),
 
         country:
@@ -566,9 +680,13 @@
     token,
     code
   ) {
-    const f = await READY;
+    const f =
+      await READY;
+
     const u =
-      await currentUser(true);
+      await currentUser(
+        true
+      );
 
     await f.auth.currentUser.reload();
 
@@ -583,6 +701,7 @@
 
     return {
       success: true,
+
       message:
         "Email verified."
     };
@@ -591,18 +710,22 @@
   async function sendPasswordReset(
     identifier
   ) {
-    const f = await READY;
+    const f =
+      await READY;
 
     const email =
       String(
-        identifier || ""
+        identifier ||
+        ""
       )
         .trim()
         .toLowerCase();
 
     if (
       !email ||
-      !email.includes("@")
+      !email.includes(
+        "@"
+      )
     ) {
       throw makeError(
         "Please enter your registered email address."
@@ -616,7 +739,9 @@
 
     return {
       success: true,
+
       email,
+
       message:
         "Password reset email sent."
     };
@@ -627,9 +752,13 @@
     oldPassword,
     newPassword
   ) {
-    const f = await READY;
+    const f =
+      await READY;
+
     const u =
-      await currentUser(true);
+      await currentUser(
+        true
+      );
 
     if (
       u.uid !==
@@ -642,7 +771,9 @@
 
     if (
       !newPassword ||
-      String(newPassword).length < 6
+      String(
+        newPassword
+      ).length < 6
     ) {
       throw makeError(
         "Password must be at least 6 characters."
@@ -659,7 +790,8 @@
       f.EmailAuthProvider.credential(
         u.email,
         String(
-          oldPassword || ""
+          oldPassword ||
+          ""
         )
       );
 
@@ -670,7 +802,9 @@
 
     await f.updatePassword(
       u,
-      String(newPassword)
+      String(
+        newPassword
+      )
     );
 
     return {
@@ -678,12 +812,20 @@
     };
   }
 
+  // ============================================================
+  // ADDRESSES
+  // ============================================================
+
   async function addresses(
     userId
   ) {
-    const f = await READY;
+    const f =
+      await READY;
+
     const u =
-      await currentUser(true);
+      await currentUser(
+        true
+      );
 
     if (
       u.uid !==
@@ -702,13 +844,18 @@
     return list
       .filter(
         a =>
-          String(a.userId) ===
-          u.uid
+          String(
+            a.userId
+          ) === u.uid
       )
       .sort(
         (a, b) =>
-          (b.isDefault ? 1 : 0) -
-          (a.isDefault ? 1 : 0)
+          (b.isDefault
+            ? 1
+            : 0) -
+          (a.isDefault
+            ? 1
+            : 0)
       )
       .map(
         a => ({
@@ -777,15 +924,21 @@
   async function saveAddress(
     data
   ) {
-    const f = await READY;
-    const u =
-      await currentUser(true);
+    const f =
+      await READY;
 
-    data = data || {};
+    const u =
+      await currentUser(
+        true
+      );
+
+    data =
+      data || {};
 
     if (
       String(
-        data.userId || ""
+        data.userId ||
+        ""
       ) !== u.uid
     ) {
       throw makeError(
@@ -821,11 +974,15 @@
     ];
 
     for (
-      const [key, label] of required
+      const [
+        key,
+        label
+      ] of required
     ) {
       if (
         !String(
-          data[key] || ""
+          data[key] ||
+          ""
         ).trim()
       ) {
         throw makeError(
@@ -849,13 +1006,15 @@
           Date.now() +
           "-" +
           Math.floor(
-            Math.random() * 10000
+            Math.random() *
+            10000
           )
         )
       );
 
     if (
-      data.isDefault !== false
+      data.isDefault !==
+      false
     ) {
       for (
         const a of all
@@ -870,7 +1029,9 @@
               a.addressId
             ),
             {
-              isDefault: false,
+              isDefault:
+                false,
+
               updatedAt:
                 isoNow()
             }
@@ -950,7 +1111,8 @@
           ).trim(),
 
         isDefault:
-          data.isDefault !== false,
+          data.isDefault !==
+          false,
 
         createdAt:
           data.createdAt ||
@@ -964,61 +1126,6 @@
       }
     );
 
-    if (
-      data.isDefault !== false
-    ) {
-      await f.setDoc(
-        f.doc(
-          f.db,
-          "users",
-          u.uid
-        ),
-        {
-          houseUnit:
-            data.houseUnit ||
-            "",
-
-          street:
-            data.street ||
-            "",
-
-          barangay:
-            data.barangay ||
-            "",
-
-          city:
-            data.city ||
-            "",
-
-          province:
-            data.province ||
-            "",
-
-          region:
-            data.region ||
-            "",
-
-          postalCode:
-            data.postalCode ||
-            "",
-
-          country:
-            data.country ||
-            "Philippines",
-
-          additionalInstruction:
-            data.additionalInstruction ||
-            "",
-
-          updatedAt:
-            isoNow()
-        },
-        {
-          merge: true
-        }
-      );
-    }
-
     return addresses(
       u.uid
     );
@@ -1028,9 +1135,13 @@
     userId,
     addressId
   ) {
-    const f = await READY;
+    const f =
+      await READY;
+
     const u =
-      await currentUser(true);
+      await currentUser(
+        true
+      );
 
     if (
       u.uid !==
@@ -1050,7 +1161,9 @@
       all.find(
         a =>
           a.addressId ===
-          String(addressId)
+          String(
+            addressId
+          )
       );
 
     if (!selected) {
@@ -1089,10 +1202,6 @@
   // ============================================================
 
   async function getProducts() {
-
-    // Products are publicly readable according to Firestore Rules.
-    // No admin authentication is required to READ products.
-
     const list =
       await getCollection(
         "products"
@@ -1117,7 +1226,8 @@
 
           price:
             Number(
-              p.price || 0
+              p.price ||
+              0
             ),
 
           image:
@@ -1161,6 +1271,10 @@
     );
   }
 
+  // ============================================================
+  // ORDERS
+  // ============================================================
+
   function orderAddress(
     payload
   ) {
@@ -1175,27 +1289,38 @@
       .map(
         v =>
           String(
-            v || ""
+            v ||
+            ""
           ).trim()
       )
-      .filter(Boolean)
-      .join(", ");
+      .filter(
+        Boolean
+      )
+      .join(
+        ", "
+      );
   }
 
   async function saveOrder(
     orderId,
     payload
   ) {
-    const f = await READY;
+    const f =
+      await READY;
+
     const u =
-      await currentUser(true);
+      await currentUser(
+        true
+      );
 
     payload =
-      payload || {};
+      payload ||
+      {};
 
     if (
       String(
-        payload.userId || ""
+        payload.userId ||
+        ""
       ) !== u.uid
     ) {
       throw makeError(
@@ -1226,12 +1351,14 @@
 
                 price:
                   Number(
-                    item.price || 0
+                    item.price ||
+                    0
                   ),
 
                 quantity:
                   Number(
-                    item.quantity || 0
+                    item.quantity ||
+                    0
                   ),
 
                 subtotal:
@@ -1255,11 +1382,14 @@
             )
             .filter(
               x =>
-                x.quantity > 0
+                x.quantity >
+                0
             )
         : [];
 
-    if (!cleanItems.length) {
+    if (
+      !cleanItems.length
+    ) {
       throw makeError(
         "The order contains no items."
       );
@@ -1267,8 +1397,12 @@
 
     const total =
       cleanItems.reduce(
-        (s, i) =>
-          s + i.subtotal,
+        (
+          s,
+          i
+        ) =>
+          s +
+          i.subtotal,
         0
       );
 
@@ -1276,20 +1410,30 @@
       f.doc(
         f.db,
         "orders",
-        String(orderId)
+        String(
+          orderId
+        )
       );
 
     const existing =
-      await f.getDoc(ref);
+      await f.getDoc(
+        ref
+      );
 
     if (
       existing.exists()
     ) {
       return {
-        success: true,
+        success:
+          true,
+
         orderId:
-          String(orderId),
-        duplicate: true
+          String(
+            orderId
+          ),
+
+        duplicate:
+          true
       };
     }
 
@@ -1297,7 +1441,9 @@
       ref,
       {
         orderId:
-          String(orderId),
+          String(
+            orderId
+          ),
 
         userId:
           u.uid,
@@ -1370,9 +1516,14 @@
     );
 
     return {
-      success: true,
+      success:
+        true,
+
       orderId:
-        String(orderId),
+        String(
+          orderId
+        ),
+
       status:
         "Preparing"
     };
@@ -1538,9 +1689,10 @@
   async function getOrdersForUser(
     userId
   ) {
-    const f = await READY;
     const u =
-      await currentUser(true);
+      await currentUser(
+        true
+      );
 
     if (
       u.uid !==
@@ -1561,14 +1713,16 @@
         o =>
           String(
             o.userId
-          ) ===
-          u.uid
+          ) === u.uid
       )
       .map(
         normalizeOrder
       )
       .sort(
-        (a, b) =>
+        (
+          a,
+          b
+        ) =>
           String(
             b.orderedAt
           ).localeCompare(
@@ -1578,6 +1732,10 @@
           )
       );
   }
+
+  // ============================================================
+  // REVIEWS
+  // ============================================================
 
   async function getReviewsForOrder(
     orderId,
@@ -1593,12 +1751,16 @@
         String(
           r.orderId
         ) ===
-          String(orderId) &&
+          String(
+            orderId
+          ) &&
         String(
           r.customerId ||
           r.userId
         ) ===
-          String(userId)
+          String(
+            userId
+          )
     );
   }
 
@@ -1607,7 +1769,9 @@
     orderId
   ) {
     const u =
-      await currentUser(true);
+      await currentUser(
+        true
+      );
 
     if (
       u.uid !==
@@ -1626,7 +1790,9 @@
       ).find(
         o =>
           o.orderId ===
-          String(orderId)
+          String(
+            orderId
+          )
       );
 
     if (!order) {
@@ -1660,11 +1826,13 @@
           String(
             r.productId
           )
-        ] = r
+        ] =
+          r
     );
 
     return {
-      success: true,
+      success:
+        true,
 
       orderId:
         order.orderId,
@@ -1693,12 +1861,14 @@
             existingRating:
               byProduct[
                 item.productId
-              ]?.rating || 0,
+              ]?.rating ||
+              0,
 
             existingReview:
               byProduct[
                 item.productId
-              ]?.review || ""
+              ]?.review ||
+              ""
           })
         ),
 
@@ -1719,9 +1889,13 @@
     rating,
     review
   ) {
-    const f = await READY;
+    const f =
+      await READY;
+
     const u =
-      await currentUser(true);
+      await currentUser(
+        true
+      );
 
     if (
       u.uid !==
@@ -1733,11 +1907,14 @@
     }
 
     rating =
-      Number(rating);
+      Number(
+        rating
+      );
 
     review =
       String(
-        review || ""
+        review ||
+        ""
       ).trim();
 
     if (
@@ -1753,7 +1930,8 @@
     }
 
     if (
-      review.length > 1000
+      review.length >
+      1000
     ) {
       throw makeError(
         "Review is too long. Please keep it under 1000 characters."
@@ -1772,7 +1950,9 @@
           String(
             i.productId
           ) ===
-          String(productId)
+          String(
+            productId
+          )
       );
 
     if (!item) {
@@ -1781,7 +1961,9 @@
       );
     }
 
-    if (item.reviewed) {
+    if (
+      item.reviewed
+    ) {
       throw makeError(
         "You already reviewed this menu item."
       );
@@ -1807,13 +1989,17 @@
           id,
 
         orderId:
-          String(orderId),
+          String(
+            orderId
+          ),
 
         customerId:
           u.uid,
 
         productId:
-          String(productId),
+          String(
+            productId
+          ),
 
         productName:
           item.productName,
@@ -1835,7 +2021,8 @@
     );
 
     return {
-      success: true,
+      success:
+        true,
 
       message:
         "Your review has been submitted.",
@@ -1861,7 +2048,10 @@
           "published"
       )
       .sort(
-        (a, b) =>
+        (
+          a,
+          b
+        ) =>
           String(
             b.submittedAt ||
             ""
@@ -1908,16 +2098,17 @@
       );
   }
 
+  // ============================================================
+  // NOTIFICATIONS
+  // ============================================================
+
   async function getNotifications(
     userId
   ) {
-    const list =
-      await getCollection(
-        "notifications"
-      );
-
     const u =
-      await currentUser(true);
+      await currentUser(
+        true
+      );
 
     if (
       u.uid !==
@@ -1928,17 +2119,24 @@
       );
     }
 
+    const list =
+      await getCollection(
+        "notifications"
+      );
+
     return list
       .filter(
         n =>
           String(
             n.userId
-          ) ===
-            u.uid &&
+          ) === u.uid &&
           !n.readAt
       )
       .sort(
-        (a, b) =>
+        (
+          a,
+          b
+        ) =>
           new Date(
             b.createdAt ||
             0
@@ -1973,9 +2171,13 @@
     userId,
     notificationId
   ) {
-    const f = await READY;
+    const f =
+      await READY;
+
     const u =
-      await currentUser(true);
+      await currentUser(
+        true
+      );
 
     if (
       u.uid !==
@@ -1990,18 +2192,22 @@
       f.doc(
         f.db,
         "notifications",
-        String(notificationId)
+        String(
+          notificationId
+        )
       );
 
     const snap =
-      await f.getDoc(ref);
+      await f.getDoc(
+        ref
+      );
 
     if (
       !snap.exists() ||
       String(
-        snap.data().userId
-      ) !==
-      u.uid
+        snap.data()
+          .userId
+      ) !== u.uid
     ) {
       throw makeError(
         "Notification not found."
@@ -2017,7 +2223,8 @@
     );
 
     return {
-      success: true
+      success:
+        true
     };
   }
 
@@ -2027,9 +2234,13 @@
     received,
     notificationId
   ) {
-    const f = await READY;
+    const f =
+      await READY;
+
     const u =
-      await currentUser(true);
+      await currentUser(
+        true
+      );
 
     if (
       u.uid !==
@@ -2044,18 +2255,22 @@
       f.doc(
         f.db,
         "orders",
-        String(orderId)
+        String(
+          orderId
+        )
       );
 
     const snap =
-      await f.getDoc(ref);
+      await f.getDoc(
+        ref
+      );
 
     if (
       !snap.exists() ||
       String(
-        snap.data().userId
-      ) !==
-      u.uid
+        snap.data()
+          .userId
+      ) !== u.uid
     ) {
       throw makeError(
         "Order not found."
@@ -2095,7 +2310,9 @@
       }
     );
 
-    if (notificationId) {
+    if (
+      notificationId
+    ) {
       try {
         await markNotificationRead(
           u.uid,
@@ -2105,7 +2322,8 @@
     }
 
     return {
-      success: true,
+      success:
+        true,
 
       received:
         !!received,
@@ -2131,19 +2349,372 @@
   // ============================================================
 
   async function getAdminProducts() {
-
-    // IMPORTANT:
-    // Firestore Rules allow public READ access to products.
-    // Therefore we do NOT call requireAdmin() here.
-    // Admin authentication remains required for writes.
-
-    const products =
-      await getProducts();
+    await requireAdmin();
 
     return {
-      success: true,
-      products
+      success:
+        true,
+
+      products:
+        await getProducts()
     };
+  }
+
+  // ------------------------------------------------------------
+  // Convert the Admin file's selected image object into
+  // a browser data URL.
+  //
+  // Admin sends:
+  // {
+  //   name: "...",
+  //   type: "image/jpeg",
+  //   base64: "...."
+  // }
+  // ------------------------------------------------------------
+
+  function dataUrlFromImageObject(
+    image
+  ) {
+    if (
+      !image ||
+      typeof image !==
+        "object"
+    ) {
+      return null;
+    }
+
+    const type =
+      String(
+        image.type ||
+        "image/jpeg"
+      ).toLowerCase();
+
+    const base64 =
+      String(
+        image.base64 ||
+        ""
+      ).trim();
+
+    if (!base64) {
+      return null;
+    }
+
+    if (
+      !/^image\/(jpeg|jpg|png|webp)$/i.test(
+        type
+      )
+    ) {
+      throw makeError(
+        "Product photo must be JPG, PNG, or WEBP."
+      );
+    }
+
+    return (
+      "data:" +
+      type +
+      ";base64," +
+      base64
+    );
+  }
+
+  // ------------------------------------------------------------
+  // Compress the selected product photo in the browser.
+  //
+  // Firebase Storage is NOT used.
+  // The compressed image is stored directly in the product
+  // document so the project can remain on the current setup.
+  // ------------------------------------------------------------
+
+  function compressImageDataUrl(
+    dataUrl
+  ) {
+    return new Promise(
+      (
+        resolve,
+        reject
+      ) => {
+
+        if (
+          !dataUrl ||
+          !dataUrl.startsWith(
+            "data:image/"
+          )
+        ) {
+          resolve(
+            dataUrl ||
+            ""
+          );
+
+          return;
+        }
+
+        const img =
+          new Image();
+
+        img.onload =
+          () => {
+
+            try {
+
+              const maxDimension =
+                1400;
+
+              const scale =
+                Math.min(
+                  1,
+                  maxDimension /
+                    Math.max(
+                      img.width ||
+                        1,
+                      img.height ||
+                        1
+                    )
+                );
+
+              const width =
+                Math.max(
+                  1,
+                  Math.round(
+                    (img.width ||
+                      1) *
+                    scale
+                  )
+                );
+
+              const height =
+                Math.max(
+                  1,
+                  Math.round(
+                    (img.height ||
+                      1) *
+                    scale
+                  )
+                );
+
+              const canvas =
+                document.createElement(
+                  "canvas"
+                );
+
+              canvas.width =
+                width;
+
+              canvas.height =
+                height;
+
+              const ctx =
+                canvas.getContext(
+                  "2d",
+                  {
+                    alpha:
+                      false
+                  }
+                );
+
+              if (!ctx) {
+                throw makeError(
+                  "Your browser cannot process the product photo."
+                );
+              }
+
+              ctx.fillStyle =
+                "#ffffff";
+
+              ctx.fillRect(
+                0,
+                0,
+                width,
+                height
+              );
+
+              ctx.drawImage(
+                img,
+                0,
+                0,
+                width,
+                height
+              );
+
+              // Start with good JPEG quality.
+              let quality =
+                0.82;
+
+              let result =
+                canvas.toDataURL(
+                  "image/jpeg",
+                  quality
+                );
+
+              // Reduce quality if necessary.
+              while (
+                result.length >
+                  760000 &&
+                quality >
+                  0.45
+              ) {
+                quality -=
+                  0.07;
+
+                result =
+                  canvas.toDataURL(
+                    "image/jpeg",
+                    quality
+                  );
+              }
+
+              // Extra resize pass for unusually detailed images.
+              if (
+                result.length >
+                820000
+              ) {
+
+                const smaller =
+                  document.createElement(
+                    "canvas"
+                  );
+
+                smaller.width =
+                  Math.max(
+                    1,
+                    Math.round(
+                      width *
+                      0.75
+                    )
+                  );
+
+                smaller.height =
+                  Math.max(
+                    1,
+                    Math.round(
+                      height *
+                      0.75
+                    )
+                  );
+
+                const sctx =
+                  smaller.getContext(
+                    "2d",
+                    {
+                      alpha:
+                        false
+                    }
+                  );
+
+                sctx.fillStyle =
+                  "#ffffff";
+
+                sctx.fillRect(
+                  0,
+                  0,
+                  smaller.width,
+                  smaller.height
+                );
+
+                sctx.drawImage(
+                  img,
+                  0,
+                  0,
+                  smaller.width,
+                  smaller.height
+                );
+
+                result =
+                  smaller.toDataURL(
+                    "image/jpeg",
+                    0.65
+                  );
+              }
+
+              if (
+                result.length >
+                850000
+              ) {
+                reject(
+                  makeError(
+                    "The product photo is too large. Please choose a smaller image."
+                  )
+                );
+
+                return;
+              }
+
+              resolve(
+                result
+              );
+
+            } catch (e) {
+              reject(e);
+            }
+          };
+
+        img.onerror =
+          () =>
+            reject(
+              makeError(
+                "Unable to process the selected product photo."
+              )
+            );
+
+        img.src =
+          dataUrl;
+      }
+    );
+  }
+
+  async function prepareProductImage(
+    data
+  ) {
+    const raw =
+      data.image;
+
+    // New Admin uploader format.
+    if (
+      raw &&
+      typeof raw ===
+        "object"
+    ) {
+      const dataUrl =
+        dataUrlFromImageObject(
+          raw
+        );
+
+      return compressImageDataUrl(
+        dataUrl
+      );
+    }
+
+    // Support an already-created data URL.
+    if (
+      typeof raw ===
+        "string" &&
+      raw.trim()
+    ) {
+      const value =
+        raw.trim();
+
+      if (
+        value.startsWith(
+          "data:image/"
+        )
+      ) {
+        return compressImageDataUrl(
+          value
+        );
+      }
+
+      return value;
+    }
+
+    // Support existing URL-based products.
+    if (
+      typeof data.imageUrl ===
+        "string" &&
+      data.imageUrl.trim()
+    ) {
+      return data.imageUrl.trim();
+    }
+
+    return "";
   }
 
   async function saveProduct(
@@ -2159,17 +2730,20 @@
 
     const name =
       String(
-        data.name || ""
+        data.name ||
+        ""
       ).trim();
 
     const category =
       String(
-        data.category || ""
+        data.category ||
+        ""
       ).trim();
 
     const description =
       String(
-        data.description || ""
+        data.description ||
+        ""
       ).trim();
 
     const price =
@@ -2200,60 +2774,51 @@
       );
     }
 
-    // Direct product-photo upload.
-    //
-    // The revised Admin page compresses the selected
-    // image in the browser and sends the resulting
-    // data URL here.
-    //
-    // This avoids Firebase Storage / Blaze billing.
-    let image =
-      String(
-        data.imageUrl ||
-        data.image ||
-        ""
-      ).trim();
-
-    if (
-      image.startsWith(
-        "data:"
-      )
-    ) {
-
-      // Firestore documents have a 1 MiB limit.
-      // Keep the image below that limit so the
-      // rest of the product document has room.
-      const MAX_IMAGE_CHARS =
-        820000;
-
-      if (
-        image.length >
-        MAX_IMAGE_CHARS
-      ) {
-        throw makeError(
-          "The product photo is still too large after compression. Please choose a smaller image."
-        );
-      }
-
-      if (
-        !/^data:image\/(jpeg|jpg|png|webp);base64,/i.test(
-          image
-        )
-      ) {
-        throw makeError(
-          "The product photo must be a JPG, PNG, or WEBP image."
-        );
-      }
-    }
-
     const id =
       String(
-        data.id || ""
+        data.id ||
+        ""
       ).trim() ||
       (
         "PROD-" +
         Date.now()
       );
+
+    // Get existing product first so editing without a new photo
+    // does not erase the old image.
+    const existing =
+      await getDocById(
+        "products",
+        id
+      );
+
+    let image =
+      await prepareProductImage(
+        data
+      );
+
+    if (
+      !image &&
+      existing &&
+      existing.image
+    ) {
+      image =
+        String(
+          existing.image
+        );
+    }
+
+    if (
+      image.startsWith(
+        "data:"
+      ) &&
+      image.length >
+        850000
+    ) {
+      throw makeError(
+        "The product photo is too large. Please choose a smaller image."
+      );
+    }
 
     await f.setDoc(
       f.doc(
@@ -2263,9 +2828,13 @@
       ),
       {
         name,
+
         category,
+
         price,
+
         image,
+
         description,
 
         available:
@@ -2282,12 +2851,14 @@
           isoNow()
       },
       {
-        merge: true
+        merge:
+          true
       }
     );
 
     return {
-      success: true,
+      success:
+        true,
 
       productId:
         id,
@@ -2307,7 +2878,8 @@
 
     id =
       String(
-        id || ""
+        id ||
+        ""
       ).trim();
 
     if (!id) {
@@ -2325,7 +2897,8 @@
     );
 
     return {
-      success: true,
+      success:
+        true,
 
       products:
         await getProducts()
@@ -2395,7 +2968,8 @@
           ).length;
 
         o.reviewCompleted =
-          o.reviewTotal > 0 &&
+          o.reviewTotal >
+            0 &&
           o.reviewedCount >=
             o.reviewTotal;
 
@@ -2413,11 +2987,15 @@
     );
 
     return {
-      success: true,
+      success:
+        true,
 
       orders:
         orders.sort(
-          (a, b) =>
+          (
+            a,
+            b
+          ) =>
             String(
               b.orderedAt
             ).localeCompare(
@@ -2443,11 +3021,15 @@
       f.doc(
         f.db,
         "orders",
-        String(orderId)
+        String(
+          orderId
+        )
       );
 
     const snap =
-      await f.getDoc(ref);
+      await f.getDoc(
+        ref
+      );
 
     if (
       !snap.exists()
@@ -2482,7 +3064,9 @@
         : [];
 
     const i =
-      Number(index);
+      Number(
+        index
+      );
 
     if (!items[i]) {
       throw makeError(
@@ -2499,18 +3083,26 @@
     if (
       current ===
         "Ready" &&
-      String(status) !==
+      String(
+        status
+      ) !==
         "Ready"
     ) {
       return {
-        success: true,
+        success:
+          true,
+
         order:
-          normalizeOrder(o)
+          normalizeOrder(
+            o
+          )
       };
     }
 
     items[i].itemStatus =
-      String(status) ===
+      String(
+        status
+      ) ===
       "Ready"
         ? "Ready"
         : "Preparing";
@@ -2533,7 +3125,8 @@
       ).data();
 
     return {
-      success: true,
+      success:
+        true,
 
       order:
         normalizeOrder(
@@ -2555,11 +3148,15 @@
       f.doc(
         f.db,
         "orders",
-        String(orderId)
+        String(
+          orderId
+        )
       );
 
     const snap =
-      await f.getDoc(ref);
+      await f.getDoc(
+        ref
+      );
 
     if (
       !snap.exists()
@@ -2593,7 +3190,8 @@
 
     let next =
       String(
-        status || ""
+        status ||
+        ""
       );
 
     if (
@@ -2667,7 +3265,6 @@
       next ===
       "Delivered"
     ) {
-
       patch.deliveredAt =
         isoNow();
 
@@ -2735,7 +3332,8 @@
     }
 
     return {
-      success: true,
+      success:
+        true,
 
       order:
         normalizeOrder(
@@ -2773,7 +3371,10 @@
     const avg =
       published.length
         ? published.reduce(
-            (s, r) =>
+            (
+              s,
+              r
+            ) =>
               s +
               Number(
                 r.rating ||
@@ -2785,12 +3386,16 @@
         : 0;
 
     return {
-      success: true,
+      success:
+        true,
 
       reviews:
         reviews
           .sort(
-            (a, b) =>
+            (
+              a,
+              b
+            ) =>
               String(
                 b.submittedAt ||
                 ""
@@ -2872,7 +3477,9 @@
         "Published",
         "Hidden"
       ].includes(
-        String(status)
+        String(
+          status
+        )
       )
     ) {
       throw makeError(
@@ -2884,11 +3491,15 @@
       f.doc(
         f.db,
         "reviews",
-        String(id)
+        String(
+          id
+        )
       );
 
     const snap =
-      await f.getDoc(ref);
+      await f.getDoc(
+        ref
+      );
 
     if (
       !snap.exists()
@@ -2902,15 +3513,20 @@
       ref,
       {
         status:
-          String(status)
+          String(
+            status
+          )
       }
     );
 
     return {
-      success: true,
+      success:
+        true,
 
       status:
-        String(status)
+        String(
+          status
+        )
     };
   }
 
@@ -2928,7 +3544,9 @@
         f.doc(
           f.db,
           "orders",
-          String(orderId)
+          String(
+            orderId
+          )
         )
       );
 
@@ -2993,9 +3611,15 @@
 
     if (complete) {
       return {
-        success: true,
-        sent: false,
-        completed: true,
+        success:
+          true,
+
+        sent:
+          false,
+
+        completed:
+          true,
+
         message:
           "Customer has already reviewed this order."
       };
@@ -3025,13 +3649,19 @@
       !forceResend
     ) {
       return {
-        success: true,
-        sent: false,
+        success:
+          true,
+
+        sent:
+          false,
+
         alreadyNotified:
           true,
+
         notificationId:
           existing.notificationId ||
           existing.id,
+
         message:
           "Review notification is already waiting for the customer."
       };
@@ -3101,12 +3731,18 @@
     );
 
     return {
-      success: true,
-      sent: true,
+      success:
+        true,
+
+      sent:
+        true,
+
       resent:
         !!forceResend,
+
       notificationId:
         nid,
+
       message:
         forceResend
           ? "Review resent to the customer."
@@ -3152,7 +3788,9 @@
     args =
       args || [];
 
-    switch (name) {
+    switch (
+      name
+    ) {
 
       case "loginUser":
         return loginUser(
@@ -3241,14 +3879,19 @@
           o => ({
             orderId:
               o.orderId,
+
             total:
               o.total,
+
             paymentMethod:
               o.paymentMethod,
+
             paymentStatus:
               o.paymentStatus,
+
             orderStatus:
               o.orderStatus,
+
             orderedAt:
               o.orderedAt
           })
@@ -3362,6 +4005,10 @@
           "/barangays"
         );
 
+      // ========================================================
+      // ADMIN AUTH
+      // ========================================================
+
       case "adminLogin": {
         const f =
           await READY;
@@ -3370,19 +4017,20 @@
           await f.signInWithEmailAndPassword(
             f.auth,
             String(
-              args[0] || ""
+              args[0] ||
+              ""
             )
               .trim()
               .toLowerCase(),
             String(
-              args[1] || ""
+              args[1] ||
+              ""
             )
           );
 
         if (
           !(await isAdmin())
         ) {
-
           await f.signOut(
             f.auth
           );
@@ -3393,11 +4041,11 @@
         }
 
         return {
-          success: true,
+          success:
+            true,
 
           token:
-            await cred.user
-              .getIdToken(),
+            await cred.user.getIdToken(),
 
           email:
             cred.user.email
@@ -3467,14 +4115,18 @@
     _failure:
       null,
 
-    withSuccessHandler(fn) {
+    withSuccessHandler(
+      fn
+    ) {
       this._success =
         fn;
 
       return this;
     },
 
-    withFailureHandler(fn) {
+    withFailureHandler(
+      fn
+    ) {
       this._failure =
         fn;
 
@@ -3537,23 +4189,27 @@
                   )
               )
               .then(
-                v => {
+                value => {
                   if (ok) {
-                    ok(v);
+                    ok(
+                      value
+                    );
                   }
                 }
               )
               .catch(
-                e => {
+                error => {
 
                   console.error(
                     "McKenzie Firebase function error:",
                     prop,
-                    e
+                    error
                   );
 
                   if (fail) {
-                    fail(e);
+                    fail(
+                      error
+                    );
                   }
                 }
               );
