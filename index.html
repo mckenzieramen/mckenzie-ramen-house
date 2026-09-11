@@ -8,11 +8,6 @@
 
   <title>Mckenzie Ramen House</title>
 
-  <!-- Firebase standalone bridge for GitHub Pages. This creates the
-       google.script.run compatibility layer used by the existing customer UI. -->
-  <script src="js/firebase-config.js"></script>
-  <script type="module" src="js/firebase-standalone.js"></script>
-
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 
@@ -2508,7 +2503,7 @@ body.quick-loading {
 
     <img
       id="loaderRamenImage"
-      src="images/ramen-loading.png"
+      src=""
       alt="Preparing ramen"
       class="animate"
       decoding="async"
@@ -3411,15 +3406,6 @@ body.quick-loading {
 <script>
 // Apps Script backend used by the customer site when this page is hosted on GitHub Pages.
 const MCKENZIE_ORDER_API_URL = "https://script.google.com/macros/s/AKfycbxHuXpTYPCSQ_Uj1-LqC7jAjGEcbQ8uKvwX3tmy_ZqOb_bvdFgvQ-IwTjumY713SuF8Hw/exec";
-
-/* =========================================================
-   GITHUB CUSTOMER BRAND ASSETS
-   These are the default high-resolution assets. Firebase brand
-   assets can still override them when saved from Admin Settings.
-========================================================= */
-const MCKENZIE_DEFAULT_LOGO = "images/mckenzie-logo.png";
-const MCKENZIE_DEFAULT_BACKGROUND = "images/mckenzie-background.jpg";
-const MCKENZIE_DEFAULT_LOADING = "images/ramen-loading.png";
 
 
 
@@ -5721,18 +5707,57 @@ function startHomepageRamenLoader_() {
   const img = document.getElementById('loaderRamenImage');
   if (!img) return;
 
-  /* The approved loading artwork is stored in GitHub so it appears
-     immediately and does not depend on Apps Script or Firebase. */
-  img.src = MCKENZIE_DEFAULT_LOADING;
-  img.alt = 'McKenzie Ramen House loading';
-  img.style.display = 'block';
-  img.style.opacity = '1';
+  /* Never show the old low-resolution embedded fallback.
+     The loader appears only after the real Products!I9 image is fully decoded. */
   img.classList.remove('animate', 'sipping', 'loader-ready');
-  void img.offsetWidth;
-  img.classList.add('loader-ready', 'sipping');
+  img.style.display = 'none';
+  img.style.opacity = '0';
 
-  /* Mark the loader asset ready immediately. The loader remains visible
-     until the logo/background and product images are ready. */
+  const showClearI9_ = function(url) {
+    if (!url) return false;
+    const clear = new Image();
+    clear.decoding = 'async';
+    clear.onload = function() {
+      try {
+        img.src = clear.src;
+        img.style.display = 'block';
+        img.style.opacity = '1';
+        img.classList.add('loader-ready', 'sipping');
+      } catch (e) {
+        console.warn('Unable to display I9 loader image:', e);
+      }
+    };
+    clear.onerror = function() {
+      console.warn('Products!I9 loader image failed to load.');
+    };
+    clear.src = String(url);
+    if (clear.complete && clear.naturalWidth > 0) clear.onload();
+    return true;
+  };
+
+  /* Use a cached I9 URL first when available, so repeat visits can show the
+     clear ramen almost immediately. */
+  try {
+    const cachedI9 = localStorage.getItem('mckenzieRamenLoaderI9');
+    if (cachedI9) showClearI9_(cachedI9);
+  } catch (e) {}
+
+  try {
+    google.script.run
+      .withSuccessHandler(function(url) {
+        if (url) {
+          try { localStorage.setItem('mckenzieRamenLoaderI9', String(url)); } catch (e) {}
+          showClearI9_(String(url));
+        }
+      })
+      .withFailureHandler(function(err) {
+        console.warn('I9 loader image unavailable.', err);
+      })
+      .getRamenLoadingImage();
+  } catch (e) {
+    console.warn('Unable to request Products!I9 loader image.', e);
+  }
+
   markPageAssetReady_('loader');
 }
 
@@ -5827,18 +5852,7 @@ function getCachedProducts_() {
   } catch (e) { return null; }
 }
 
-function applyDefaultBrandAssets_() {
-  applyBrandAssets_({
-    logo: MCKENZIE_DEFAULT_LOGO,
-    background: MCKENZIE_DEFAULT_BACKGROUND
-  });
-}
-
 function loadBrandAssets() {
-  /* Always start with the GitHub assets so the customer site has a
-     reliable branding fallback even if Firebase is slow/unavailable. */
-  applyDefaultBrandAssets_();
-
   const cached = getCachedBrandAssets_();
   if (cached) applyBrandAssets_(cached);
 
@@ -5908,8 +5922,7 @@ function loadBrandAssets() {
       }, 3500);
     })
     .withFailureHandler(function(error) {
-      console.error('Brand assets error; using GitHub defaults.', error);
-      applyDefaultBrandAssets_();
+      console.error('Brand assets error:', error);
       markPageAssetReady_('brand');
     })
     .getBrandAssets();
@@ -6484,36 +6497,10 @@ createPetals();
 updateHeroAccountButton_();
 updateStickyCartButton_();
 
-/* Show the ramen loader immediately, then wait for Firebase bridge readiness
-   before any legacy google.script.run call is made. This prevents
-   "google is not defined" on GitHub Pages during a cold load. */
+/* Show the I9 ramen loader while the actual page assets finish loading. */
 startHomepageRamenLoader_();
-
-function startCustomerFirebase_() {
-  try {
-    loadBrandAssets();
-    loadProducts();
-  } catch (error) {
-    console.error("Customer Firebase startup error:", error);
-  }
-}
-
-if (window.MckenzieFirebaseReady && typeof window.MckenzieFirebaseReady.then === "function") {
-  window.MckenzieFirebaseReady.then(startCustomerFirebase_).catch(function(error) {
-    console.error("Firebase bridge failed; using local/default customer assets.", error);
-    applyDefaultBrandAssets_();
-    markPageAssetReady_('brand');
-  });
-} else {
-  window.addEventListener("mckenzie-firebase-ready", startCustomerFirebase_, { once: true });
-  setTimeout(function() {
-    if (!window.MckenzieFirebaseReady) {
-      console.warn("Firebase bridge did not load; customer page will use local/default assets.");
-      applyDefaultBrandAssets_();
-      markPageAssetReady_('brand');
-    }
-  }, 5000);
-}
+loadBrandAssets();
+loadProducts();
 
 </script>
 
