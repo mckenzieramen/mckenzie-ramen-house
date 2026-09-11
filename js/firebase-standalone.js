@@ -308,11 +308,28 @@
   async function getProducts() {
     const f = await READY;
     const list = await getCollection("products");
-    return list.filter(p => p.name).map(p => ({
-      id:p.id, name:p.name, category:p.category || "Ramen", price:Number(p.price || 0),
-      image:p.image || "", description:p.description || "", available:p.available !== false,
-      bestSeller:!!p.bestSeller, newProduct:!!p.newProduct
-    }));
+    return list.filter(p => p.name).map(p => {
+      // Always normalize the stored Firestore value to a real boolean.
+      // This handles correct booleans and older records containing
+      // "true"/"false" strings or numeric 1/0 values.
+      const available =
+        p.available === true ||
+        p.available === "true" ||
+        p.available === 1 ||
+        p.available === "1";
+
+      return {
+        id:p.id,
+        name:p.name,
+        category:p.category || "Ramen",
+        price:Number(p.price || 0),
+        image:p.image || "",
+        description:p.description || "",
+        available,
+        bestSeller:!!p.bestSeller,
+        newProduct:!!p.newProduct
+      };
+    });
   }
 
   async function getBrandAssets() {
