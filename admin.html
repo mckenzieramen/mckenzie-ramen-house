@@ -47,6 +47,82 @@ button,input,select,textarea{font:inherit}
 .custom-confirm-ok{background:#b91e35;border:1px solid #b91e35;color:#fff}
 .custom-confirm-ok:hover{background:#8e1528}
 @keyframes confirmPop{from{opacity:0;transform:translateY(8px) scale(.98)}to{opacity:1;transform:none}}
+
+/* =========================================================
+   MOBILE ADMIN — CHATGPT-STYLE DRAWER + 2-COLUMN PRODUCTS
+========================================================= */
+.mobile-menu-btn,.mobile-nav-backdrop,.mobile-nav-close{display:none}
+
+@media (max-width:600px){
+  body{overflow-x:hidden}
+  .main{margin:0!important;width:100%!important;padding:72px 12px 24px!important}
+  .mobile-menu-btn{
+    display:flex;position:fixed;top:14px;left:14px;width:46px;height:46px;
+    align-items:center;justify-content:center;z-index:2147481000;border:1px solid #eaded1;
+    border-radius:12px;background:#130807;color:#fff;font-size:22px;line-height:1;
+    box-shadow:0 8px 24px rgba(0,0,0,.18);cursor:pointer
+  }
+  .mobile-nav-backdrop{
+    position:fixed;inset:0;background:rgba(0,0,0,.48);z-index:2147481001;
+    opacity:0;pointer-events:none;transition:opacity .22s ease;display:block
+  }
+  .side{
+    display:block!important;position:fixed!important;z-index:2147481002;
+    top:0;left:0;bottom:0;width:min(285px,82vw)!important;
+    padding:20px 14px!important;transform:translateX(-105%);
+    transition:transform .25s ease;box-shadow:18px 0 45px rgba(0,0,0,.28);
+    overflow-y:auto
+  }
+  body.mobile-admin-nav-open .side{transform:translateX(0)}
+  body.mobile-admin-nav-open .mobile-nav-backdrop{opacity:1;pointer-events:auto}
+  .mobile-nav-close{
+    display:flex!important;position:absolute;top:14px;right:12px;width:36px;height:36px;
+    align-items:center;justify-content:center;border:1px solid #5a322c;border-radius:50%;
+    background:#24100e;color:#fff;font-size:25px;line-height:1;cursor:pointer
+  }
+  .side .brand{padding-top:24px}
+  .side .brand h2,.side .brand small,.side .nav span,.side .logout span{display:block}
+  .side .admin-logo-img{width:112px;height:82px}
+  .side .nav{margin-top:22px;gap:6px}
+  .side .nav button{padding:13px 12px;font-size:13px}
+  .side .logout{left:14px;right:14px;bottom:18px}
+
+  .top{gap:10px;margin-bottom:18px;align-items:center}
+  .top h1{font-size:29px!important;line-height:1.05}
+  .top p{font-size:10px;line-height:1.35}
+  .top .add{padding:10px 12px;font-size:11px;white-space:nowrap}
+  .stats{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px;margin-bottom:14px}
+  .stat{padding:12px 10px;border-radius:12px}
+  .stat span{font-size:9px}
+  .stat strong{font-size:22px;margin-top:3px}
+  .panel{padding:12px;border-radius:14px}
+  .toolbar{gap:9px;margin-bottom:12px}
+  .toolbar>strong{font-size:12px}
+  .toolbar .search{font-size:10px;padding:9px 10px}
+
+  /* Exactly 2 products per row on phones */
+  .products{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:9px!important}
+  .product{border-radius:11px;min-width:0}
+  .product img{height:118px!important;object-fit:cover}
+  .pbody{padding:9px 8px 10px}
+  .badge{font-size:6px;padding:3px 5px;border-radius:4px;margin-bottom:4px}
+  .pbody h3{font-size:17px!important;line-height:1.02;margin-bottom:3px}
+  .price{font-size:13px}
+  .meta{font-size:8px;margin:4px 0 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .actions{gap:5px}
+  .actions button{padding:7px 4px;font-size:9px;border-radius:7px;min-width:0}
+
+  .orders-toolbar,.orders-toolbar>div:last-child{gap:8px}
+  .orders-toolbar>div:last-child{display:grid!important;grid-template-columns:1fr 1fr}
+  .orders-toolbar .search-wrap{grid-column:1/-1;max-width:none}
+  .orders-toolbar .status-filter,.orders-toolbar .add{width:100%;font-size:10px;padding:9px}
+  .order-card{padding:12px;border-radius:12px}
+  .order-head{gap:8px}
+  .order-grid{grid-template-columns:1fr!important}
+  .review-stats{grid-template-columns:repeat(2,1fr)!important;gap:8px}
+  .settings-grid{grid-template-columns:1fr!important;gap:12px}
+  .settings-card{padding:14px;border-radius:13px}
+}
 </style>
 
 <style id="review-notify-style">
@@ -272,9 +348,11 @@ button,input,select,textarea{font:inherit}
 </div>
 
 <div class="layout" id="app" style="display:none">
+<button type="button" class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Open admin navigation" onclick="toggleMobileAdminNav(true)">☰</button>
+<div class="mobile-nav-backdrop" id="mobileNavBackdrop" onclick="toggleMobileAdminNav(false)"></div>
 <aside class="side">
   <div class="brand"><img id="adminSidebarLogo" class="admin-logo-img" src="images/mckenzie-logo.png" onerror="this.onerror=null;this.src='images/mckenzie-logo.png'" alt="McKenzie Ramen House Logo"><h2>McKenzie</h2><small>Ramen House · Admin</small></div>
-  <div class="nav">
+  <div class="nav"><button type="button" class="mobile-nav-close" onclick="toggleMobileAdminNav(false)" aria-label="Close navigation">×</button>
     <button id="navProducts" class="active" onclick="showSection('products')">📦 <span>Products</span></button>
     <button id="navOrders" onclick="showSection('orders')">🧾 <span>Orders</span><b id="orderBadge" style="display:none;margin-left:auto;background:#b91e35;color:#fff;border-radius:999px;padding:2px 7px;font-size:10px">0</b></button>
     <button onclick="alert('Customers module next.')">👥 <span>Customers</span></button>
@@ -2312,5 +2390,19 @@ async function logout(){
   scrub();
   new MutationObserver(scrub).observe(document.body,{subtree:true,childList:true});
   setInterval(scrub,500);
+})();
+</script>
+<script id="mobile-admin-navigation-fix">
+(function(){
+  window.toggleMobileAdminNav=function(open){
+    document.body.classList.toggle('mobile-admin-nav-open',!!open);
+  };
+  document.addEventListener('keydown',function(e){
+    if(e.key==='Escape') window.toggleMobileAdminNav(false);
+  });
+  document.addEventListener('click',function(e){
+    var b=e.target.closest && e.target.closest('.side .nav button');
+    if(b && !b.classList.contains('mobile-nav-close')) window.toggleMobileAdminNav(false);
+  });
 })();
 </script>
