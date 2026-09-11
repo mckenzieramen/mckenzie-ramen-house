@@ -4791,40 +4791,117 @@ function findCodeByName_(items, name) {
 }
 
 function bindAddressChain_(prefix) {
-  const region=document.getElementById(prefix+"Region"),province=document.getElementById(prefix+"Province"),city=document.getElementById(prefix+"City"),barangay=document.getElementById(prefix+"Barangay");
-  if(!region||!province||!city||!barangay)return;
-  region.onchange=function(){
-    setSelectOptions_(prefix+"Province",[],"Loading provinces…");setSelectOptions_(prefix+"City",[],"Select city / municipality");setSelectOptions_(prefix+"Barangay",[],"Select barangay");
-    fetchPsgcList_("https://psgc.cloud/api/regions/"+encodeURIComponent(region.value)+"/provinces","Unable to load provinces. Please try again.").then(function(items){setSelectOptions_(prefix+"Province",normalizePsgcItems_(items),"Select province");}).catch(function(e){setSelectOptions_(prefix+"Province",[],"Unable to load provinces");console.error(e);});
+  const region = document.getElementById(prefix + "Region");
+  const province = document.getElementById(prefix + "Province");
+  const city = document.getElementById(prefix + "City");
+  const barangay = document.getElementById(prefix + "Barangay");
+  if (!region || !province || !city || !barangay) return;
+
+  region.onchange = function() {
+    setSelectOptions_(prefix + "Province", [], "Loading provinces...");
+    setSelectOptions_(prefix + "City", [], "Select city / municipality");
+    setSelectOptions_(prefix + "Barangay", [], "Select barangay");
+
+    google.script.run
+      .withSuccessHandler(function(items) {
+        setSelectOptions_(prefix + "Province", items, "Select province");
+      })
+      .withFailureHandler(function(error) {
+        setSelectOptions_(prefix + "Province", [], "Unable to load provinces");
+        console.error(error);
+      })
+      .getAddressProvinces(region.value);
   };
-  province.onchange=function(){
-    setSelectOptions_(prefix+"City",[],"Loading cities / municipalities…");setSelectOptions_(prefix+"Barangay",[],"Select barangay");
-    fetchPsgcList_("https://psgc.cloud/api/provinces/"+encodeURIComponent(province.value)+"/cities-municipalities","Unable to load cities. Please try again.").then(function(items){setSelectOptions_(prefix+"City",normalizePsgcItems_(items),"Select city / municipality");}).catch(function(e){setSelectOptions_(prefix+"City",[],"Unable to load cities");console.error(e);});
+
+  province.onchange = function() {
+    setSelectOptions_(prefix + "City", [], "Loading cities / municipalities...");
+    setSelectOptions_(prefix + "Barangay", [], "Select barangay");
+
+    google.script.run
+      .withSuccessHandler(function(items) {
+        setSelectOptions_(prefix + "City", items, "Select city / municipality");
+      })
+      .withFailureHandler(function(error) {
+        setSelectOptions_(prefix + "City", [], "Unable to load cities");
+        console.error(error);
+      })
+      .getAddressCities(province.value);
   };
-  city.onchange=function(){
-    setSelectOptions_(prefix+"Barangay",[],"Loading barangays…");
-    fetchPsgcList_("https://psgc.cloud/api/cities-municipalities/"+encodeURIComponent(city.value)+"/barangays","Unable to load barangays. Please try again.").then(function(items){setSelectOptions_(prefix+"Barangay",normalizePsgcItems_(items),"Select barangay");}).catch(function(e){setSelectOptions_(prefix+"Barangay",[],"Unable to load barangays");console.error(e);});
+
+  city.onchange = function() {
+    setSelectOptions_(prefix + "Barangay", [], "Loading barangays...");
+
+    google.script.run
+      .withSuccessHandler(function(items) {
+        setSelectOptions_(prefix + "Barangay", items, "Select barangay");
+      })
+      .withFailureHandler(function(error) {
+        setSelectOptions_(prefix + "Barangay", [], "Unable to load barangays");
+        console.error(error);
+      })
+      .getAddressBarangays(city.value);
   };
 }
 
-function loadAddressChain_(prefix,saved) {
+function loadAddressChain_(prefix, saved) {
   bindAddressChain_(prefix);
-  const region=document.getElementById(prefix+"Region");if(!region)return;
-  setSelectOptions_(prefix+"Region",[],"Loading regions…");
-  fetchPsgcList_("https://psgc.cloud/api/regions","Unable to load regions. Please refresh and try again.").then(function(rawRegions){
-    const regions=normalizePsgcItems_(rawRegions);setSelectOptions_(prefix+"Region",regions,"Select region");
-    const regionCode=findCodeByName_(regions,saved&&saved.region);if(!regionCode)return;
-    region.value=regionCode;
-    return fetchPsgcList_("https://psgc.cloud/api/regions/"+encodeURIComponent(regionCode)+"/provinces","Unable to load provinces.").then(function(rawProvinces){
-      const provinces=normalizePsgcItems_(rawProvinces);setSelectOptions_(prefix+"Province",provinces,"Select province");const provinceCode=findCodeByName_(provinces,saved&&saved.province);if(!provinceCode)return;
-      const province=document.getElementById(prefix+"Province");province.value=provinceCode;
-      return fetchPsgcList_("https://psgc.cloud/api/provinces/"+encodeURIComponent(provinceCode)+"/cities-municipalities","Unable to load cities.").then(function(rawCities){
-        const cities=normalizePsgcItems_(rawCities);setSelectOptions_(prefix+"City",cities,"Select city / municipality");const cityCode=findCodeByName_(cities,saved&&saved.city);if(!cityCode)return;
-        const city=document.getElementById(prefix+"City");city.value=cityCode;
-        return fetchPsgcList_("https://psgc.cloud/api/cities-municipalities/"+encodeURIComponent(cityCode)+"/barangays","Unable to load barangays.").then(function(rawBarangays){const barangays=normalizePsgcItems_(rawBarangays);setSelectOptions_(prefix+"Barangay",barangays,"Select barangay");const barangayCode=findCodeByName_(barangays,saved&&saved.barangay);if(barangayCode)document.getElementById(prefix+"Barangay").value=barangayCode;});
-      });
-    });
-  }).catch(function(error){setSelectOptions_(prefix+"Region",[],"Unable to load regions");console.error("PSGC location error:",error);});
+
+  const region = document.getElementById(prefix + "Region");
+  if (!region) return;
+
+  setSelectOptions_(prefix + "Region", [], "Loading regions...");
+
+  google.script.run
+    .withSuccessHandler(function(regions) {
+      setSelectOptions_(prefix + "Region", regions, "Select region");
+
+      const regionCode = findCodeByName_(regions, saved && saved.region);
+      if (!regionCode) return;
+
+      region.value = regionCode;
+      google.script.run
+        .withSuccessHandler(function(provinces) {
+          setSelectOptions_(prefix + "Province", provinces, "Select province");
+
+          const provinceCode = findCodeByName_(provinces, saved && saved.province);
+          if (!provinceCode) return;
+
+          const province = document.getElementById(prefix + "Province");
+          province.value = provinceCode;
+
+          google.script.run
+            .withSuccessHandler(function(cities) {
+              setSelectOptions_(prefix + "City", cities, "Select city / municipality");
+
+              const cityCode = findCodeByName_(cities, saved && saved.city);
+              if (!cityCode) return;
+
+              const city = document.getElementById(prefix + "City");
+              city.value = cityCode;
+
+              google.script.run
+                .withSuccessHandler(function(barangays) {
+                  setSelectOptions_(prefix + "Barangay", barangays, "Select barangay");
+
+                  const barangayCode = findCodeByName_(barangays, saved && saved.barangay);
+                  if (barangayCode) {
+                    document.getElementById(prefix + "Barangay").value = barangayCode;
+                  }
+                })
+                .withFailureHandler(console.error)
+                .getAddressBarangays(cityCode);
+            })
+            .withFailureHandler(console.error)
+            .getAddressCities(provinceCode);
+        })
+        .withFailureHandler(console.error)
+        .getAddressProvinces(regionCode);
+    })
+    .withFailureHandler(function(error) {
+      setSelectOptions_(prefix + "Region", [], "Unable to load regions");
+      console.error(error);
+    })
+    .getAddressRegions();
 }
 
 function populateCheckoutProfile_(user) {
