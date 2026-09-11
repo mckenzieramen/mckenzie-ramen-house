@@ -774,8 +774,23 @@ button,input,select,textarea{font:inherit}
   }
 
   async function getBrandAssets() {
-    const p = await getDocById("brandAssets", "main");
-    return p || {};
+    const [main, logoDoc, backgroundDoc, loadingDoc] = await Promise.all([
+      getDocById("brandAssets", "main"),
+      getDocById("brandAssets", "logo"),
+      getDocById("brandAssets", "background"),
+      getDocById("brandAssets", "loading")
+    ]);
+    const mainData = main || {};
+    const logo = logoDoc && (logoDoc.logo || logoDoc.data || logoDoc.image || logoDoc.value) || "";
+    const background = backgroundDoc && (backgroundDoc.background || backgroundDoc.data || backgroundDoc.image || backgroundDoc.value) || "";
+    const loading = loadingDoc && (loadingDoc.loading || loadingDoc.ramenLoadingImage || loadingDoc.data || loadingDoc.image || loadingDoc.value) || "";
+    return {
+      ...mainData,
+      logo,
+      background,
+      loading,
+      ramenLoadingImage: loading
+    };
   }
 
   async function getRamenLoadingImage() {
