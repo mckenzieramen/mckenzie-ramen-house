@@ -4439,13 +4439,37 @@ function confirmPlaceOrder_() {
     })
   };
 
-  // Save the exact order directly to Firebase so GitHub Pages does not depend on the legacy Apps Script endpoint.
-  customerSaveOrderDirect_(orderId,payload).then(function(result){
-    if(result&&result.success) finishSuccessfulOrderSave_(result);
-    else failOrderSave_(result||{message:"The restaurant server rejected the order."});
-  }).catch(function(error){
-    failOrderSave_({message:error&&error.message?error.message:"The restaurant server could not be reached."});
-  });
+  // Save through the standalone Firebase bridge. It uses the same Firebase
+  // session that authenticated the customer and avoids the undefined `auth`
+  // object that can occur when the direct helper starts before the bridge
+  // has finished initializing.
+  function saveOrderThroughBridge_() {
+    if (window.google && window.google.script && window.google.script.run) {
+      try {
+        window.google.script.run
+          .withSuccessHandler(function(result){
+            if(result&&result.success) finishSuccessfulOrderSave_(result);
+            else failOrderSave_(result||{message:"The restaurant server rejected the order."});
+          })
+          .withFailureHandler(function(error){
+            failOrderSave_({message:error&&error.message?error.message:"The restaurant server could not be reached."});
+          })
+          .recordCompletedCustomerOrder(orderId,payload);
+        return;
+      } catch (bridgeError) {
+        console.warn("Order bridge call failed; trying direct Firebase save.", bridgeError);
+      }
+    }
+
+    customerSaveOrderDirect_(orderId,payload).then(function(result){
+      if(result&&result.success) finishSuccessfulOrderSave_(result);
+      else failOrderSave_(result||{message:"The restaurant server rejected the order."});
+    }).catch(function(error){
+      failOrderSave_({message:error&&error.message?error.message:"The restaurant server could not be reached."});
+    });
+  }
+
+  saveOrderThroughBridge_();
 
   function finishSuccessfulOrderSave_(result) {
     if (!result || !result.success) {
@@ -4572,7 +4596,10 @@ function customerFirebaseWithTimeout_(work, message, ms) {
   return new Promise(function(resolve, reject) {
     var timer = setTimeout(function(){ reject(new Error(message || "Request timed out. Please try again.")); }, ms);
     Promise.resolve(window.MckenzieFirebaseReady)
-      .then(function(f){ return work(f); })
+      .then(function(f){
+        if(!f) throw new Error("Firebase is still initializing. Please try again.");
+        return work(f);
+      })
       .then(function(v){ clearTimeout(timer); resolve(v); })
       .catch(function(e){ clearTimeout(timer); reject(e); });
   });
