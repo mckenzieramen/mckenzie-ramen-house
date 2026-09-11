@@ -5865,12 +5865,15 @@ function startHomepageRamenLoader_() {
   });
 }
 
-/* Safety only: never trap a customer forever if Google Apps Script itself fails. */
+/* FINAL FAIL-SAFE: the loader is only a short intro animation.
+   Never keep the customer trapped because Firebase/Firestore is slow. */
 setTimeout(function() {
   if (window._pageLoaderState && !window._pageLoaderState.closed) {
+    markPageAssetReady_('brand');
+    markPageAssetReady_('products');
     closeQuickLoader_();
   }
-}, 6000);
+}, 2800);
 
 /* =========================================================
    BRAND ASSETS
@@ -6595,8 +6598,7 @@ function goToHomeFromLogo_() {
    compatibility call so products appear on GitHub Pages.
 ========================================================= */
 (function installDirectCustomerProductBinding_(){
-  let productSyncStarted = false;
-  let productSyncTimer = null;
+  let started = false;
 
   function normalizeProductAvailability_(value){
     if (value === true || value === 1) return true;
@@ -6605,86 +6607,120 @@ function goToHomeFromLogo_() {
     return ["true","1","available","yes","on","active","in stock","instock"].includes(s);
   }
 
-  function bindProductsFromFirebase_(){
-    if (productSyncStarted) return;
-    productSyncStarted = true;
+  function firestoreValue_(field){
+    if (!field) return null;
+    if (field.stringValue !== undefined) return field.stringValue;
+    if (field.booleanValue !== undefined) return field.booleanValue;
+    if (field.integerValue !== undefined) return Number(field.integerValue);
+    if (field.doubleValue !== undefined) return Number(field.doubleValue);
+    if (field.timestampValue !== undefined) return field.timestampValue;
+    if (field.nullValue !== undefined) return null;
+    return null;
+  }
 
-    const run = async function(){
-      try {
-        const f = await window.MckenzieFirebaseReady;
-        if (!f || !f.db || !f.getDocs || !f.collection) throw new Error("Firebase Firestore is not ready.");
-
-        const snap = await f.getDocs(f.collection(f.db, "products"));
-        const products = snap.docs.map(function(doc){
-          const p = doc.data() || {};
+  function readDirectProducts_(){
+    const url = 'https://firestore.googleapis.com/v1/projects/mckenzie-ramen-house/databases/(default)/documents/products';
+    return fetch(url, { method:'GET', cache:'no-store' })
+      .then(function(response){
+        if (!response.ok) throw new Error('Firestore products HTTP ' + response.status);
+        return response.json();
+      })
+      .then(function(payload){
+        const docs = Array.isArray(payload && payload.documents) ? payload.documents : [];
+        return docs.map(function(doc){
+          const f = doc.fields || {};
+          const rawId = String(doc.name || '').split('/').pop();
           return {
-            id: doc.id,
-            name: p.name || "",
-            category: p.category || "Ramen",
-            price: Number(p.price || 0),
-            image: p.image || "",
-            description: p.description || "",
-            available: normalizeProductAvailability_(p.available !== undefined ? p.available : (p.status !== undefined ? p.status : p.availability)),
-            bestSeller: !!p.bestSeller,
-            newProduct: !!p.newProduct
+            id: rawId,
+            name: String(firestoreValue_(f.name) || '').trim(),
+            category: String(firestoreValue_(f.category) || 'Ramen'),
+            price: Number(firestoreValue_(f.price) || 0),
+            image: String(firestoreValue_(f.image) || ''),
+            description: String(firestoreValue_(f.description) || ''),
+            available: normalizeProductAvailability_(
+              f.available !== undefined ? firestoreValue_(f.available) :
+              (f.status !== undefined ? firestoreValue_(f.status) : firestoreValue_(f.availability))
+            ),
+            bestSeller: !!firestoreValue_(f.bestSeller),
+            newProduct: !!firestoreValue_(f.newProduct)
           };
-        }).filter(function(p){ return p.name; });
+        }).filter(function(product){ return product.name; });
+      });
+  }
 
-        /* Feed the existing customer renderer without changing its UI.
-           The original renderer is preserved; we temporarily provide its
-           expected google.script.run response with the live Firestore data. */
-        const originalRun = window.google && window.google.script && window.google.script.run;
-        if (!originalRun) throw new Error("Customer script bridge is unavailable.");
+  function renderDirectProducts_(products){
+    /* Reuse the original, already-designed product/card/cart renderer.
+       It only expects google.script.run.getProducts(), so provide a tiny
+       temporary adapter. This works even when the real Apps Script bridge
+       is completely absent on GitHub Pages. */
+    const hadGoogle = !!window.google;
+    const oldGoogle = window.google;
+    const hadScript = hadGoogle && !!window.google.script;
+    const oldScript = hadScript ? window.google.script : undefined;
+    const oldRun = hadScript ? window.google.script.run : undefined;
 
-        let successHandler = null;
-        let failureHandler = null;
-        const fakeRun = {
-          withSuccessHandler: function(fn){ successHandler = fn; return fakeRun; },
-          withFailureHandler: function(fn){ failureHandler = fn; return fakeRun; },
-          getProducts: function(){
-            if (successHandler) successHandler(products);
-            return fakeRun;
-          }
-        };
-        window.google.script.run = fakeRun;
-        try {
-          /* Existing loadProducts() renders the exact current product cards,
-             cart controls and image handling. */
-          window.loadProducts();
-        } finally {
-          window.google.script.run = originalRun;
-        }
-
-        try { localStorage.setItem("mckenzieProductsCache", JSON.stringify(products)); } catch(e) {}
-      } catch(error) {
-        console.error("Direct customer product sync failed:", error);
-        /* Keep the existing bridge path as a fallback if available. */
-        try {
-          if (typeof window.loadProducts === "function" && window.google && window.google.script && window.google.script.run) {
-            /* Do not recurse if the bridge itself is already failing. */
-            if (!window._mckenzieDirectProductFallbackTried) {
-              window._mckenzieDirectProductFallbackTried = true;
-              window.loadProducts();
-            }
-          }
-        } catch(e) {}
+    let successHandler = null;
+    let fakeRun;
+    fakeRun = {
+      withSuccessHandler: function(fn){ successHandler = fn; return fakeRun; },
+      withFailureHandler: function(){ return fakeRun; },
+      getProducts: function(){
+        if (successHandler) successHandler(products);
+        return fakeRun;
       }
     };
 
-    run();
-  }
-
-  function start_(){
-    if (window.MckenzieFirebaseReady && typeof window.MckenzieFirebaseReady.then === "function") {
-      bindProductsFromFirebase_();
-    } else {
-      window.addEventListener("mckenzie-firebase-ready", bindProductsFromFirebase_, {once:true});
+    try {
+      if (!window.google) window.google = {};
+      if (!window.google.script) window.google.script = {};
+      window.google.script.run = fakeRun;
+      if (typeof window.loadProducts === 'function') {
+        window.loadProducts();
+      } else {
+        throw new Error('Customer product renderer is unavailable.');
+      }
+    } finally {
+      if (hadGoogle) {
+        window.google = oldGoogle;
+        if (hadScript && oldScript) oldGoogle.script = oldScript;
+        if (hadScript && oldRun) oldGoogle.script.run = oldRun;
+      } else {
+        try { delete window.google; } catch(e) { window.google = oldGoogle; }
+      }
     }
   }
 
-  /* Give the existing startup a moment to establish the bridge, then perform
-     one direct Firestore read. Admin changes will be reflected on refresh. */
-  setTimeout(start_, 150);
+  function useCachedProducts_(){
+    try {
+      const raw = localStorage.getItem('mckenzieProductsCache');
+      const cached = raw ? JSON.parse(raw) : [];
+      if (Array.isArray(cached) && cached.length) {
+        renderDirectProducts_(cached);
+      }
+    } catch(e) {}
+    markPageAssetReady_('products');
+  }
+
+  function start_(){
+    if (started) return;
+    started = true;
+
+    readDirectProducts_().then(function(products){
+      try { localStorage.setItem('mckenzieProductsCache', JSON.stringify(products)); } catch(e) {}
+      renderDirectProducts_(products);
+      markPageAssetReady_('products');
+    }).catch(function(error){
+      console.error('Direct Firestore customer product load failed:', error);
+      useCachedProducts_();
+      const container = document.getElementById('products');
+      if (container && (!container.children.length || /Loading our menu/i.test(container.textContent || ''))) {
+        container.innerHTML = '<div class="loading">Unable to load the menu right now.</div>';
+      }
+    });
+  }
+
+  /* Start independently of Firebase SDK/bridge timing. */
+  setTimeout(start_, 80);
 })();
 
 /* =========================================================
@@ -6704,10 +6740,14 @@ loadPublicBrandAssetsImmediately_();
 
 function startCustomerFirebase_() {
   try {
+    /* Branding is read directly from public Firestore and products are loaded
+       by the independent REST binder below. Do not block the page on the
+       legacy Apps Script compatibility layer. */
     loadBrandAssets();
-    loadProducts();
   } catch (error) {
     console.error("Customer Firebase startup error:", error);
+    applyDefaultBrandAssets_();
+    markPageAssetReady_("brand");
   }
 }
 
@@ -6721,11 +6761,11 @@ if (window.MckenzieFirebaseReady && typeof window.MckenzieFirebaseReady.then ===
   window.addEventListener("mckenzie-firebase-ready", startCustomerFirebase_, { once: true });
   setTimeout(function() {
     if (!window.MckenzieFirebaseReady) {
-      console.warn("Firebase bridge did not load; customer page will use local/default assets.");
+      console.warn("Firebase bridge did not load; customer page will continue with direct Firestore/local assets.");
       applyDefaultBrandAssets_();
       markPageAssetReady_('brand');
     }
-  }, 5000);
+  }, 1200);
 }
 
 </script>
