@@ -281,7 +281,7 @@ button,input,select,textarea{font:inherit}
 
   <div class="stats">
     <div class="stat"><span>Total Products</span><strong id="total">0</strong></div>
-    <div class="stat"><span>Available</span><strong id="available">0</strong></div>
+    <div class="stat"><span>Available</span><strong id="availableCount">0</strong></div>
     <div class="stat"><span>Best Sellers</span><strong id="best">0</strong></div>
     <div class="stat"><span>New Products</span><strong id="new">0</strong></div>
   </div>
@@ -379,7 +379,7 @@ button,input,select,textarea{font:inherit}
     <div class="field"><label>Product Name *</label><input id="name" placeholder="e.g. Tonkotsu Ramen"></div>
     <div class="field"><label>Price *</label><input id="price" type="number" min="0" step="0.01" placeholder="329"></div>
     <div class="field"><label>Category *</label><select id="category"><option>Ramen</option><option>Rice Meals</option><option>Side Dishes</option><option>Drinks</option><option>Desserts</option><option>Promos</option></select></div>
-    <div class="field"><label>Status</label><select id="available"><option value="true">Available</option><option value="false">Unavailable</option></select></div>
+    <div class="field"><label>Status</label><select id="productAvailability"><option value="true">Available</option><option value="false">Unavailable</option></select></div>
     <div class="field full"><label>Product Photo <span id="productPhotoRequired" style="color:#a51620">*</span></label>
       <label class="upload" for="image"><strong>📷 Choose Product Photo</strong><small id="productPhotoHint">JPG, PNG, WEBP · Required for a new product. For edits, keep the existing photo or use × to remove/replace it.</small><input id="image" type="file" accept="image/png,image/jpeg,image/webp" hidden onchange="previewImage(event)"></label>
       <div class="brand-preview-wrap"><img id="preview" class="preview"><button id="removeProductImageBtn" class="image-remove-btn" type="button" onclick="removeProductImage()" aria-label="Remove product photo" hidden>×</button></div>
@@ -396,7 +396,7 @@ button,input,select,textarea{font:inherit}
 </div>
 
 <script src="js/firebase-config.js?v=20260911-2"></script>
-<script src="js/firebase-standalone.js?v=20260911-4"></script>
+<script src="js/firebase-standalone.js?v=20260911-3"></script>
 <script>
 /* McKenzie Ramen House — GitHub/Firebase Admin UI */
 (function(){
@@ -590,77 +590,22 @@ function normalizeAvailability(value){
   return false;
 }
 
-function firestoreDecodeValue(v){
-  if(!v||typeof v!=='object')return null;
-  if(Object.prototype.hasOwnProperty.call(v,'stringValue'))return v.stringValue;
-  if(Object.prototype.hasOwnProperty.call(v,'booleanValue'))return v.booleanValue;
-  if(Object.prototype.hasOwnProperty.call(v,'integerValue'))return Number(v.integerValue);
-  if(Object.prototype.hasOwnProperty.call(v,'doubleValue'))return Number(v.doubleValue);
-  if(Object.prototype.hasOwnProperty.call(v,'timestampValue'))return v.timestampValue;
-  if(Object.prototype.hasOwnProperty.call(v,'nullValue'))return null;
-  if(Object.prototype.hasOwnProperty.call(v,'arrayValue'))return (v.arrayValue.values||[]).map(firestoreDecodeValue);
-  if(Object.prototype.hasOwnProperty.call(v,'mapValue')){const o={};Object.entries(v.mapValue.fields||{}).forEach(([k,x])=>o[k]=firestoreDecodeValue(x));return o;}
-  return null;
-}
-function firestoreDocToObject(doc){
-  const o={id:String((doc.name||'').split('/').pop()||'')};
-  Object.entries(doc.fields||{}).forEach(([k,v])=>o[k]=firestoreDecodeValue(v));
-  return o;
-}
-async function getFreshAdminToken(){
-  try{
-    const f=await window.MckenzieFirebaseReady;
-    if(f&&f.auth&&f.auth.currentUser){
-      token=await f.auth.currentUser.getIdToken(true);
-      sessionStorage.setItem('mck_admin_token',token);
-    }
-  }catch(e){}
-  return token||sessionStorage.getItem('mck_admin_token')||'';
-}
-async function loadProductsDirect(){
-  const idToken=await getFreshAdminToken();
-  if(!idToken)throw new Error('Admin session expired. Please log in again.');
-  const r=await fetch('https://firestore.googleapis.com/v1/projects/mckenzie-ramen-house/databases/(default)/documents/products?pageSize=300',{headers:{'Authorization':'Bearer '+idToken}});
-  if(!r.ok){let t=await r.text(),d={};try{d=JSON.parse(t)}catch(e){};throw new Error(d.error&&d.error.message?d.error.message:'Unable to load products from Firebase.');}
-  const data=await r.json();
-  return (data.documents||[]).map(firestoreDocToObject).filter(p=>p.name).map(function(p){
-    // Read the real Firestore value, including legacy TRUE/Available strings.
-    const raw=p.available!==undefined?p.available:(p.status!==undefined?p.status:p.availability);
-    p.available=normalizeAvailability(raw);
-    p.image=p.image||'';
-    p.category=p.category||'Ramen';
-    p.price=Number(p.price||0);
-    p.description=p.description||'';
-    p.bestSeller=!!p.bestSeller;
-    p.newProduct=!!p.newProduct;
-    return p;
-  });
-}
 function loadProducts(afterLoad){
-  loadProductsDirect().then(function(list){
-    products=list;
+  run('adminGetProducts',[token],function(v,e){
+    if(e||!v||!v.success){
+      if(token)alert(e||'Unable to load products.');
+      return;
+    }
+    products=(v.products||[]).map(function(p){
+      p.available=normalizeAvailability(p.available);
+      p.image=p.image||'';
+      return p;
+    });
     render();
     if(typeof afterLoad==='function')afterLoad(products);
-  }).catch(function(e){
-    console.error('Direct product load failed:',e);
-    // Fallback to the compatibility bridge if the REST request is unavailable.
-    run('adminGetProducts',[token],function(v,err){
-      if(err||!v||!v.success){if(token)alert((e&&e.message)||err||'Unable to load products.');return;}
-      products=(v.products||[]).map(function(p){p.available=normalizeAvailability(p.available!==undefined?p.available:(p.status!==undefined?p.status:p.availability));p.image=p.image||'';return p;});
-      render();
-      if(typeof afterLoad==='function')afterLoad(products);
-    });
   });
 }
-async function forceAvailabilitySave(id,availableValue){
-  const idToken=await getFreshAdminToken();
-  if(!idToken||!id)throw new Error('Admin session expired. Please log in again.');
-  const url='https://firestore.googleapis.com/v1/projects/mckenzie-ramen-house/databases/(default)/documents/products/'+encodeURIComponent(String(id))+'?updateMask.fieldPaths=available';
-  const r=await fetch(url,{method:'PATCH',headers:{'Authorization':'Bearer '+idToken,'Content-Type':'application/json'},body:JSON.stringify({fields:{available:{booleanValue:!!availableValue}}})});
-  if(!r.ok){let t=await r.text(),d={};try{d=JSON.parse(t)}catch(e){};throw new Error(d.error&&d.error.message?d.error.message:'Firebase rejected the availability update.');}
-  return true;
-}
-function render(){const q=document.getElementById('search').value.toLowerCase();const list=products.filter(p=>(p.name+' '+p.category).toLowerCase().includes(q));document.getElementById('total').textContent=products.length;document.getElementById('available').textContent=products.filter(p=>normalizeAvailability(p.available)).length;document.getElementById('best').textContent=products.filter(p=>p.bestSeller).length;document.getElementById('new').textContent=products.filter(p=>p.newProduct).length;document.getElementById('products').innerHTML=list.length?list.map(p=>`<article class="product"><img src="${escAttr(p.image||'')}" onerror="this.style.visibility='hidden'" alt=""><div class="pbody">${p.bestSeller?'<span class="badge">BEST SELLER</span>':''}${p.newProduct?'<span class="badge">NEW</span>':''}<h3>${esc(p.name)}</h3><div class="price">₱${Number(p.price||0).toLocaleString()}</div><div class="meta">${esc(p.category)} · ${normalizeAvailability(p.available)?'Available':'Unavailable'}</div><div class="actions"><button class="edit" onclick="editProduct('${esc(p.id)}')">Edit</button><button class="del" onclick="deleteProduct('${esc(p.id)}')">Delete</button></div></div></article>`).join(''):'<div class="empty">No products found.</div>'; }
+function render(){const q=document.getElementById('search').value.toLowerCase();const list=products.filter(p=>(p.name+' '+p.category).toLowerCase().includes(q));document.getElementById('total').textContent=products.length;document.getElementById('availableCount').textContent=products.filter(p=>normalizeAvailability(p.available)).length;document.getElementById('best').textContent=products.filter(p=>p.bestSeller).length;document.getElementById('new').textContent=products.filter(p=>p.newProduct).length;document.getElementById('products').innerHTML=list.length?list.map(p=>`<article class="product"><img src="${escAttr(p.image||'')}" onerror="this.style.visibility='hidden'" alt=""><div class="pbody">${p.bestSeller?'<span class="badge">BEST SELLER</span>':''}${p.newProduct?'<span class="badge">NEW</span>':''}<h3>${esc(p.name)}</h3><div class="price">₱${Number(p.price||0).toLocaleString()}</div><div class="meta">${esc(p.category)} · ${normalizeAvailability(p.available)?'Available':'Unavailable'}</div><div class="actions"><button class="edit" onclick="editProduct('${esc(p.id)}')">Edit</button><button class="del" onclick="deleteProduct('${esc(p.id)}')">Delete</button></div></div></article>`).join(''):'<div class="empty">No products found.</div>'; }
 function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
 function escAttr(s){return String(s??'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");}
 function setProductPreview(src){
@@ -676,7 +621,7 @@ function openModal(p=null){
   document.getElementById('name').value=p.name||'';
   document.getElementById('price').value=p.price??'';
   document.getElementById('category').value=p.category||'Ramen';
-  document.getElementById('available').value=normalizeAvailability(p.available!==undefined?p.available:(p.status!==undefined?p.status:p.availability))?'true':'false';
+  document.getElementById('productAvailability').value=normalizeAvailability(p.available!==undefined?p.available:(p.status!==undefined?p.status:p.availability))?'true':'false';
   document.getElementById('description').value=p.description||'';
   document.getElementById('bestSeller').checked=!!p.bestSeller;
   document.getElementById('newProduct').checked=!!p.newProduct;
@@ -738,7 +683,7 @@ async function saveProduct(){
       name,
       price:Number(price),
       category:document.getElementById('category').value,
-      available:normalizeAvailability(document.getElementById('available').value),
+      available:normalizeAvailability(document.getElementById('productAvailability').value),
       description:document.getElementById('description').value.trim(),
       bestSeller:document.getElementById('bestSeller').checked,
       newProduct:document.getElementById('newProduct').checked
@@ -750,12 +695,16 @@ async function saveProduct(){
       data.image='';
     }
     const saved=await new Promise((resolve,reject)=>run('adminSaveProduct',[data],(v,e)=>e?reject(new Error(e)):(!v||!v.success)?reject(new Error('Unable to save product.')):resolve(v)));
-    // Final authoritative write for availability. This bypasses any legacy bridge
-    // normalization and guarantees Firestore stores a real boolean.
-    await forceAvailabilitySave(saved.productId||id, data.available===true);
-    products=await loadProductsDirect();
-    render();
+    if(saved && Array.isArray(saved.products)){
+      products=(saved.products||[]).map(function(p){
+        p.available=normalizeAvailability(p.available);
+        p.image=p.image||'';
+        return p;
+      });
+      render();
+    }
     closeModal();
+    loadProducts();
     showCenteredUpdate('Product Updated','The product was saved successfully.');
   }catch(e){
     saveMsg.textContent=e&&e.message?e.message:String(e);
