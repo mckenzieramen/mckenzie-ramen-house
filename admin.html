@@ -402,18 +402,154 @@ function run(name,args,onSuccess){
   onSuccess(null,'Firebase bridge is not loaded.');
 }
 
-function login(){
-  const email=document.getElementById('loginEmail').value.trim(),password=document.getElementById('loginPassword').value,msg=document.getElementById('loginMsg'),btn=document.getElementById('adminLoginBtn');
-  if(!email||!password){msg.textContent='Please enter your admin email and password.';return;}
-  msg.textContent='Signing in securely…';if(btn)btn.disabled=true;
-  run('adminLogin',[email,password],function(v,e){
-    if(btn)btn.disabled=false;
-    if(e||!v||!v.success){msg.textContent=e||'Invalid admin credentials.';return;}
-    token=v.token||'';sessionStorage.setItem('mck_admin_token',token);msg.textContent='';showApp();loadProducts();loadOrders({setBaseline:true});initAdminNotifications();
-  });
+function showApp(){
+  const loginBox=document.getElementById('login');
+  const appBox=document.getElementById('app');
+  if(loginBox)loginBox.style.display='none';
+  if(appBox)appBox.style.display='flex';
 }
-function showApp(){document.getElementById('login').style.display='none';document.getElementById('app').style.display='flex';}
-(function(){var btn=document.getElementById('adminLoginBtn'),email=document.getElementById('loginEmail'),password=document.getElementById('loginPassword');if(btn)btn.addEventListener('click',function(e){e.preventDefault();login();});if(password)password.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();login();}});if(email)email.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();password&&password.focus();}});})();
+
+function showLogin(){
+  const loginBox=document.getElementById('login');
+  const appBox=document.getElementById('app');
+  if(appBox)appBox.style.display='none';
+  if(loginBox)loginBox.style.display='flex';
+}
+
+async function completeAdminLogin(user){
+  const adminUid=String(window.MCKENZIE_ADMIN_UID||'').trim();
+  const msg=document.getElementById('loginMsg');
+
+  if(!user){
+    showLogin();
+    return false;
+  }
+
+  if(!adminUid || user.uid!==adminUid){
+    try{
+      const f=await window.MckenzieFirebaseReady;
+      if(f&&f.auth&&f.signOut)await f.signOut(f.auth);
+    }catch(e){}
+    showLogin();
+    if(msg)msg.textContent='This Firebase account is not authorized as the McKenzie admin.';
+    return false;
+  }
+
+  try{
+    token=await user.getIdToken(true);
+    sessionStorage.setItem('mck_admin_token',token);
+  }catch(e){
+    console.error('Unable to get Firebase admin token:',e);
+    if(msg)msg.textContent=e&&e.message?e.message:'Unable to establish the admin session.';
+    showLogin();
+    return false;
+  }
+
+  if(msg)msg.textContent='';
+  showApp();
+  loadProducts();
+  loadOrders({setBaseline:true});
+  initAdminNotifications();
+  return true;
+}
+
+async function login(){
+  const emailEl=document.getElementById('loginEmail');
+  const passwordEl=document.getElementById('loginPassword');
+  const msg=document.getElementById('loginMsg');
+  const btn=document.getElementById('adminLoginBtn');
+
+  const email=emailEl?emailEl.value.trim().toLowerCase():'';
+  const password=passwordEl?passwordEl.value:'';
+
+  if(!email||!password){
+    if(msg)msg.textContent='Please enter your admin email and password.';
+    return;
+  }
+
+  if(btn){
+    btn.disabled=true;
+    btn.textContent='SIGNING IN…';
+  }
+  if(msg)msg.textContent='Signing in securely…';
+
+  try{
+    const f=await window.MckenzieFirebaseReady;
+
+    if(!f||!f.auth||!f.signInWithEmailAndPassword){
+      throw new Error('Firebase Authentication is not ready. Please refresh the page.');
+    }
+
+    const credential=await f.signInWithEmailAndPassword(
+      f.auth,
+      email,
+      password
+    );
+
+    const ok=await completeAdminLogin(credential.user);
+
+    if(!ok){
+      throw new Error('This account is not authorized as the McKenzie admin.');
+    }
+  }catch(e){
+    console.error('Admin login failed:',e);
+    if(msg){
+      const code=e&&e.code?String(e.code):'';
+      if(code==='auth/invalid-credential' || code==='auth/wrong-password' || code==='auth/user-not-found'){
+        msg.textContent='Invalid admin email or password.';
+      }else{
+        msg.textContent=e&&e.message?e.message:'Unable to sign in.';
+      }
+    }
+  }finally{
+    if(btn){
+      btn.disabled=false;
+      btn.textContent='LOGIN TO DASHBOARD';
+    }
+  }
+}
+
+(function bindAdminLogin(){
+  function bind(){
+    const btn=document.getElementById('adminLoginBtn');
+    const email=document.getElementById('loginEmail');
+    const password=document.getElementById('loginPassword');
+
+    if(btn && !btn.dataset.bound){
+      btn.dataset.bound='1';
+      btn.addEventListener('click',function(e){
+        e.preventDefault();
+        login();
+      });
+    }
+
+    if(password && !password.dataset.bound){
+      password.dataset.bound='1';
+      password.addEventListener('keydown',function(e){
+        if(e.key==='Enter'){
+          e.preventDefault();
+          login();
+        }
+      });
+    }
+
+    if(email && !email.dataset.bound){
+      email.dataset.bound='1';
+      email.addEventListener('keydown',function(e){
+        if(e.key==='Enter'){
+          e.preventDefault();
+          if(password)password.focus();
+        }
+      });
+    }
+  }
+
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded',bind,{once:true});
+  }else{
+    bind();
+  }
+})();
 
 function loadProducts(){run('adminGetProducts',[token],function(v,e){if(e||!v||!v.success){if(token)alert(e||'Unable to load products.');return;}products=v.products||[];render();});}
 function render(){const q=document.getElementById('search').value.toLowerCase();const list=products.filter(p=>(p.name+' '+p.category).toLowerCase().includes(q));document.getElementById('total').textContent=products.length;document.getElementById('available').textContent=products.filter(p=>p.available).length;document.getElementById('best').textContent=products.filter(p=>p.bestSeller).length;document.getElementById('new').textContent=products.filter(p=>p.newProduct).length;document.getElementById('products').innerHTML=list.length?list.map(p=>`<article class="product"><img src="${p.image||''}" onerror="this.style.visibility='hidden'" alt=""><div class="pbody">${p.bestSeller?'<span class="badge">BEST SELLER</span>':''}${p.newProduct?'<span class="badge">NEW</span>':''}<h3>${esc(p.name)}</h3><div class="price">₱${Number(p.price||0).toLocaleString()}</div><div class="meta">${esc(p.category)} · ${p.available?'Available':'Unavailable'}</div><div class="actions"><button class="edit" onclick="editProduct('${esc(p.id)}')">Edit</button><button class="del" onclick="deleteProduct('${esc(p.id)}')">Delete</button></div></div></article>`).join(''):'<div class="empty">No products found.</div>'; }
@@ -861,39 +997,66 @@ async function logout(){
   if(pw)pw.value='';
 }
 
-// Restore the Firebase Auth session after refresh. Firebase Auth uses local
-// persistence by default, so a normal browser refresh should NOT log the admin out.
-(async function restoreAdminSession(){
+// ============================================================
+// FIREBASE AUTH SESSION RESTORE
+// ============================================================
+// Do NOT inspect auth.currentUser only once. Firebase restores the
+// persisted browser session asynchronously. onAuthStateChanged is
+// the reliable way to wait for that restoration after a refresh.
+(function restoreAdminSession(){
   const loginBox=document.getElementById('login');
   const appBox=document.getElementById('app');
   const status=document.getElementById('apiStatus');
   const msg=document.getElementById('loginMsg');
-  try{
-    if(status){status.textContent='Connecting to Firebase…';status.style.color='#756965';}
-    const f=await window.MckenzieFirebaseReady;
-    if(status){status.textContent='● Firebase connected';status.style.color='#23824a';}
-    const user=f&&f.auth?f.auth.currentUser:null;
-    const adminUid=String(window.MCKENZIE_ADMIN_UID||'').trim();
-    if(user && adminUid && user.uid===adminUid){
-      token=await user.getIdToken();
-      sessionStorage.setItem('mck_admin_token',token);
-      if(msg)msg.textContent='';
-      showApp();
-      loadProducts();
-      loadOrders({setBaseline:true});
-      initAdminNotifications();
-      return;
-    }
-    // No valid Firebase admin session. Keep the login screen visible.
-    if(appBox)appBox.style.display='none';
-    if(loginBox)loginBox.style.display='flex';
-  }catch(e){
-    console.error('Admin Firebase session restore failed:',e);
-    if(status){status.textContent='⚠ Firebase connection failed';status.style.color='#b91e35';}
-    if(msg)msg.textContent=e&&e.message?e.message:'Unable to connect to Firebase.';
-    if(appBox)appBox.style.display='none';
-    if(loginBox)loginBox.style.display='flex';
+
+  showLogin();
+
+  if(status){
+    status.textContent='Connecting to Firebase…';
+    status.style.color='#756965';
   }
+
+  window.MckenzieFirebaseReady.then(function(f){
+    if(status){
+      status.textContent='● Firebase connected';
+      status.style.color='#23824a';
+    }
+
+    if(!f || !f.auth || !f.onAuthStateChanged){
+      throw new Error('Firebase Authentication is unavailable.');
+    }
+
+    let firstAuthEvent=true;
+
+    f.onAuthStateChanged(f.auth,function(user){
+      if(user){
+        completeAdminLogin(user).catch(function(e){
+          console.error('Admin session restore failed:',e);
+          showLogin();
+          if(msg)msg.textContent=e&&e.message?e.message:'Unable to restore the admin session.';
+        });
+        return;
+      }
+
+      // Firebase sends null while determining the initial session only
+      // very briefly. We keep the login screen available and do NOT call
+      // signOut or clear Firebase persistence here.
+      if(firstAuthEvent){
+        firstAuthEvent=false;
+      }
+
+      if(appBox)appBox.style.display='none';
+      if(loginBox)loginBox.style.display='flex';
+    });
+  }).catch(function(e){
+    console.error('Admin Firebase initialization failed:',e);
+    if(status){
+      status.textContent='⚠ Firebase connection failed';
+      status.style.color='#b91e35';
+    }
+    if(msg)msg.textContent=e&&e.message?e.message:'Unable to connect to Firebase.';
+    showLogin();
+  });
 })();
 
 </script>
