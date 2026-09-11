@@ -205,6 +205,10 @@ button,input,select,textarea{font:inherit}
   cursor: not-allowed !important;
 }
 </style>
+
+<style id="brand-settings-style">
+.settings-wrap{display:none}.settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}.settings-card{background:#fff;border:1px solid var(--line);border-radius:17px;padding:22px}.settings-card h3{margin:0 0 6px;font-family:'Cormorant Garamond',serif;font-size:28px;color:#60151f}.settings-card p{margin:0 0 16px;color:var(--muted);font-size:12px}.brand-upload{border:2px dashed #d8c4b7;border-radius:14px;padding:15px;text-align:center;background:#fffaf5;cursor:pointer}.brand-upload input{display:none}.brand-preview{display:none;width:100%;height:210px;object-fit:contain;border:1px solid var(--line);border-radius:12px;background:#fff;margin-top:12px}.background-preview{object-fit:cover}.settings-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:18px}.settings-save{border:0;background:var(--red);color:#fff;padding:11px 20px;border-radius:10px;font-weight:800;cursor:pointer}.settings-save:disabled{opacity:.55;cursor:wait}.settings-msg{font-size:12px;color:#23824a;margin-top:10px;min-height:18px}.settings-note{margin-top:14px;padding:11px 13px;background:#fff7ec;border:1px solid var(--line);border-radius:10px;font-size:11px;color:#756965;line-height:1.5}.settings-current{font-size:10px;color:#756965;margin-top:7px;word-break:break-all}@media(max-width:800px){.settings-grid{grid-template-columns:1fr}}
+</style>
 </head>
 <body>
 
@@ -252,7 +256,7 @@ button,input,select,textarea{font:inherit}
     <button id="navOrders" onclick="showSection('orders')">🧾 <span>Orders</span><b id="orderBadge" style="display:none;margin-left:auto;background:#b91e35;color:#fff;border-radius:999px;padding:2px 7px;font-size:10px">0</b></button>
     <button onclick="alert('Customers module next.')">👥 <span>Customers</span></button>
     <button id="navReviews" onclick="showSection('reviews')">⭐ <span>Reviews</span><b id="reviewBadge" style="display:none;margin-left:auto;background:#b91e35;color:#fff;border-radius:999px;padding:2px 7px;font-size:10px">0</b></button>
-    <button onclick="alert('Settings module next.')">⚙️ <span>Settings</span></button>
+    <button id="navSettings" onclick="showSection('settings')">⚙️ <span>Settings</span></button>
   </div>
   <button class="nav logout" onclick="logout()">↪ <span>Logout</span></button>
 </aside>
@@ -307,6 +311,40 @@ button,input,select,textarea{font:inherit}
     </div>
     <div id="reviews" class="reviews-list"></div>
   </section>
+
+  <section class="panel settings-wrap" id="settingsSection">
+    <div class="orders-toolbar">
+      <div><strong>Website Settings</strong><div id="settingsNotice" style="font-size:12px;color:#756965;margin-top:4px">Manage your website logo and background.</div></div>
+    </div>
+    <div class="settings-grid">
+      <div class="settings-card">
+        <h3>🍜 Website Logo</h3>
+        <p>Upload the logo that will be used on the McKenzie Ramen House customer website.</p>
+        <label class="brand-upload" for="brandLogoFile">
+          <strong>📷 Choose Logo</strong>
+          <small>JPG, PNG, or WEBP</small>
+          <input id="brandLogoFile" type="file" accept="image/png,image/jpeg,image/webp">
+        </label>
+        <img id="brandLogoPreview" class="brand-preview" alt="Website logo preview">
+        <div id="brandLogoCurrent" class="settings-current"></div>
+      </div>
+      <div class="settings-card">
+        <h3>🌄 Website Background</h3>
+        <p>Upload the background image that will be used on the customer website.</p>
+        <label class="brand-upload" for="brandBackgroundFile">
+          <strong>📷 Choose Background</strong>
+          <small>JPG, PNG, or WEBP</small>
+          <input id="brandBackgroundFile" type="file" accept="image/png,image/jpeg,image/webp">
+        </label>
+        <img id="brandBackgroundPreview" class="brand-preview background-preview" alt="Website background preview">
+        <div id="brandBackgroundCurrent" class="settings-current"></div>
+      </div>
+    </div>
+    <div class="settings-note">Images are compressed in your browser before being saved to Firebase Firestore, so Firebase Storage is not required.</div>
+    <div class="settings-actions"><button id="saveBrandAssetsBtn" class="settings-save" type="button" onclick="saveBrandAssets()">Save Website Branding</button></div>
+    <div id="brandAssetsMsg" class="settings-msg"></div>
+  </section>
+
 </main>
 </div>
 
@@ -335,133 +373,109 @@ button,input,select,textarea{font:inherit}
 </div>
 
 <script>
-/* FINAL REVIEW NOTIFICATION FIX: never use the browser's native alert popup for admin notifications. */
+/* McKenzie Ramen House — GitHub/Firebase Admin UI */
 (function(){
-  var nativeAlert = window.alert;
-  window.alert = function(message){
-    try {
-      if (typeof window.showAdminToast === "function") {
-        window.showAdminToast("⚠ Notice", String(message || ""));
-      } else {
-        var box=document.createElement("div");
-        box.style.cssText="position:fixed;top:24px;right:24px;z-index:2147483647;background:#fff;border:1px solid #b91e35;border-left:5px solid #b91e35;border-radius:12px;padding:14px 18px;box-shadow:0 12px 35px rgba(0,0,0,.18);font:600 14px Arial;color:#333;max-width:360px";
-        box.textContent=String(message || "");
-        document.body.appendChild(box);
-        setTimeout(function(){box.remove();},4200);
-      }
-    } catch(e) { /* intentionally suppress native browser alert */ }
-  };
+  var nativeAlert=window.alert;
+  window.alert=function(message){try{if(typeof window.showAdminToast==='function')window.showAdminToast('⚠ Notice',String(message||''));else nativeAlert(message);}catch(e){}};
 })();
 let token=sessionStorage.getItem('mck_admin_token')||'';
 let products=[]; let selectedImage=null; let editing=null;
+let orders=[]; let reviews=[];
+let lastOrderIds=new Set(); let orderPollTimer=null; let firstOrderLoad=true;
+const savingOrderItems=new Set(); const savingOrderStatuses=new Set();
+let audioCtx=null; let adminToastTimer=null;
 
 function run(name,args,onSuccess){
-  if(!window.google || !google.script || !google.script.run){ onSuccess(null,'This Admin page must be opened from the Google Apps Script web app (/admin), not directly from GitHub.'); return; }
-  let r=google.script.run.withSuccessHandler(v=>onSuccess(v,null)).withFailureHandler(e=>onSuccess(null,e&&e.message?e.message:String(e)));
-  r[name](...(args||[]));
-}
-function login(){
-  const email=document.getElementById('loginEmail').value.trim(), password=document.getElementById('loginPassword').value;
-  document.getElementById('loginMsg').textContent='Checking...';
-  run('adminLogin',[email,password],(v,e)=>{
-    if(e||!v||!v.success){document.getElementById('loginMsg').textContent=e||'Invalid admin credentials.';return;}
-    token=v.token;sessionStorage.setItem('mck_admin_token',token);showApp();try{if(window.Notification&&Notification.permission==='default')Notification.requestPermission();}catch(err){}loadProducts();loadOrders({setBaseline:true});initAdminNotifications();
-  });
-}
-function showApp(){document.getElementById('login').style.display='none';document.getElementById('app').style.display='flex'}
-(function(){
-  var btn=document.getElementById('adminLoginBtn');
-  var email=document.getElementById('loginEmail');
-  var password=document.getElementById('loginPassword');
-  if(btn) btn.addEventListener('click', function(ev){ ev.preventDefault(); login(); });
-  if(password) password.addEventListener('keydown', function(ev){ if(ev.key==='Enter'){ ev.preventDefault(); login(); } });
-  if(email) email.addEventListener('keydown', function(ev){ if(ev.key==='Enter'){ ev.preventDefault(); password && password.focus(); } });
-})();
-function loadProducts(){
-  run('adminGetProducts',[token],(v,e)=>{
-    if(e||!v||!v.success){logout();alert(e||'Admin session expired.');return;}
-    products=v.products||[];render();
-  });
-}
-function render(){
-  const q=document.getElementById('search').value.toLowerCase();
-  const list=products.filter(p=>(p.name+' '+p.category).toLowerCase().includes(q));
-  document.getElementById('total').textContent=products.length;
-  document.getElementById('available').textContent=products.filter(p=>p.available).length;
-  document.getElementById('best').textContent=products.filter(p=>p.bestSeller).length;
-  document.getElementById('new').textContent=products.filter(p=>p.newProduct).length;
-  document.getElementById('products').innerHTML=list.length?list.map(p=>`
-    <article class="product">
-      <img src="${p.image||''}" onerror="this.style.visibility='hidden'" alt="">
-      <div class="pbody">
-        ${p.bestSeller?'<span class="badge">BEST SELLER</span>':''}
-        ${p.newProduct?'<span class="badge">NEW</span>':''}
-        <h3>${esc(p.name)}</h3><div class="price">₱${Number(p.price||0).toLocaleString()}</div>
-        <div class="meta">${esc(p.category)} · ${p.available?'Available':'Unavailable'}</div>
-        <div class="actions"><button class="edit" onclick="editProduct('${esc(p.id)}')">Edit</button><button class="del" onclick="deleteProduct('${esc(p.id)}')">Delete</button></div>
-      </div>
-    </article>`).join(''):'<div class="empty">No products found.</div>';
-}
-function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
-function openModal(p=null){
-  editing=p;p=p||{};document.getElementById('modal').classList.add('open');
-  document.getElementById('modalTitle').textContent=p.id?'Edit Product':'Add New Product';
-  document.getElementById('productId').value=p.id||'';document.getElementById('name').value=p.name||'';
-  document.getElementById('price').value=p.price??'';document.getElementById('category').value=p.category||'Ramen';
-  document.getElementById('available').value=p.available?'true':'false';document.getElementById('description').value=p.description||'';
-  document.getElementById('bestSeller').checked=!!p.bestSeller;document.getElementById('newProduct').checked=!!p.newProduct;
-  selectedImage=null;document.getElementById('image').value='';
-  const pr=document.getElementById('preview');pr.src=p.image||'';pr.style.display=p.image?'block':'none';document.getElementById('saveMsg').textContent='';
-}
-function closeModal(){document.getElementById('modal').classList.remove('open')}
-function editProduct(id){const p=products.find(x=>String(x.id)===String(id));if(p)openModal(p)}
-function previewImage(e){
-  const file=e.target.files[0];if(!file)return;
-  if(file.size>6*1024*1024){alert('Please use an image smaller than 6 MB.');e.target.value='';return}
-  selectedImage=file;const r=new FileReader();r.onload=()=>{const p=document.getElementById('preview');p.src=r.result;p.style.display='block'};r.readAsDataURL(file);
-}
-function fileData(file){
-  return new Promise((resolve,reject)=>{if(!file)return resolve(null);const r=new FileReader();r.onload=()=>resolve({name:file.name,type:file.type,base64:String(r.result).split(',')[1]});r.onerror=reject;r.readAsDataURL(file)})
-}
-async function saveProduct(){
-  const name=document.getElementById('name').value.trim(),price=document.getElementById('price').value;
-  if(!name||price===''){document.getElementById('saveMsg').textContent='Product name and price are required.';return}
-  document.getElementById('saveMsg').textContent='Saving product and uploading image...';
-  const image=await fileData(selectedImage);
-  const data={token,id:document.getElementById('productId').value,name,price:Number(price),category:document.getElementById('category').value,available:document.getElementById('available').value==='true',description:document.getElementById('description').value.trim(),bestSeller:document.getElementById('bestSeller').checked,newProduct:document.getElementById('newProduct').checked,image};
-  run('adminSaveProduct',[data],(v,e)=>{
-    if(e||!v||!v.success){document.getElementById('saveMsg').textContent=e||'Unable to save product.';return}
-    closeModal();loadProducts();
-  });
-}
-function deleteProduct(id){
-  if(!confirm('Delete this product?'))return;
-  run('adminDeleteProduct',[token,id],(v,e)=>{if(e||!v||!v.success){alert(e||'Delete failed.');return}loadProducts()});
-}
-function showSection(section){
-  const productsPanel=document.querySelector('.main > .panel:not(#ordersSection):not(#reviewsSection)');
-  const productsStats=document.querySelector('.main > .stats');
-  const productsTop=document.querySelector('.main > .top');
-  const ordersSection=document.getElementById('ordersSection');
-  const reviewsSection=document.getElementById('reviewsSection');
-  const navProducts=document.getElementById('navProducts');
-  const navOrders=document.getElementById('navOrders');
-  const navReviews=document.getElementById('navReviews');
-  const isOrders=section==='orders';
-  const isReviews=section==='reviews';
-  if(productsPanel) productsPanel.style.display=(isOrders||isReviews)?'none':'';
-  if(productsStats) productsStats.style.display=(isOrders||isReviews)?'none':'';
-  if(productsTop) productsTop.style.display=(isOrders||isReviews)?'none':'';
-  if(ordersSection) ordersSection.style.display=isOrders?'block':'none';
-  if(reviewsSection) reviewsSection.style.display=isReviews?'block':'none';
-  if(navProducts) navProducts.classList.toggle('active',!isOrders&&!isReviews);
-  if(navOrders) navOrders.classList.toggle('active',isOrders);
-  if(navReviews) navReviews.classList.toggle('active',isReviews);
-  if(isOrders) loadOrders();
-  if(isReviews) loadReviews();
+  args=Array.isArray(args)?args:[]; onSuccess=typeof onSuccess==='function'?onSuccess:function(){};
+  if(window.MckenzieFirebaseReady){
+    window.MckenzieFirebaseReady.then(function(){
+      try{
+        var r=window.google&&window.google.script&&window.google.script.run;
+        if(!r||typeof r[name]!=='function'){onSuccess(null,'Firebase bridge is not ready.');return;}
+        r.withSuccessHandler(function(v){onSuccess(v,null);}).withFailureHandler(function(e){onSuccess(null,e&&e.message?e.message:String(e||'Firebase request failed.'))})[name].apply(null,args);
+      }catch(e){onSuccess(null,e.message||String(e));}
+    }).catch(function(e){onSuccess(null,e&&e.message?e.message:String(e||'Firebase initialization failed.'));});
+    return;
+  }
+  onSuccess(null,'Firebase bridge is not loaded.');
 }
 
-let orders=[];
+function login(){
+  const email=document.getElementById('loginEmail').value.trim(),password=document.getElementById('loginPassword').value,msg=document.getElementById('loginMsg'),btn=document.getElementById('adminLoginBtn');
+  if(!email||!password){msg.textContent='Please enter your admin email and password.';return;}
+  msg.textContent='Signing in securely…';if(btn)btn.disabled=true;
+  run('adminLogin',[email,password],function(v,e){
+    if(btn)btn.disabled=false;
+    if(e||!v||!v.success){msg.textContent=e||'Invalid admin credentials.';return;}
+    token=v.token||'';sessionStorage.setItem('mck_admin_token',token);msg.textContent='';showApp();loadProducts();loadOrders({setBaseline:true});initAdminNotifications();
+  });
+}
+function showApp(){document.getElementById('login').style.display='none';document.getElementById('app').style.display='flex';}
+(function(){var btn=document.getElementById('adminLoginBtn'),email=document.getElementById('loginEmail'),password=document.getElementById('loginPassword');if(btn)btn.addEventListener('click',function(e){e.preventDefault();login();});if(password)password.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();login();}});if(email)email.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();password&&password.focus();}});})();
+
+function loadProducts(){run('adminGetProducts',[token],function(v,e){if(e||!v||!v.success){if(token)alert(e||'Unable to load products.');return;}products=v.products||[];render();});}
+function render(){const q=document.getElementById('search').value.toLowerCase();const list=products.filter(p=>(p.name+' '+p.category).toLowerCase().includes(q));document.getElementById('total').textContent=products.length;document.getElementById('available').textContent=products.filter(p=>p.available).length;document.getElementById('best').textContent=products.filter(p=>p.bestSeller).length;document.getElementById('new').textContent=products.filter(p=>p.newProduct).length;document.getElementById('products').innerHTML=list.length?list.map(p=>`<article class="product"><img src="${p.image||''}" onerror="this.style.visibility='hidden'" alt=""><div class="pbody">${p.bestSeller?'<span class="badge">BEST SELLER</span>':''}${p.newProduct?'<span class="badge">NEW</span>':''}<h3>${esc(p.name)}</h3><div class="price">₱${Number(p.price||0).toLocaleString()}</div><div class="meta">${esc(p.category)} · ${p.available?'Available':'Unavailable'}</div><div class="actions"><button class="edit" onclick="editProduct('${esc(p.id)}')">Edit</button><button class="del" onclick="deleteProduct('${esc(p.id)}')">Delete</button></div></div></article>`).join(''):'<div class="empty">No products found.</div>'; }
+function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
+function escAttr(s){return String(s??'').replace(/\/g,'\\').replace(/'/g,"\'")}
+function openModal(p=null){editing=p;p=p||{};document.getElementById('modal').classList.add('open');document.getElementById('modalTitle').textContent=p.id?'Edit Product':'Add New Product';document.getElementById('productId').value=p.id||'';document.getElementById('name').value=p.name||'';document.getElementById('price').value=p.price??'';document.getElementById('category').value=p.category||'Ramen';document.getElementById('available').value=p.available?'true':'false';document.getElementById('description').value=p.description||'';document.getElementById('bestSeller').checked=!!p.bestSeller;document.getElementById('newProduct').checked=!!p.newProduct;selectedImage=null;document.getElementById('image').value='';const pr=document.getElementById('preview');pr.src=p.image||'';pr.style.display=p.image?'block':'none';document.getElementById('saveMsg').textContent='';}
+function closeModal(){document.getElementById('modal').classList.remove('open')}
+function editProduct(id){const p=products.find(x=>String(x.id)===String(id));if(p)openModal(p)}
+function previewImage(e){const file=e.target.files[0];if(!file)return;if(file.size>6*1024*1024){alert('Please use an image smaller than 6 MB.');e.target.value='';return}selectedImage=file;const r=new FileReader();r.onload=()=>{const p=document.getElementById('preview');p.src=r.result;p.style.display='block'};r.readAsDataURL(file)}
+function fileData(file){return new Promise((resolve,reject)=>{if(!file)return resolve(null);const r=new FileReader();r.onload=()=>resolve({name:file.name,type:file.type,base64:String(r.result).split(',')[1]});r.onerror=reject;r.readAsDataURL(file)})}
+async function saveProduct(){const name=document.getElementById('name').value.trim(),price=document.getElementById('price').value;if(!name||price===''){document.getElementById('saveMsg').textContent='Product name and price are required.';return}document.getElementById('saveMsg').textContent='Saving product and uploading image...';const image=await fileData(selectedImage);const data={token,id:document.getElementById('productId').value,name,price:Number(price),category:document.getElementById('category').value,available:document.getElementById('available').value==='true',description:document.getElementById('description').value.trim(),bestSeller:document.getElementById('bestSeller').checked,newProduct:document.getElementById('newProduct').checked,image};run('adminSaveProduct',[data],function(v,e){if(e||!v||!v.success){document.getElementById('saveMsg').textContent=e||'Unable to save product.';return}closeModal();loadProducts();});}
+function deleteProduct(id){if(!confirm('Delete this product?'))return;run('adminDeleteProduct',[token,id],function(v,e){if(e||!v||!v.success){alert(e||'Delete failed.');return}loadProducts()})}
+
+function showSection(section){const productsPanel=document.querySelector('.main > .panel:not(#ordersSection):not(#reviewsSection):not(#settingsSection)'),productsStats=document.querySelector('.main > .stats'),productsTop=document.querySelector('.main > .top'),ordersSection=document.getElementById('ordersSection'),reviewsSection=document.getElementById('reviewsSection'),settingsSection=document.getElementById('settingsSection'),navProducts=document.getElementById('navProducts'),navOrders=document.getElementById('navOrders'),navReviews=document.getElementById('navReviews'),navSettings=document.getElementById('navSettings');const isOrders=section==='orders',isReviews=section==='reviews',isSettings=section==='settings';if(productsPanel)productsPanel.style.display=(isOrders||isReviews||isSettings)?'none':'';if(productsStats)productsStats.style.display=(isOrders||isReviews||isSettings)?'none':'';if(productsTop)productsTop.style.display=(isOrders||isReviews||isSettings)?'none':'';if(ordersSection)ordersSection.style.display=isOrders?'block':'none';if(reviewsSection)reviewsSection.style.display=isReviews?'block':'none';if(settingsSection)settingsSection.style.display=isSettings?'block':'none';if(navProducts)navProducts.classList.toggle('active',!isOrders&&!isReviews&&!isSettings);if(navOrders)navOrders.classList.toggle('active',isOrders);if(navReviews)navReviews.classList.toggle('active',isReviews);if(navSettings)navSettings.classList.toggle('active',isSettings);if(isOrders)loadOrders();if(isReviews)loadReviews();if(isSettings)loadBrandAssets();}
+
+// ============================================================
+// WEBSITE BRANDING
+// ============================================================
+let selectedBrandLogo=null;let selectedBrandBackground=null;let currentBrandAssets={};
+function previewBrandFile(file,previewId){if(!file)return;if(file.size>6*1024*1024){alert('Please use an image smaller than 6 MB.');return}const r=new FileReader();r.onload=function(){const img=document.getElementById(previewId);if(img){img.src=r.result;img.style.display='block';}};r.readAsDataURL(file);}
+function loadBrandAssets(){
+  const msg=document.getElementById('brandAssetsMsg');if(msg)msg.textContent='Loading current website branding…';
+  // Read through the Firebase bridge. The revised bridge exposes getBrandAssets.
+  run('getBrandAssets',[],function(v,e){
+    if(e){if(msg)msg.textContent='Unable to load current branding: '+e;return;}
+    currentBrandAssets=v||{};
+    const logo=currentBrandAssets.logo||currentBrandAssets.logoUrl||'';
+    const bg=currentBrandAssets.background||currentBrandAssets.backgroundUrl||'';
+    const lp=document.getElementById('brandLogoPreview'),bp=document.getElementById('brandBackgroundPreview');
+    const lc=document.getElementById('brandLogoCurrent'),bc=document.getElementById('brandBackgroundCurrent');
+    if(lp){lp.src=logo;lp.style.display=logo?'block':'none';}
+    if(bp){bp.src=bg;bp.style.display=bg?'block':'none';}
+    if(lc)lc.textContent=logo?'Current logo saved in Firebase.':'No logo saved yet.';
+    if(bc)bc.textContent=bg?'Current background saved in Firebase.':'No background saved yet.';
+    if(msg)msg.textContent='';
+  });
+}
+function compressBrandImage(file,maxSide,quality){return new Promise(function(resolve,reject){if(!file)return resolve('');const r=new FileReader();r.onload=function(){const img=new Image();img.onload=function(){try{const scale=Math.min(1,maxSide/Math.max(img.width||1,img.height||1));const c=document.createElement('canvas');c.width=Math.max(1,Math.round((img.width||1)*scale));c.height=Math.max(1,Math.round((img.height||1)*scale));const ctx=c.getContext('2d',{alpha:false});ctx.fillStyle='#fff';ctx.fillRect(0,0,c.width,c.height);ctx.drawImage(img,0,0,c.width,c.height);let q=quality||.72;let out=c.toDataURL('image/jpeg',q);while(out.length>700000&&q>.35){q-=.06;out=c.toDataURL('image/jpeg',q)}if(out.length>360000)reject(new Error('Image is still too large after compression. Please choose a smaller image.'));else resolve(out)}catch(e){reject(e)}};img.onerror=function(){reject(new Error('Unable to read the selected image.'))};img.src=r.result};r.onerror=reject;r.readAsDataURL(file)})}
+function saveBrandAssets(){
+  const btn=document.getElementById('saveBrandAssetsBtn'),msg=document.getElementById('brandAssetsMsg');
+  if(btn){btn.disabled=true;btn.textContent='Saving Branding…'}if(msg)msg.textContent='Preparing images…';
+  Promise.all([compressBrandImage(selectedBrandLogo,1400,.76),compressBrandImage(selectedBrandBackground,1600,.68)]).then(function(vals){
+    const logo=vals[0]||currentBrandAssets.logo||currentBrandAssets.logoUrl||'';const background=vals[1]||currentBrandAssets.background||currentBrandAssets.backgroundUrl||'';
+    if(!logo&&!background)throw new Error('Please choose a logo or background image first.');
+    if(msg)msg.textContent='Saving to Firebase…';
+    const idToken=token||sessionStorage.getItem('mck_admin_token')||'';
+    if(!idToken)throw new Error('Admin session expired. Please log in again.');
+    const fields={};
+    if(logo)fields.logo={stringValue:logo};
+    if(background)fields.background={stringValue:background};
+    fields.updatedAt={stringValue:new Date().toISOString()};
+    fetch('https://firestore.googleapis.com/v1/projects/mckenzie-ramen-house/databases/(default)/documents/brandAssets/main',{
+      method:'PATCH',
+      headers:{'Authorization':'Bearer '+idToken,'Content-Type':'application/json'},
+      body:JSON.stringify({fields:fields})
+    }).then(function(r){return r.text().then(function(t){let data={};try{data=t?JSON.parse(t):{}}catch(e){}if(!r.ok)throw new Error(data.error&&data.error.message?data.error.message:('Firebase returned HTTP '+r.status));return data;});}).then(function(){
+      currentBrandAssets={logo:logo,background:background};
+      if(msg)msg.textContent='✓ Website logo/background saved successfully.';
+      loadBrandAssets();if(btn){btn.disabled=false;btn.textContent='Save Website Branding'}
+    }).catch(function(e){if(msg)msg.textContent=e&&e.message?e.message:String(e);if(btn){btn.disabled=false;btn.textContent='Save Website Branding'}});
+  }).catch(function(e){if(msg)msg.textContent=e&&e.message?e.message:String(e);if(btn){btn.disabled=false;btn.textContent='Save Website Branding'}});
+}
+(function(){const lf=document.getElementById('brandLogoFile'),bf=document.getElementById('brandBackgroundFile');if(lf)lf.addEventListener('change',function(){selectedBrandLogo=this.files&&this.files[0]?this.files[0]:null;previewBrandFile(selectedBrandLogo,'brandLogoPreview')});if(bf)bf.addEventListener('change',function(){selectedBrandBackground=this.files&&this.files[0]?this.files[0]:null;previewBrandFile(selectedBrandBackground,'brandBackgroundPreview')});})();
+
 function loadOrders(options){
   options = options || {};
   run('adminGetOrders',[token],(v,e)=>{
@@ -839,6 +853,9 @@ if(token){showApp();loadProducts();loadOrders({setBaseline:true});initAdminNotif
 
 </script>
 
+
+</script>
+
 <script id="mckenzie-final-order-workflow-lock">
 (function(){
   // FINAL ADMIN ORDER WORKFLOW v3 — Preparing / Ready / Delivered buttons only.
@@ -853,435 +870,3 @@ if(token){showApp();loadProducts();loadOrders({setBaseline:true});initAdminNotif
   setInterval(scrub,500);
 })();
 </script>
-
-<!-- McKenzie Ramen House — Firebase standalone Admin -->
-<script src="js/firebase-config.js"></script>
-<script src="js/firebase-standalone.js"></script>
-<script>
-(function(){
-  'use strict';
-
-  function firebaseErrorText(err){
-    if(!err) return 'Unknown Firebase error.';
-    return String(err.message || err.code || err || 'Unknown Firebase error.');
-  }
-
-  function showFirebaseError(err){
-    var text = firebaseErrorText(err);
-    console.error('McKenzie Firebase error:', err);
-    var status = document.getElementById('apiStatus');
-    if(status){
-      status.textContent = 'Firebase error: ' + text;
-      status.style.color = '#b91e35';
-    }
-    var msg = document.getElementById('loginMsg');
-    if(msg) msg.textContent = 'Firebase connection failed.';
-  }
-
-  function waitForFirebase(fn){
-    if(window.MckenzieFirebaseReady && typeof window.MckenzieFirebaseReady.then === 'function'){
-      window.MckenzieFirebaseReady.then(fn).catch(showFirebaseError);
-      return;
-    }
-    setTimeout(function(){ waitForFirebase(fn); }, 100);
-  }
-
-  window.checkAdminApi = function(){
-    var status = document.getElementById('apiStatus');
-    if(!status) return;
-    status.textContent = 'Connecting to Firebase…';
-    status.style.color = '#756965';
-
-    waitForFirebase(function(){
-      status.textContent = '● Firebase connected';
-      status.style.color = '#23824a';
-    });
-  };
-
-  window.run = function(name,args,onSuccess){
-    args = Array.isArray(args) ? args : [];
-    onSuccess = typeof onSuccess === 'function' ? onSuccess : function(){};
-
-    waitForFirebase(function(){
-      try{
-        var bridge = window.google && window.google.script && window.google.script.run;
-        if(!bridge || typeof bridge[name] !== 'function'){
-          onSuccess(null,'Firebase bridge method is unavailable: ' + name);
-          return;
-        }
-        bridge
-          .withSuccessHandler(function(value){ onSuccess(value,null); })
-          .withFailureHandler(function(error){ onSuccess(null,firebaseErrorText(error)); })[name]
-          .apply(null,args);
-      }catch(error){
-        onSuccess(null,firebaseErrorText(error));
-      }
-    });
-  };
-
-  window.login = function(){
-    var emailEl = document.getElementById('loginEmail');
-    var passwordEl = document.getElementById('loginPassword');
-    var msg = document.getElementById('loginMsg');
-    var btn = document.getElementById('adminLoginBtn');
-    var email = emailEl ? emailEl.value.trim() : '';
-    var password = passwordEl ? passwordEl.value : '';
-
-    if(!email || !password){
-      if(msg) msg.textContent = 'Please enter your admin email and password.';
-      return;
-    }
-
-    if(msg) msg.textContent = 'Signing in securely…';
-    if(btn) btn.disabled = true;
-
-    window.run('adminLogin',[email,password],function(result,error){
-      if(btn) btn.disabled = false;
-      if(error || !result || !result.success){
-        if(msg) msg.textContent = error || 'Invalid admin credentials.';
-        return;
-      }
-
-      window.token = result.token || '';
-      if(window.token) sessionStorage.setItem('mck_admin_token',window.token);
-      if(msg) msg.textContent = '';
-
-      if(typeof window.showApp === 'function') window.showApp();
-      if(typeof window.loadProducts === 'function') window.loadProducts();
-      if(typeof window.loadOrders === 'function') window.loadOrders({setBaseline:true});
-      if(typeof window.initAdminNotifications === 'function') window.initAdminNotifications();
-    });
-  };
-
-  // ------------------------------------------------------------
-  // DIRECT PRODUCT PHOTO UPLOAD
-  // ------------------------------------------------------------
-  // The selected image is compressed in the browser before it is
-  // sent to Firebase. This avoids Firebase Storage/Blaze and keeps
-  // the Firestore product document below its document-size limit.
-
-  function installDirectUpload(){
-    var input = document.getElementById('image');
-    if(!input) return;
-
-    // Restore the original file input if an older cached version
-    // of this page converted it into a URL input.
-    if(input.type !== 'file'){
-      var parent = input.parentElement;
-      if(parent){
-        parent.innerHTML = '<label class="upload" for="image"><strong>📷 Choose Product Photo</strong><small>JPG, PNG, WEBP · Select the photo directly from your computer.</small><input id="image" type="file" accept="image/png,image/jpeg,image/webp" hidden></label><img id="preview" class="preview">';
-        input = document.getElementById('image');
-      }
-    }
-
-    if(!input || input.dataset.directUploadInstalled === '1') return;
-
-    input.dataset.directUploadInstalled = '1';
-    input.addEventListener('change',function(event){
-      var file = event.target.files && event.target.files[0];
-      if(!file) return;
-
-      var allowed = [
-        'image/jpeg',
-        'image/png',
-        'image/webp'
-      ];
-
-      if(allowed.indexOf(file.type) === -1){
-        alert('Please choose a JPG, PNG, or WEBP image.');
-        input.value = '';
-        return;
-      }
-
-      if(file.size > 12 * 1024 * 1024){
-        alert('Please choose an image smaller than 12 MB.');
-        input.value = '';
-        return;
-      }
-
-      var preview = document.getElementById('preview');
-      if(preview){
-        preview.src = URL.createObjectURL(file);
-        preview.style.display = 'block';
-      }
-
-      var msg = document.getElementById('saveMsg');
-      if(msg) msg.textContent = 'Photo selected. It will be optimized when you save the product.';
-    });
-  }
-
-  function getSelectedImage(){
-    var input = document.getElementById('image');
-    if(!input || input.type !== 'file' || !input.files || !input.files[0]){
-      return Promise.resolve(null);
-    }
-
-    var file = input.files[0];
-
-    return new Promise(function(resolve,reject){
-      var reader = new FileReader();
-
-      reader.onload = function(){
-        var img = new Image();
-
-        img.onload = function(){
-          var maxDimension = 1400;
-          var width = img.width;
-          var height = img.height;
-
-          if(width > maxDimension || height > maxDimension){
-            var scale = Math.min(
-              maxDimension / width,
-              maxDimension / height
-            );
-            width = Math.round(width * scale);
-            height = Math.round(height * scale);
-          }
-
-          var canvas = document.createElement('canvas');
-          canvas.width = width;
-          canvas.height = height;
-
-          var ctx = canvas.getContext('2d');
-          if(!ctx){
-            reject(new Error('Your browser could not prepare the image.'));
-            return;
-          }
-
-          // JPEG is used for uploaded product photos to keep the
-          // Firestore document safely below the 1 MiB document limit.
-          ctx.drawImage(img,0,0,width,height);
-
-          var quality = 0.82;
-          var dataUrl = canvas.toDataURL('image/jpeg',quality);
-
-          // Keep trying lower quality if the image is still large.
-          while(dataUrl.length > 760000 && quality > 0.45){
-            quality -= 0.07;
-            dataUrl = canvas.toDataURL('image/jpeg',quality);
-          }
-
-          if(dataUrl.length > 760000){
-            var smaller = document.createElement('canvas');
-            var sw = Math.round(width * 0.75);
-            var sh = Math.round(height * 0.75);
-            smaller.width = sw;
-            smaller.height = sh;
-
-            var sctx = smaller.getContext('2d');
-            sctx.drawImage(img,0,0,sw,sh);
-            dataUrl = smaller.toDataURL('image/jpeg',0.68);
-          }
-
-          if(dataUrl.length > 900000){
-            reject(new Error('This photo is still too large after optimization. Please choose a smaller image.'));
-            return;
-          }
-
-          resolve({
-            name: file.name,
-            type: 'image/jpeg',
-            dataUrl: dataUrl
-          });
-        };
-
-        img.onerror = function(){
-          reject(new Error('The selected image could not be read.'));
-        };
-
-        img.src = reader.result;
-      };
-
-      reader.onerror = function(){
-        reject(new Error('The selected image could not be read.'));
-      };
-
-      reader.readAsDataURL(file);
-    });
-  }
-
-  // ------------------------------------------------------------
-  // PRODUCT MODAL
-  // ------------------------------------------------------------
-
-  var originalOpenModal = window.openModal;
-
-  window.openModal = function(product){
-    if(typeof originalOpenModal === 'function'){
-      originalOpenModal(product);
-    }
-
-    setTimeout(function(){
-      installDirectUpload();
-
-      var input = document.getElementById('image');
-      var preview = document.getElementById('preview');
-
-      if(input && input.type === 'file'){
-        input.value = '';
-      }
-
-      if(preview && product && product.image){
-        preview.src = product.image;
-        preview.style.display = 'block';
-      }
-    },0);
-  };
-
-  // ------------------------------------------------------------
-  // SAVE PRODUCT
-  // ------------------------------------------------------------
-
-  window.saveProduct = async function(){
-    var nameEl = document.getElementById('name');
-    var priceEl = document.getElementById('price');
-    var imageEl = document.getElementById('image');
-    var msg = document.getElementById('saveMsg');
-    var saveButton = document.querySelector('.modal-actions .save');
-
-    var name = nameEl ? nameEl.value.trim() : '';
-    var price = priceEl ? priceEl.value : '';
-    var existingProduct = window.editing || null;
-
-    if(!name || price === ''){
-      if(msg) msg.textContent = 'Product name and price are required.';
-      return;
-    }
-
-    if(saveButton) saveButton.disabled = true;
-    if(msg) msg.textContent = 'Preparing product photo…';
-
-    try{
-      var uploadedImage = await getSelectedImage();
-      var imageUrl = '';
-
-      if(uploadedImage && uploadedImage.dataUrl){
-        imageUrl = uploadedImage.dataUrl;
-      }else if(existingProduct && existingProduct.image){
-        imageUrl = existingProduct.image;
-      }
-
-      if(!imageUrl){
-        if(msg) msg.textContent = 'Please choose a product photo.';
-        if(saveButton) saveButton.disabled = false;
-        return;
-      }
-
-      if(msg) msg.textContent = 'Saving product to Firebase…';
-
-      var data = {
-        token: window.token || sessionStorage.getItem('mck_admin_token') || '',
-        id: document.getElementById('productId').value,
-        name: name,
-        price: Number(price),
-        category: document.getElementById('category').value,
-        available: document.getElementById('available').value === 'true',
-        description: document.getElementById('description').value.trim(),
-        bestSeller: document.getElementById('bestSeller').checked,
-        newProduct: document.getElementById('newProduct').checked,
-        imageUrl: imageUrl
-      };
-
-      window.run('adminSaveProduct',[data],function(result,error){
-        if(saveButton) saveButton.disabled = false;
-
-        if(error || !result || !result.success){
-          if(msg) msg.textContent = error || 'Unable to save product.';
-          return;
-        }
-
-        if(msg) msg.textContent = 'Product saved successfully!';
-
-        setTimeout(function(){
-          if(typeof window.closeModal === 'function') window.closeModal();
-          if(typeof window.loadProducts === 'function') window.loadProducts();
-        },500);
-      });
-
-    }catch(error){
-      if(saveButton) saveButton.disabled = false;
-      if(msg) msg.textContent = firebaseErrorText(error);
-    }
-  };
-
-  window.deleteProduct = function(id){
-    if(!confirm('Delete this product?')) return;
-
-    window.run(
-      'adminDeleteProduct',
-      [
-        window.token || sessionStorage.getItem('mck_admin_token') || '',
-        id
-      ],
-      function(result,error){
-        if(error || !result || !result.success){
-          if(typeof window.showAdminToast === 'function'){
-            window.showAdminToast(
-              '⚠ Delete failed',
-              error || 'Unable to delete product.'
-            );
-          }
-          return;
-        }
-
-        if(typeof window.loadProducts === 'function'){
-          window.loadProducts();
-        }
-      }
-    );
-  };
-
-  window.logout = function(){
-    if(typeof window.MckenzieAdminSignOut === 'function'){
-      window.MckenzieAdminSignOut();
-    }
-
-    window.token = '';
-    sessionStorage.removeItem('mck_admin_token');
-
-    var app = document.getElementById('app');
-    var login = document.getElementById('login');
-
-    if(app) app.style.display = 'none';
-    if(login) login.style.display = 'flex';
-
-    var password = document.getElementById('loginPassword');
-    if(password) password.value = '';
-  };
-
-  // ------------------------------------------------------------
-  // STARTUP
-  // ------------------------------------------------------------
-
-  waitForFirebase(function(){
-    window.checkAdminApi();
-    installDirectUpload();
-
-    var saved =
-      sessionStorage.getItem('mck_admin_token') || '';
-
-    if(saved){
-      window.token = saved;
-
-      if(typeof window.showApp === 'function'){
-        window.showApp();
-      }
-
-      if(typeof window.loadProducts === 'function'){
-        window.loadProducts();
-      }
-
-      if(typeof window.loadOrders === 'function'){
-        window.loadOrders({setBaseline:true});
-      }
-
-      if(typeof window.initAdminNotifications === 'function'){
-        window.initAdminNotifications();
-      }
-    }
-  });
-})();
-</script>
-
-</body>
-</html>
