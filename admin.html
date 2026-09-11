@@ -353,7 +353,7 @@ button,input,select,textarea{font:inherit}
       </div>
       <div class="settings-card">
         <h3>🍜 Ramen Loading Image</h3>
-        <p>Upload the image shown while the customer website is loading. It is compressed for Firestore compatibility.</p>
+        <p>Upload the image shown while the customer website is loading.</p>
         <label class="brand-upload" for="brandLoadingFile">
           <strong>📷 Choose Loading Image</strong>
           <small>JPG, PNG, or WEBP</small>
@@ -748,7 +748,71 @@ function removeBrandAsset(kind){
   if(kind==='loading'){selectedBrandLoading=null;removeBrandLoadingFlag=true;const f=document.getElementById('brandLoadingFile');if(f)f.value='';const p=document.getElementById('brandLoadingPreview');if(p){p.src='';p.style.display='none';}const b=document.getElementById('removeBrandLoadingBtn');if(b)b.hidden=true;}
   const msg=document.getElementById('brandAssetsMsg');if(msg)msg.textContent=(kind==='logo'?'Logo':kind==='background'?'Background':'Loading image')+' marked for removal. Click Save Website Branding to apply.';
 }
-function compressBrandImage(file,maxSide,quality,preserveAlpha){return new Promise(function(resolve,reject){if(!file)return resolve('');const r=new FileReader();r.onload=function(){const img=new Image();img.onload=function(){try{const scale=Math.min(1,maxSide/Math.max(img.width||1,img.height||1));const c=document.createElement('canvas');c.width=Math.max(1,Math.round((img.width||1)*scale));c.height=Math.max(1,Math.round((img.height||1)*scale));const ctx=c.getContext('2d',{alpha:!!preserveAlpha});if(!preserveAlpha){ctx.fillStyle='#fff';ctx.fillRect(0,0,c.width,c.height);}ctx.drawImage(img,0,0,c.width,c.height);let q=quality||.72;let mime=preserveAlpha?'image/png':'image/jpeg';let out=c.toDataURL(mime,q);if(preserveAlpha){if(out.length>700000){let scale2=.9;while(out.length>700000&&scale2>.45){c.width=Math.max(1,Math.round(c.width*scale2));c.height=Math.max(1,Math.round(c.height*scale2));const c2=c.getContext('2d',{alpha:true});c2.clearRect(0,0,c.width,c.height);c2.drawImage(img,0,0,c.width,c.height);out=c.toDataURL('image/png');scale2-=.08;}}}else{while(out.length>700000&&q>.35){q-=.06;out=c.toDataURL(mime,q)}}if(out.length>360000)reject(new Error('Image is still too large after compression. Please choose a smaller image.'));else resolve(out)}catch(e){reject(e)}};img.onerror=function(){reject(new Error('Unable to read the selected image.'))};img.src=r.result};r.onerror=reject;r.readAsDataURL(file)})}
+function compressBrandImage(file,maxSide,quality,preserveAlpha,targetBytes){
+  return new Promise(function(resolve,reject){
+    if(!file)return resolve('');
+    const r=new FileReader();
+    r.onload=function(){
+      const img=new Image();
+      img.onload=function(){
+        try{
+          const limit=targetBytes||260000;
+          const originalW=img.width||1, originalH=img.height||1;
+          let scale=Math.min(1,maxSide/Math.max(originalW,originalH));
+          let width=Math.max(1,Math.round(originalW*scale));
+          let height=Math.max(1,Math.round(originalH*scale));
+          let q=quality||.68;
+          const mime=preserveAlpha?'image/png':'image/jpeg';
+          let out='';
+
+          // Re-render from the original image each time so repeated resizing
+          // does not compound blur or accidentally retain an oversized canvas.
+          function render(){
+            const c=document.createElement('canvas');
+            c.width=width;c.height=height;
+            const ctx=c.getContext('2d',{alpha:!!preserveAlpha});
+            if(!preserveAlpha){
+              ctx.fillStyle='#fff';
+              ctx.fillRect(0,0,width,height);
+            }else{
+              ctx.clearRect(0,0,width,height);
+            }
+            ctx.drawImage(img,0,0,width,height);
+            out=preserveAlpha?c.toDataURL(mime):c.toDataURL(mime,q);
+          }
+
+          render();
+
+          // Keep branding documents comfortably below Firestore's 1 MiB limit.
+          // Loading images intentionally use JPEG in saveBrandAssets() because
+          // the supplied loading artwork does not need transparent alpha.
+          let guard=0;
+          while(out.length>limit && guard<30){
+            guard++;
+            if(!preserveAlpha && q>.28){
+              q=Math.max(.28,q-.08);
+            }else{
+              const shrink=out.length>limit*2?.72:.84;
+              width=Math.max(320,Math.round(width*shrink));
+              height=Math.max(240,Math.round(height*shrink));
+            }
+            render();
+            if(width<=320 && height<=240 && (!preserveAlpha || q<=.28) && out.length>limit)break;
+          }
+
+          if(out.length>limit){
+            throw new Error('Image is still too large after compression. Please choose a smaller image.');
+          }
+          resolve(out);
+        }catch(e){reject(e)}
+      };
+      img.onerror=function(){reject(new Error('Unable to read the selected image.'))};
+      img.src=r.result;
+    };
+    r.onerror=reject;
+    r.readAsDataURL(file);
+  });
+}
 async function brandPatchDoc(key,fields){
   const idToken=token||sessionStorage.getItem('mck_admin_token')||'';
   if(!idToken)throw new Error('Admin session expired. Please log in again.');
@@ -773,9 +837,9 @@ async function saveBrandAssets(){
   if(msg)msg.textContent='Preparing images…';
   try{
     const vals=await Promise.all([
-      compressBrandImage(selectedBrandLogo,1400,.76,true),
-      compressBrandImage(selectedBrandBackground,1600,.68,false),
-      compressBrandImage(selectedBrandLoading,1400,.70,false)
+      compressBrandImage(selectedBrandLogo,1200,.76,true,300000),
+      compressBrandImage(selectedBrandBackground,1400,.66,false,300000),
+      compressBrandImage(selectedBrandLoading,900,.58,false,220000)
     ]);
     const oldLogo=currentBrandAssets.logo||currentBrandAssets.logoUrl||'';
     const oldBg=currentBrandAssets.background||currentBrandAssets.backgroundUrl||'';
