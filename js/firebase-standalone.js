@@ -23,8 +23,8 @@
     measurementId: "G-C2KDRE88ZW"
   };
 
-  // Use this verified Firebase Console configuration directly.
-  // This prevents a stale cached config file from overriding the valid key.
+  // Use the verified Firebase Console configuration as the source of truth.
+  // This prevents an old/stale firebase-config.js from overriding the working key.
   const cfg = EMBEDDED_CONFIG;
   window.MCKENZIE_FIREBASE_CONFIG = EMBEDDED_CONFIG;
   window.MCKENZIE_ADMIN_UID = window.MCKENZIE_ADMIN_UID || "OHDs2DV4jyO3eBrww8d0gUQkNli2";
@@ -316,101 +316,8 @@
   }
 
   async function getBrandAssets() {
-    // Keep each large image in its own Firestore document so the
-    // Firestore 1 MiB document limit is not shared by logo + background.
-    const [main, logo, background] = await Promise.all([
-      getDocById("brandAssets", "main"),
-      getDocById("brandAssets", "logo"),
-      getDocById("brandAssets", "background")
-    ]);
-
-    return {
-      ...(main || {}),
-      logo: (logo && logo.imageUrl) || (main && main.logo) || "",
-      background: (background && background.imageUrl) || (main && main.background) || "",
-      logoUrl: (logo && logo.imageUrl) || (main && main.logoUrl) || (main && main.logo) || "",
-      backgroundUrl: (background && background.imageUrl) || (main && main.backgroundUrl) || (main && main.background) || ""
-    };
-  }
-
-  function imageObjectToDataUrl(image) {
-    if (!image || typeof image !== "object") return "";
-    const type = String(image.type || "image/jpeg").toLowerCase();
-    const base64 = String(image.base64 || "").trim();
-    if (!base64) return "";
-    if (!/^image\/(jpeg|jpg|png|webp)$/i.test(type)) {
-      throw makeError("Image must be JPG, PNG, or WEBP.");
-    }
-    return "data:" + type + ";base64," + base64;
-  }
-
-  function compressBrandImage(dataUrl, kind) {
-    return new Promise((resolve, reject) => {
-      if (!dataUrl) { reject(makeError("Please select an image.")); return; }
-      const img = new Image();
-      img.onload = function () {
-        try {
-          const isLogo = kind === "logo";
-          const max = isLogo ? 1000 : 1800;
-          const scale = Math.min(1, max / Math.max(img.width || 1, img.height || 1));
-          const w = Math.max(1, Math.round((img.width || 1) * scale));
-          const h = Math.max(1, Math.round((img.height || 1) * scale));
-          const canvas = document.createElement("canvas");
-          canvas.width = w; canvas.height = h;
-          const ctx = canvas.getContext("2d", {alpha:false});
-          if (!ctx) throw makeError("Your browser cannot process this image.");
-          ctx.fillStyle = "#ffffff";
-          ctx.fillRect(0, 0, w, h);
-          ctx.drawImage(img, 0, 0, w, h);
-          let quality = isLogo ? 0.88 : 0.78;
-          let result = canvas.toDataURL("image/jpeg", quality);
-          while (result.length > 700000 && quality > 0.42) {
-            quality -= 0.06;
-            result = canvas.toDataURL("image/jpeg", quality);
-          }
-          if (result.length > 800000) {
-            const smaller = document.createElement("canvas");
-            smaller.width = Math.max(1, Math.round(w * 0.72));
-            smaller.height = Math.max(1, Math.round(h * 0.72));
-            const sctx = smaller.getContext("2d", {alpha:false});
-            sctx.fillStyle = "#ffffff";
-            sctx.fillRect(0, 0, smaller.width, smaller.height);
-            sctx.drawImage(img, 0, 0, smaller.width, smaller.height);
-            result = smaller.toDataURL("image/jpeg", 0.58);
-          }
-          if (result.length > 900000) throw makeError("Image is still too large. Please choose a smaller image.");
-          resolve(result);
-        } catch (e) { reject(e); }
-      };
-      img.onerror = function () { reject(makeError("Unable to process the selected image.")); };
-      img.src = dataUrl;
-    });
-  }
-
-  async function adminSaveBrandAsset(assetKey, image) {
-    const f = await READY;
-    await requireAdmin();
-    const key = String(assetKey || "").trim().toLowerCase();
-    if (key !== "logo" && key !== "background") {
-      throw makeError("Invalid brand asset. Use logo or background.");
-    }
-    const raw = imageObjectToDataUrl(image);
-    if (!raw) throw makeError("Please select an image first.");
-    const imageUrl = await compressBrandImage(raw, key);
-    await f.setDoc(
-      f.doc(f.db, "brandAssets", key),
-      {
-        assetKey: key,
-        imageUrl,
-        updatedAt: isoNow()
-      },
-      {merge:true}
-    );
-    return {
-      success: true,
-      assetKey: key,
-      imageUrl
-    };
+    const p = await getDocById("brandAssets", "main");
+    return p || {};
   }
 
   async function getRamenLoadingImage() {
@@ -576,6 +483,97 @@
     return {success:true,products:await getProducts()};
   }
 
+  function dataUrlFromImageObject(image) {
+    if (!image || typeof image !== "object") return null;
+    const type = String(image.type || "image/jpeg").toLowerCase();
+    const base64 = String(image.base64 || "").trim();
+    if (!base64) return null;
+    if (!/^image\/(jpeg|jpg|png|webp)$/i.test(type)) {
+      throw makeError("Product photo must be JPG, PNG, or WEBP.");
+    }
+    return "data:" + type + ";base64," + base64;
+  }
+
+  function compressImageDataUrl(dataUrl) {
+    return new Promise((resolve, reject) => {
+      if (!dataUrl || !dataUrl.startsWith("data:image/")) {
+        resolve(dataUrl || "");
+        return;
+      }
+
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const maxDimension = 1400;
+          const scale = Math.min(1, maxDimension / Math.max(img.width || 1, img.height || 1));
+          const width = Math.max(1, Math.round((img.width || 1) * scale));
+          const height = Math.max(1, Math.round((img.height || 1) * scale));
+          const canvas = document.createElement("canvas");
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d", { alpha: false });
+          if (!ctx) throw makeError("Your browser cannot process the product photo.");
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(0, 0, width, height);
+          ctx.drawImage(img, 0, 0, width, height);
+
+          // JPEG keeps the Firestore document comfortably below 1 MiB for normal menu photos.
+          let quality = 0.82;
+          let result = canvas.toDataURL("image/jpeg", quality);
+          while (result.length > 760000 && quality > 0.45) {
+            quality -= 0.07;
+            result = canvas.toDataURL("image/jpeg", quality);
+          }
+
+          if (result.length > 820000) {
+            // One more resize pass for unusually detailed/large images.
+            const smaller = document.createElement("canvas");
+            smaller.width = Math.max(1, Math.round(width * 0.75));
+            smaller.height = Math.max(1, Math.round(height * 0.75));
+            const sctx = smaller.getContext("2d", { alpha: false });
+            sctx.fillStyle = "#ffffff";
+            sctx.fillRect(0, 0, smaller.width, smaller.height);
+            sctx.drawImage(img, 0, 0, smaller.width, smaller.height);
+            result = smaller.toDataURL("image/jpeg", 0.65);
+          }
+
+          if (result.length > 850000) {
+            reject(makeError("The product photo is too large. Please choose a smaller image."));
+            return;
+          }
+
+          resolve(result);
+        } catch (e) {
+          reject(e);
+        }
+      };
+      img.onerror = () => reject(makeError("Unable to process the selected product photo."));
+      img.src = dataUrl;
+    });
+  }
+
+  async function prepareProductImage(data) {
+    const raw = data.image;
+
+    if (raw && typeof raw === "object") {
+      return compressImageDataUrl(dataUrlFromImageObject(raw));
+    }
+
+    if (typeof raw === "string" && raw.trim()) {
+      const value = raw.trim();
+      if (value.startsWith("data:image/")) {
+        return compressImageDataUrl(value);
+      }
+      return value;
+    }
+
+    if (typeof data.imageUrl === "string" && data.imageUrl.trim()) {
+      return data.imageUrl.trim();
+    }
+
+    return "";
+  }
+
   async function saveProduct(data) {
     const f=await READY;
     await requireAdmin();
@@ -585,11 +583,18 @@
     if(!name) throw makeError("Product name is required.");
     if(!category) throw makeError("Product category is required.");
     if(!Number.isFinite(price)||price<0) throw makeError("Please enter a valid product price.");
-    let image = String(data.imageUrl || data.image || "").trim();
-    if (image && image.startsWith("data:")) {
-      throw makeError("This standalone version uses an image URL. Upload the image to the GitHub images folder, then paste its URL here.");
-    }
+
     const id=String(data.id||"").trim() || ("PROD-" + Date.now());
+    const existing = await getDocById("products", id);
+    let image = await prepareProductImage(data);
+
+    // When editing an existing product without choosing a new photo, keep its current image.
+    if (!image && existing && existing.image) image = String(existing.image);
+
+    if (image.startsWith("data:") && image.length > 850000) {
+      throw makeError("The product photo is too large. Please choose a smaller image.");
+    }
+
     await f.setDoc(f.doc(f.db,"products",id),{
       name,category,price,image,description,
       available:data.available!==false,
@@ -769,8 +774,6 @@
         if (!(await isAdmin())) { await f.signOut(f.auth); throw makeError("This Firebase account is not configured as the McKenzie admin."); }
         return {success:true,token:await cred.user.getIdToken(),email:cred.user.email};
       }
-      case "adminGetBrandAssets": return getBrandAssets();
-      case "adminSaveBrandAsset": return adminSaveBrandAsset(args[0], args[1]);
       case "adminGetProducts": return getAdminProducts();
       case "adminSaveProduct": return saveProduct(args[0]);
       case "adminDeleteProduct": return deleteProduct(args[1]);
