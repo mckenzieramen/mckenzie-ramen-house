@@ -11,7 +11,7 @@
   <!-- Firebase standalone bridge for GitHub Pages. This creates the
        google.script.run compatibility layer used by the existing customer UI. -->
   <script src="js/firebase-config.js"></script>
-  <script type="module" src="js/firebase-standalone.js?v=20260912-products"></script>
+  <script type="module" src="js/firebase-standalone.js?v=20260912-brand-products-final"></script>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -5751,18 +5751,38 @@ function maybeClosePageLoader_() {
 }
 
 /* =========================================================
-   INSTANT PUBLIC BRAND ASSETS
-   Reads the public brandAssets documents directly from Firestore.
-   This makes the logo/background/loading image available on the
-   customer homepage without opening Admin Settings first.
+   FIREBASE BRANDING — DIRECT SDK SYNC
+   Admin saves branding in brandAssets/logo, /background, /loading.
+   Older versions may have stored everything in brandAssets/main, so we
+   support BOTH formats. The customer page does not depend on the legacy
+   google.script.run bridge for branding.
 ========================================================= */
 const MCKENZIE_FIRESTORE_PUBLIC_BASE =
   'https://firestore.googleapis.com/v1/projects/mckenzie-ramen-house/databases/(default)/documents/brandAssets/';
 
 function readPublicBrandAsset_(key) {
+  /* Prefer the already-initialized Firebase SDK. This avoids REST/CORS/cache
+     differences and reads exactly the same Firestore database as Admin. */
+  if (window.MckenzieFirebaseReady && typeof window.MckenzieFirebaseReady.then === 'function') {
+    return window.MckenzieFirebaseReady.then(async function(f) {
+      try {
+        const snap = await f.getDoc(f.doc(f.db, 'brandAssets', String(key)));
+        if (!snap.exists()) return {};
+        const data = snap.data() || {};
+        return {
+          logo: data.logo || data.logoUrl || data.imageUrl || '',
+          background: data.background || data.backgroundUrl || data.imageUrl || '',
+          loading: data.loading || data.ramenLoadingImage || data.ramenLoading || data.imageUrl || ''
+        };
+      } catch (e) {
+        console.warn('Firebase brand asset read failed for', key, e);
+        return {};
+      }
+    }).catch(function(){ return {}; });
+  }
+
   return fetch(MCKENZIE_FIRESTORE_PUBLIC_BASE + encodeURIComponent(key), {
-    method: 'GET',
-    cache: 'no-store'
+    method: 'GET', cache: 'no-store'
   }).then(function(response) {
     if (!response.ok) return {};
     return response.json();
@@ -5773,11 +5793,26 @@ function readPublicBrandAsset_(key) {
       return f && typeof f.stringValue === 'string' ? f.stringValue : '';
     }
     return {
-      logo: value('logo') || value('imageUrl'),
-      background: value('background') || value('imageUrl'),
-      loading: value('loading') || value('ramenLoadingImage') || value('imageUrl')
+      logo: value('logo') || value('logoUrl') || value('imageUrl'),
+      background: value('background') || value('backgroundUrl') || value('imageUrl'),
+      loading: value('loading') || value('ramenLoadingImage') || value('ramenLoading') || value('imageUrl')
     };
-  }).catch(function() { return {}; });
+  }).catch(function(){ return {}; });
+}
+
+async function getCustomerBrandAssetsDirect_() {
+  const keys = ['logo','background','loading','main'];
+  const results = await Promise.all(keys.map(readPublicBrandAsset_));
+  const logoDoc = results[0] || {};
+  const bgDoc = results[1] || {};
+  const loadingDoc = results[2] || {};
+  const main = results[3] || {};
+
+  return {
+    logo: logoDoc.logo || main.logo || main.logoUrl || main.imageUrl || '',
+    background: bgDoc.background || main.background || main.backgroundUrl || '',
+    loading: loadingDoc.loading || main.loading || main.ramenLoadingImage || main.ramenLoading || ''
+  };
 }
 
 function makeEdgeWhiteTransparent_(source, done) {
@@ -5802,34 +5837,28 @@ function makeEdgeWhiteTransparent_(source, done) {
 }
 
 function loadPublicBrandAssetsImmediately_() {
-  Promise.all([
-    readPublicBrandAsset_('logo'),
-    readPublicBrandAsset_('background'),
-    readPublicBrandAsset_('loading')
-  ]).then(function(items) {
-    const assets = {
-      logo: items[0].logo || '',
-      background: items[1].background || '',
-      loading: items[2].loading || ''
-    };
-    if (assets.logo) {
-      applyBrandAssets_({logo: assets.logo});
-    }
-    if (assets.background) {
-      applyBrandAssets_({background: assets.background});
-    }
+  /* Cached Admin branding is painted first. */
+  const cached = getCachedBrandAssets_();
+  if (cached) applyBrandAssets_(cached);
+
+  getCustomerBrandAssetsDirect_().then(function(assets) {
+    if (assets.logo) applyBrandAssets_({logo: assets.logo});
+    if (assets.background) applyBrandAssets_({background: assets.background});
     if (assets.loading) {
       window.mckenziePublicLoadingImage = assets.loading;
       const loaderImage = document.getElementById('loaderRamenImage');
-      if (loaderImage && !window._pageLoaderState?.closed) {
+      if (loaderImage && !(window._pageLoaderState && window._pageLoaderState.closed)) {
         makeEdgeWhiteTransparent_(assets.loading, function(cleaned){
-          if (loaderImage && !window._pageLoaderState?.closed) loaderImage.src = cleaned || assets.loading;
+          if (loaderImage && !(window._pageLoaderState && window._pageLoaderState.closed)) {
+            loaderImage.src = cleaned || assets.loading;
+          }
         });
       }
     }
-    try {
-      localStorage.setItem('mckenzieBrandAssets', JSON.stringify(assets));
-    } catch (e) {}
+    try { localStorage.setItem('mckenzieBrandAssets', JSON.stringify(assets)); } catch(e) {}
+    markPageAssetReady_('brand');
+  }).catch(function(){
+    markPageAssetReady_('brand');
   });
 }
 
@@ -5967,67 +5996,21 @@ function applyDefaultBrandAssets_() {
 }
 
 function loadBrandAssets() {
-  /* Always paint the local logo/background first so there is no broken
-     image while Firebase is loading. */
+  /* Default/cached assets appear immediately; Admin branding then replaces
+     them from Firestore without waiting on the old Apps Script API. */
   applyDefaultBrandAssets_();
-
   const cached = getCachedBrandAssets_();
   if (cached) applyBrandAssets_(cached);
 
-  /* Direct public Firestore read: the Admin branding documents are public-read. */
-  Promise.all([
-    readPublicBrandAsset_('logo'),
-    readPublicBrandAsset_('background'),
-    readPublicBrandAsset_('loading')
-  ]).then(function(items) {
-    const assets = {
-      logo: items[0].logo || '',
-      background: items[1].background || '',
-      loading: items[2].loading || ''
-    };
+  getCustomerBrandAssetsDirect_().then(function(assets) {
     if (assets.logo) applyBrandAssets_({logo: assets.logo});
     if (assets.background) applyBrandAssets_({background: assets.background});
     if (assets.loading) window.mckenziePublicLoadingImage = assets.loading;
-    try { localStorage.setItem('mckenzieBrandAssets', JSON.stringify(assets)); } catch (e) {}
-
-    const urls = [assets.logo, assets.background, assets.loading].filter(Boolean);
-    if (!urls.length) {
-      markPageAssetReady_('brand');
-      return;
-    }
-    let remaining = urls.length;
-    let marked = false;
-    const done = function() {
-      remaining--;
-      if (remaining <= 0 && !marked) {
-        marked = true;
-        markPageAssetReady_('brand');
-      }
-    };
-    urls.forEach(function(url) { preloadPageImage_(url, done); });
-    setTimeout(function() {
-      if (!marked) {
-        marked = true;
-        markPageAssetReady_('brand');
-      }
-    }, 2500);
-  }).catch(function() {
+    try { localStorage.setItem('mckenzieBrandAssets', JSON.stringify(assets)); } catch(e) {}
+    markPageAssetReady_('brand');
+  }).catch(function(){
     markPageAssetReady_('brand');
   });
-
-  /* Keep the existing Firebase compatibility path as a secondary source. */
-  try {
-    google.script.run
-      .withSuccessHandler(function (assets) {
-        assets = assets || {};
-        applyBrandAssets_(assets);
-        try { localStorage.setItem('mckenzieBrandAssets', JSON.stringify(assets)); } catch (e) {}
-      })
-      .withFailureHandler(function (error) {
-        console.warn('Firebase brand bridge fallback:', error);
-      })
-      .getBrandAssets();
-  } catch (e) {}
 }
 
 /* =========================================================
