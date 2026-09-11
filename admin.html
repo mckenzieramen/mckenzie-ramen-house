@@ -209,6 +209,17 @@ button,input,select,textarea{font:inherit}
 <style id="brand-settings-style">
 .settings-wrap{display:none}.settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}.settings-card{background:#fff;border:1px solid var(--line);border-radius:17px;padding:22px}.settings-card h3{margin:0 0 6px;font-family:'Cormorant Garamond',serif;font-size:28px;color:#60151f}.settings-card p{margin:0 0 16px;color:var(--muted);font-size:12px}.brand-upload{border:2px dashed #d8c4b7;border-radius:14px;padding:15px;text-align:center;background:#fffaf5;cursor:pointer}.brand-upload input{display:none}.brand-preview{display:none;width:100%;height:210px;object-fit:contain;border:1px solid var(--line);border-radius:12px;background:#fff;margin-top:12px}.background-preview{object-fit:cover}.brand-preview-wrap{position:relative;margin-top:12px}.brand-preview-wrap .brand-preview{margin-top:0}.image-remove-btn{position:absolute;top:8px;right:8px;width:32px;height:32px;border:0;border-radius:50%;background:#b91e35;color:#fff;font-size:21px;line-height:32px;text-align:center;cursor:pointer;box-shadow:0 5px 14px rgba(0,0,0,.22);z-index:2}.image-remove-btn:hover{background:#8e1528}.image-remove-btn[hidden]{display:none!important}.upload.has-image{border-color:#b91e35;background:#fff7f8}.settings-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:18px}.settings-save{border:0;background:var(--red);color:#fff;padding:11px 20px;border-radius:10px;font-weight:800;cursor:pointer}.settings-save:disabled{opacity:.55;cursor:wait}.settings-msg{font-size:12px;color:#23824a;margin-top:10px;min-height:18px}.settings-note{margin-top:14px;padding:11px 13px;background:#fff7ec;border:1px solid var(--line);border-radius:10px;font-size:11px;color:#756965;line-height:1.5}.settings-current{font-size:10px;color:#756965;margin-top:7px;word-break:break-all}@media(max-width:800px){.settings-grid{grid-template-columns:1fr}}
 </style>
+
+<style id="centered-update-style">
+#centeredUpdateOverlay{position:fixed;inset:0;z-index:2147483647;display:flex;align-items:center;justify-content:center;background:rgba(16,7,5,.32);backdrop-filter:blur(2px);opacity:0;pointer-events:none;transition:opacity .25s ease}
+#centeredUpdateOverlay.show{opacity:1;pointer-events:auto}
+.centered-update-card{width:min(380px,calc(100vw - 36px));background:#fff;border:1px solid #eaded1;border-radius:20px;padding:28px 24px;text-align:center;box-shadow:0 24px 70px rgba(0,0,0,.28);transform:translateY(8px) scale(.98);transition:transform .25s ease}
+#centeredUpdateOverlay.show .centered-update-card{transform:none}
+.centered-update-check{width:58px;height:58px;border-radius:50%;margin:0 auto 12px;display:grid;place-items:center;background:#e8f7ec;color:#23824a;font-size:30px;font-weight:900}
+.centered-update-card h3{margin:0;color:#60151f;font-family:'Cormorant Garamond',serif;font-size:31px}
+.centered-update-card p{margin:7px 0 0;color:#756965;font-size:13px;line-height:1.5}
+.centered-update-card .update-ok{margin-top:18px;border:0;background:#b91e35;color:#fff;padding:10px 24px;border-radius:10px;font-weight:800;cursor:pointer}
+</style>
 </head>
 <body>
 
@@ -223,6 +234,7 @@ button,input,select,textarea{font:inherit}
 
 
 
+<div id="centeredUpdateOverlay" aria-hidden="true"><div class="centered-update-card" role="status"><div class="centered-update-check">✓</div><h3 id="centeredUpdateTitle">Updated</h3><p id="centeredUpdateMessage">Your changes were saved successfully.</p><button type="button" class="update-ok" onclick="hideCenteredUpdate()">OK</button></div></div>
 <div id="deliveryConfirmModal" class="custom-confirm-overlay" aria-hidden="true">
   <div class="custom-confirm-card" role="dialog" aria-modal="true" aria-labelledby="deliveryConfirmTitle">
     <div class="custom-confirm-icon">🍜</div>
@@ -357,8 +369,8 @@ button,input,select,textarea{font:inherit}
     <div class="field"><label>Price *</label><input id="price" type="number" min="0" step="0.01" placeholder="329"></div>
     <div class="field"><label>Category *</label><select id="category"><option>Ramen</option><option>Rice Meals</option><option>Side Dishes</option><option>Drinks</option><option>Desserts</option><option>Promos</option></select></div>
     <div class="field"><label>Status</label><select id="available"><option value="true">Available</option><option value="false">Unavailable</option></select></div>
-    <div class="field full"><label>Product Photo *</label>
-      <label class="upload" for="image"><strong>📷 Choose Product Photo</strong><small>JPG, PNG, WEBP · The owner uploads the actual image here.</small><input id="image" type="file" accept="image/png,image/jpeg,image/webp" hidden onchange="previewImage(event)"></label>
+    <div class="field full"><label>Product Photo <span id="productPhotoRequired" style="color:#a51620">*</span></label>
+      <label class="upload" for="image"><strong>📷 Choose Product Photo</strong><small id="productPhotoHint">JPG, PNG, WEBP · Required for a new product. For edits, keep the existing photo or use × to remove/replace it.</small><input id="image" type="file" accept="image/png,image/jpeg,image/webp" hidden onchange="previewImage(event)"></label>
       <div class="brand-preview-wrap"><img id="preview" class="preview"><button id="removeProductImageBtn" class="image-remove-btn" type="button" onclick="removeProductImage()" aria-label="Remove product photo" hidden>×</button></div>
     </div>
     <div class="field full"><label>Description</label><textarea id="description" placeholder="Describe the ramen..."></textarea></div>
@@ -378,7 +390,7 @@ button,input,select,textarea{font:inherit}
 /* McKenzie Ramen House — GitHub/Firebase Admin UI */
 (function(){
   var nativeAlert=window.alert;
-  window.alert=function(message){try{if(typeof window.showAdminToast==='function')window.showAdminToast('⚠ Notice',String(message||''));else nativeAlert(message);}catch(e){}};
+  window.alert=function(message){try{if(typeof window.showCenteredUpdate==='function')window.showCenteredUpdate('Notice',String(message||''),true);else nativeAlert(message);}catch(e){}};
 })();
 let token=sessionStorage.getItem('mck_admin_token')||'';
 let products=[]; let selectedImage=null; let editing=null; let removeProductImageFlag=false;
@@ -552,7 +564,7 @@ async function login(){
   }
 })();
 
-function loadProducts(){run('adminGetProducts',[token],function(v,e){if(e||!v||!v.success){if(token)alert(e||'Unable to load products.');return;}products=v.products||[];render();});}
+function loadProducts(){run('adminGetProducts',[token],function(v,e){if(e||!v||!v.success){if(token)alert(e||'Unable to load products.');return;}products=(v.products||[]).map(function(p){p.available=(p.available===true || p.available==='true' || p.available===1 || p.available==='1');return p;});render();});}
 function render(){const q=document.getElementById('search').value.toLowerCase();const list=products.filter(p=>(p.name+' '+p.category).toLowerCase().includes(q));document.getElementById('total').textContent=products.length;document.getElementById('available').textContent=products.filter(p=>p.available).length;document.getElementById('best').textContent=products.filter(p=>p.bestSeller).length;document.getElementById('new').textContent=products.filter(p=>p.newProduct).length;document.getElementById('products').innerHTML=list.length?list.map(p=>`<article class="product"><img src="${p.image||''}" onerror="this.style.visibility='hidden'" alt=""><div class="pbody">${p.bestSeller?'<span class="badge">BEST SELLER</span>':''}${p.newProduct?'<span class="badge">NEW</span>':''}<h3>${esc(p.name)}</h3><div class="price">₱${Number(p.price||0).toLocaleString()}</div><div class="meta">${esc(p.category)} · ${p.available?'Available':'Unavailable'}</div><div class="actions"><button class="edit" onclick="editProduct('${esc(p.id)}')">Edit</button><button class="del" onclick="deleteProduct('${esc(p.id)}')">Delete</button></div></div></article>`).join(''):'<div class="empty">No products found.</div>'; }
 function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
 function escAttr(s){return String(s??'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");}
@@ -577,6 +589,10 @@ function openModal(p=null){
   removeProductImageFlag=false;
   document.getElementById('image').value='';
   setProductPreview(p.image||'');
+  const req=document.getElementById('productPhotoRequired');
+  const hint=document.getElementById('productPhotoHint');
+  if(req)req.style.display=p.id?'none':'inline';
+  if(hint)hint.textContent=p.id?'Existing photo loaded. You can keep it, replace it, or click × to remove it.':'JPG, PNG, WEBP · Required for a new product.';
   document.getElementById('saveMsg').textContent=p.image?'Current product photo is loaded. You can keep it, replace it, or click × to remove it.':'';
 }
 function closeModal(){document.getElementById('modal').classList.remove('open')}
@@ -607,20 +623,46 @@ async function clearProductImageInFirestore(id){
   if(!r.ok){let t=await r.text();let d={};try{d=JSON.parse(t)}catch(e){};throw new Error(d.error&&d.error.message?d.error.message:'Unable to remove the product photo.')}
 }
 async function saveProduct(){
-  const name=document.getElementById('name').value.trim(),price=document.getElementById('price').value;
-  if(!name||price===''){document.getElementById('saveMsg').textContent='Product name and price are required.';return}
+  const name=document.getElementById('name').value.trim();
+  const price=document.getElementById('price').value;
+  const id=document.getElementById('productId').value.trim();
   const saveMsg=document.getElementById('saveMsg');
+  if(!name||price===''){
+    saveMsg.textContent='Product name and price are required.';
+    return;
+  }
+  if(!id && !selectedImage){
+    saveMsg.textContent='Please upload a product photo for a new product.';
+    return;
+  }
   saveMsg.textContent=removeProductImageFlag?'Saving product and removing photo…':'Saving product…';
   try{
-    const image=await fileData(selectedImage);
-    const id=document.getElementById('productId').value;
-    const data={token,id,name,price:Number(price),category:document.getElementById('category').value,available:document.getElementById('available').value==='true',description:document.getElementById('description').value.trim(),bestSeller:document.getElementById('bestSeller').checked,newProduct:document.getElementById('newProduct').checked,image};
-    const result=await new Promise((resolve,reject)=>run('adminSaveProduct',[data],(v,e)=>e?reject(new Error(e)):(!v||!v.success)?reject(new Error('Unable to save product.')):resolve(v)));
-    if(removeProductImageFlag&&id)await clearProductImageInFirestore(id);
-    closeModal();loadProducts();
-  }catch(e){saveMsg.textContent=e&&e.message?e.message:String(e)}
+    const data={
+      token,
+      id,
+      name,
+      price:Number(price),
+      category:document.getElementById('category').value,
+      available:document.getElementById('available').value==='true',
+      description:document.getElementById('description').value.trim(),
+      bestSeller:document.getElementById('bestSeller').checked,
+      newProduct:document.getElementById('newProduct').checked
+    };
+    // On edit, do NOT send image unless the owner selected a new image or explicitly removed it.
+    if(selectedImage){
+      data.image=await fileData(selectedImage);
+    }else if(removeProductImageFlag){
+      data.image='';
+    }
+    await new Promise((resolve,reject)=>run('adminSaveProduct',[data],(v,e)=>e?reject(new Error(e)):(!v||!v.success)?reject(new Error('Unable to save product.')):resolve(v)));
+    closeModal();
+    loadProducts();
+    showCenteredUpdate('Product Updated','The product was saved successfully.');
+  }catch(e){
+    saveMsg.textContent=e&&e.message?e.message:String(e);
+  }
 }
-function deleteProduct(id){if(!confirm('Delete this product?'))return;run('adminDeleteProduct',[token,id],function(v,e){if(e||!v||!v.success){alert(e||'Delete failed.');return}loadProducts()})}
+function deleteProduct(id){if(!confirm('Delete this product?'))return;run('adminDeleteProduct',[token,id],function(v,e){if(e||!v||!v.success){alert(e||'Delete failed.');return}loadProducts();showCenteredUpdate('Product Updated','The product was deleted successfully.')})}
 
 function showSection(section){const productsPanel=document.querySelector('.main > .panel:not(#ordersSection):not(#reviewsSection):not(#settingsSection)'),productsStats=document.querySelector('.main > .stats'),productsTop=document.querySelector('.main > .top'),ordersSection=document.getElementById('ordersSection'),reviewsSection=document.getElementById('reviewsSection'),settingsSection=document.getElementById('settingsSection'),navProducts=document.getElementById('navProducts'),navOrders=document.getElementById('navOrders'),navReviews=document.getElementById('navReviews'),navSettings=document.getElementById('navSettings');const isOrders=section==='orders',isReviews=section==='reviews',isSettings=section==='settings';if(productsPanel)productsPanel.style.display=(isOrders||isReviews||isSettings)?'none':'';if(productsStats)productsStats.style.display=(isOrders||isReviews||isSettings)?'none':'';if(productsTop)productsTop.style.display=(isOrders||isReviews||isSettings)?'none':'';if(ordersSection)ordersSection.style.display=isOrders?'block':'none';if(reviewsSection)reviewsSection.style.display=isReviews?'block':'none';if(settingsSection)settingsSection.style.display=isSettings?'block':'none';if(navProducts)navProducts.classList.toggle('active',!isOrders&&!isReviews&&!isSettings);if(navOrders)navOrders.classList.toggle('active',isOrders);if(navReviews)navReviews.classList.toggle('active',isReviews);if(navSettings)navSettings.classList.toggle('active',isSettings);if(isOrders)loadOrders();if(isReviews)loadReviews();if(isSettings)loadBrandAssets();}
 
@@ -692,6 +734,7 @@ async function saveBrandAssets(){
     if(document.getElementById('brandLogoFile'))document.getElementById('brandLogoFile').value='';if(document.getElementById('brandBackgroundFile'))document.getElementById('brandBackgroundFile').value='';
     if(msg)msg.textContent='✓ Website logo/background saved successfully.';
     loadBrandAssets();
+    showCenteredUpdate('Website Updated','Your logo and background changes were saved successfully.');
   }catch(e){if(msg)msg.textContent=e&&e.message?e.message:String(e)}finally{if(btn){btn.disabled=false;btn.textContent='Save Website Branding'}}
 }
 (function(){const lf=document.getElementById('brandLogoFile'),bf=document.getElementById('brandBackgroundFile');if(lf)lf.addEventListener('change',function(){selectedBrandLogo=this.files&&this.files[0]?this.files[0]:null;removeBrandLogoFlag=false;previewBrandFile(selectedBrandLogo,'brandLogoPreview');updateBrandRemoveButtons()});if(bf)bf.addEventListener('change',function(){selectedBrandBackground=this.files&&this.files[0]?this.files[0]:null;removeBrandBackgroundFlag=false;previewBrandFile(selectedBrandBackground,'brandBackgroundPreview');updateBrandRemoveButtons()});})();
@@ -1046,23 +1089,29 @@ function notifyCustomerReview(orderId,button,isResend){
   });
 }
 
-function showAdminToast(title, message){
-  const toast=document.getElementById('adminToast');
-  if(!toast)return;
-  const titleEl=document.getElementById('adminToastTitle');
-  const msgEl=document.getElementById('adminToastMessage');
-  if(titleEl)titleEl.textContent=String(title||'Notification');
-  if(msgEl)msgEl.textContent=String(message||'');
-  toast.classList.add('show');
-  clearTimeout(adminToastTimer);
-  adminToastTimer=setTimeout(hideAdminToast,4200);
+function showCenteredUpdate(title,message,isNotice){
+  const overlay=document.getElementById('centeredUpdateOverlay');
+  const titleEl=document.getElementById('centeredUpdateTitle');
+  const msgEl=document.getElementById('centeredUpdateMessage');
+  const check=overlay?overlay.querySelector('.centered-update-check'):null;
+  if(!overlay)return;
+  if(titleEl)titleEl.textContent=String(title||'Updated');
+  if(msgEl)msgEl.textContent=String(message||'Your changes were saved successfully.');
+  if(check){check.textContent=isNotice?'!':'✓';check.style.background=isNotice?'#fff1d8':'#e8f7ec';check.style.color=isNotice?'#8a5b00':'#23824a';}
+  overlay.classList.add('show');
+  overlay.setAttribute('aria-hidden','false');
+  clearTimeout(window._centeredUpdateTimer);
+  window._centeredUpdateTimer=setTimeout(hideCenteredUpdate,2600);
 }
-function hideAdminToast(){
-  const toast=document.getElementById('adminToast');
-  if(!toast)return;
-  toast.classList.remove('show');
-  clearTimeout(adminToastTimer);
+function showAdminToast(title,message){showCenteredUpdate(title,message,/failed|unable|error|notice/i.test(String(title||'')));}
+function hideCenteredUpdate(){
+  const overlay=document.getElementById('centeredUpdateOverlay');
+  if(!overlay)return;
+  overlay.classList.remove('show');
+  overlay.setAttribute('aria-hidden','true');
+  clearTimeout(window._centeredUpdateTimer);
 }
+function hideAdminToast(){hideCenteredUpdate();}
 
 async function logout(){
   try{
