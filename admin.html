@@ -1,1231 +1,844 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>FINAL FIXED - McKenzie Ramen House — Admin</title>
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Inter:wght@400;500;600;700;800&display=swap');
-:root{--red:#b91e35;--red2:#8e1528;--gold:#e4ad32;--cream:#fff7ec;--ink:#170907;--muted:#756965;--line:#eaded1}
-*{box-sizing:border-box}body{margin:0;background:var(--cream);font-family:Inter,Arial,sans-serif;color:#281713}
-button,input,select,textarea{font:inherit}
-.layout{min-height:100vh;display:flex}.side{width:245px;background:#130807;color:#fff;padding:25px 17px;position:fixed;inset:0 auto 0 0}.brand{text-align:center;padding:4px 0 28px;border-bottom:1px solid #3a211c}.admin-logo-img{display:block;width:118px;height:88px;object-fit:contain;margin:0 auto 8px}.brand-mark{font-size:31px}.brand h2{font-family:'Cormorant Garamond',serif;font-size:25px;margin:4px 0;color:#f1c24b}.brand small{color:#bfaea8}.nav{margin-top:25px;display:grid;gap:8px}.nav button{width:100%;text-align:left;background:transparent;color:#d9cdca;border:0;border-radius:11px;padding:13px 14px;cursor:pointer;font-weight:700}.nav button.active,.nav button:hover{background:#341514;color:#ffd45c}.logout{position:absolute;bottom:25px;left:17px;right:17px;border:1px solid #6d3b33!important}
-.main{margin-left:245px;width:calc(100% - 245px);padding:30px 4%}.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:28px}.top h1{font-family:'Cormorant Garamond',serif;font-size:43px;margin:0;color:#60151f}.top p{margin:3px 0;color:var(--muted)}.add{background:var(--red);color:#fff;border:0;padding:13px 19px;border-radius:12px;font-weight:800;cursor:pointer;box-shadow:0 8px 20px #b91e3525}.add:disabled{opacity:.65;cursor:wait}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:15px;margin-bottom:25px}.stat{background:#fff;border:1px solid var(--line);border-radius:15px;padding:18px}.stat span{color:var(--muted);font-size:12px}.stat strong{display:block;font-size:28px;margin-top:5px}.panel{background:#fff;border:1px solid var(--line);border-radius:17px;padding:22px}.toolbar{display:flex;gap:10px;justify-content:space-between;margin-bottom:18px}.search-wrap{position:relative;max-width:330px;width:100%;display:flex;align-items:center}.search-wrap .search-icon{position:absolute;left:12px;font-size:15px;pointer-events:none}.search-wrap .search{max-width:none;padding:11px 10px 11px 36px}.search-btn{border:1px solid var(--line);background:#fff;padding:11px 13px;border-radius:10px;cursor:pointer;font-weight:800;color:#60151f}.search-btn:hover{background:#fff7ec}.search{max-width:330px;width:100%;padding:11px 14px;border:1px solid var(--line);border-radius:10px;outline:none}.products{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}.product{border:1px solid var(--line);border-radius:15px;overflow:hidden;background:#fff}.product img{width:100%;height:185px;object-fit:cover;background:#eee}.pbody{padding:15px}.badge{display:inline-block;background:#f8e3e5;color:var(--red);padding:4px 7px;border-radius:6px;font-size:9px;font-weight:800;margin-bottom:7px}.pbody h3{margin:0 0 4px;font-family:'Cormorant Garamond',serif;font-size:27px}.price{font-weight:800;color:var(--red);font-size:18px}.meta{font-size:12px;color:var(--muted);margin:7px 0 13px}.actions{display:flex;gap:7px}.actions button{flex:1;padding:9px;border-radius:9px;border:1px solid var(--line);background:#fff;cursor:pointer;font-weight:700}.actions .edit{color:var(--red);border-color:#e8b5bc}.actions .del{color:#8a3434}.empty{text-align:center;padding:50px;color:var(--muted)}
-.modal{display:none;position:fixed;z-index:20;inset:0;background:#090303aa;align-items:center;justify-content:center;padding:20px}.modal.open{display:flex}.box{background:#fff;width:min(720px,100%);max-height:92vh;overflow:auto;border-radius:20px;padding:25px}.box h2{font-family:'Cormorant Garamond',serif;font-size:35px;color:#60151f;margin:0 0 18px}.form{display:grid;grid-template-columns:1fr 1fr;gap:14px}.field.full{grid-column:1/-1}.field label{display:block;font-size:12px;font-weight:800;margin-bottom:6px}.field input,.field select,.field textarea{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:9px;outline:none}.field textarea{min-height:90px;resize:vertical}.checks{display:flex;gap:18px;flex-wrap:wrap}.upload{border:2px dashed #d8c4b7;border-radius:14px;padding:17px;text-align:center;cursor:pointer;background:#fffaf5}.upload strong{display:block}.preview{display:none;margin-top:12px;width:100%;height:190px;object-fit:cover;border-radius:12px}.modal-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:20px}.cancel{border:1px solid var(--line);background:#fff;padding:11px 18px;border-radius:10px;font-weight:700}.save{border:0;background:var(--red);color:#fff;padding:11px 20px;border-radius:10px;font-weight:800}.login{position:fixed;inset:0;background:linear-gradient(135deg,#120706,#4a1018);display:flex;align-items:center;justify-content:center;padding:20px;z-index:2147483000;pointer-events:auto}.login-card{position:relative;z-index:2147483001;pointer-events:auto;width:min(420px,100%);background:#fff;border-radius:22px;padding:32px;box-shadow:0 25px 70px #0008}.admin-login-logo{display:block;width:170px;height:120px;object-fit:contain;margin:0 auto 8px}.login-card .logo{font-size:40px;text-align:center}.login-card h1{text-align:center;font-family:'Cormorant Garamond',serif;color:#651620;font-size:37px;margin:4px 0}.login-card p{text-align:center;color:var(--muted);font-size:13px}.login-card label{font-size:12px;font-weight:800;display:block;margin:15px 0 6px}.login-card input{width:100%;padding:12px;border:1px solid var(--line);border-radius:10px}.login-btn{width:100%;margin-top:20px;padding:13px;background:var(--red);color:#fff;border:0;border-radius:11px;font-weight:800}.msg{margin-top:12px;text-align:center;font-size:12px;color:#a33}
+/*
+  McKenzie Ramen House — STANDALONE Firebase bridge
+  --------------------------------------------------
+  This file intentionally exposes a compatibility layer named
+  google.script.run so the existing customer/admin UI can keep its
+  current function calls while the backend is now Firebase.
 
-.orders-wrap{display:none}.orders-toolbar{display:flex;gap:10px;justify-content:space-between;align-items:center;margin-bottom:18px;flex-wrap:wrap}.status-filter{padding:11px 14px;border:1px solid var(--line);border-radius:10px;background:#fff}.orders{display:grid;gap:14px}.order-card{border:1px solid var(--line);border-radius:15px;padding:18px;background:#fff}.order-head{display:flex;justify-content:space-between;gap:15px;align-items:flex-start}.order-id{font-weight:800;color:#60151f}.order-meta{font-size:12px;color:var(--muted);margin-top:4px}.status-pill{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;font-size:11px;font-weight:800}.status-pending{background:#fff2cf;color:#8a5b00}.status-processing{background:#fbe0e4;color:#9c182c}.status-on-the-way{background:#e1edff;color:#1c5fa8}.status-delivered{background:#dff5e7;color:#18733a}.order-grid{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:15px;margin-top:15px}.order-box{background:#fffaf5;border:1px solid var(--line);border-radius:11px;padding:12px}.order-box strong{display:block;margin-bottom:6px}.order-items{margin:0;padding-left:18px;font-size:13px}.order-items li{margin:5px 0}.order-total{font-size:20px;font-weight:800;color:var(--red);margin-top:8px}.order-workflow-note{font-size:11px;color:var(--muted);margin-top:14px}.order-actions{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}.order-actions button{border:1px solid var(--line);background:#fff;padding:9px 13px;border-radius:9px;cursor:pointer;font-weight:800}.order-actions button.active{background:var(--red);color:#fff;border-color:var(--red);box-shadow:0 5px 14px rgba(185,30,53,.22)}.order-actions button:disabled{opacity:.42;cursor:not-allowed;background:#eee;color:#888;border-color:#ddd}.order-actions button.active:disabled{opacity:1;background:var(--red);color:#fff;border-color:var(--red);cursor:default}.orders-empty{text-align:center;padding:55px;color:var(--muted)} .reviews-wrap{margin-top:0}.review-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:15px;margin:0 0 18px}.reviews-list{display:grid;gap:13px}.review-card{border:1px solid var(--line);border-radius:15px;padding:17px;background:#fff}.review-card-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.review-customer{font-weight:900;color:#60151f}.review-menu{font-size:11px;color:var(--muted);margin-top:3px}.review-stars{color:#e9ad35;letter-spacing:2px;font-size:18px;margin:10px 0}.review-text{font-size:13px;line-height:1.65;color:#4f201c;background:#fffaf5;border:1px solid var(--line);border-radius:10px;padding:11px}.review-meta{font-size:10px;color:var(--muted);margin-top:9px}.review-actions{display:flex;gap:7px;margin-top:11px;flex-wrap:wrap}.review-actions button{border:1px solid var(--line);background:#fff;padding:8px 11px;border-radius:9px;cursor:pointer;font-weight:800;color:#60151f}.review-actions button.active{background:var(--red);color:#fff;border-color:var(--red)}.review-status{font-size:10px;font-weight:900;padding:6px 9px;border-radius:999px}.review-status.published{background:#e7f7eb;color:#19743a}.review-status.hidden{background:#eee;color:#777}@media(max-width:950px){.review-stats{grid-template-columns:repeat(2,1fr)}} .admin-items{display:grid;gap:8px}.admin-item-row{display:grid;grid-template-columns:1fr 125px;gap:8px;align-items:center;background:#fff;border:1px solid var(--line);border-radius:9px;padding:8px}.admin-item-main{display:grid;gap:2px;font-size:13px}.admin-item-main span{font-size:11px;color:var(--muted)}.item-status-select{width:100%;padding:7px 8px;border:1px solid var(--line);border-radius:8px;background:#fff;font-size:11px;font-weight:800}.order-actions button:disabled{opacity:.4;cursor:not-allowed;background:#eee;color:#777;border-color:#ddd}.order-actions button.active{background:var(--red);color:#fff;border-color:var(--red);box-shadow:0 5px 14px rgba(185,30,53,.22)}.order-actions button:disabled{opacity:.42;cursor:not-allowed;background:#eee;color:#888;border-color:#ddd}.order-actions button.active:disabled{opacity:1;background:var(--red);color:#fff;border-color:var(--red);cursor:default}.status-preparing{background:#fbe0e4;color:#9c182c}.status-ready{background:#fff0c7;color:#8a5b00}.status-cancelled{background:#eee;color:#777}.order-closed-note{margin-top:12px;padding:10px 12px;border-radius:9px;background:#e8f7ec;color:#18733a;font-size:12px;font-weight:700}@media(max-width:950px){.order-grid{grid-template-columns:1fr 1fr}}@media(max-width:600px){.order-grid{grid-template-columns:1fr}}
-@media(max-width:950px){.side{width:76px}.brand h2,.brand small,.nav span,.logout span{display:none}.main{margin-left:76px;width:calc(100% - 76px)}.products{grid-template-columns:repeat(2,1fr)}.stats{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:600px){.side{display:none}.main{margin:0;width:100%;padding:20px}.top{align-items:flex-start}.top h1{font-size:34px}.stats{grid-template-columns:1fr 1fr}.products{grid-template-columns:1fr}.form{grid-template-columns:1fr}.field.full{grid-column:auto}.top .add{padding:10px}.toolbar{flex-direction:column}}
+  No Google Apps Script / Google Sheets calls are made.
+*/
+(function () {
+  "use strict";
 
-.custom-confirm-overlay{
-  position:fixed;inset:0;z-index:2147483000;
-  display:none;align-items:center;justify-content:center;
-  padding:20px;background:rgba(12,5,4,.62);
-  backdrop-filter:blur(3px);
-}
-.custom-confirm-overlay.show{display:flex}
-.custom-confirm-card{
-  width:min(430px,100%);background:#fff;border:1px solid #eaded1;
-  border-radius:20px;padding:28px;box-shadow:0 25px 80px rgba(0,0,0,.30);
-  text-align:center;animation:confirmPop .18s ease-out both;
-}
-.custom-confirm-icon{
-  width:58px;height:58px;margin:0 auto 10px;border-radius:50%;
-  display:grid;place-items:center;background:#fff1f3;font-size:28px;
-}
-.custom-confirm-card h2{
-  margin:0;color:#60151f;font-family:'Cormorant Garamond',serif;font-size:31px;
-}
-.custom-confirm-card p{
-  margin:9px 0 22px;color:#756965;font-size:13px;line-height:1.5;
-}
-.custom-confirm-actions{display:flex;gap:10px;justify-content:center}
-.custom-confirm-actions button{
-  flex:1;border-radius:10px;padding:12px 14px;font-weight:800;cursor:pointer;
-}
-.custom-confirm-cancel{background:#fff;border:1px solid #eaded1;color:#5d504c}
-.custom-confirm-ok{background:#b91e35;border:1px solid #b91e35;color:#fff}
-.custom-confirm-ok:hover{background:#8e1528}
-@keyframes confirmPop{from{opacity:0;transform:translateY(8px) scale(.98)}to{opacity:1;transform:none}}
-</style>
+  // The Firebase config is embedded as a fallback so the admin page still
+  // works even if GitHub Pages serves js/firebase-config.js from cache or
+  // fails to load that helper file.
+  const EMBEDDED_CONFIG = {
+    apiKey: "AIzaSyDnLMhAhkAw1JMlbTxN4u8vB6poip5dt94",
+    authDomain: "mckenzie-ramen-house.firebaseapp.com",
+    projectId: "mckenzie-ramen-house",
+    storageBucket: "mckenzie-ramen-house.firebasestorage.app",
+    messagingSenderId: "1048288418639",
+    appId: "1:1048288418639:web:85e0148036179259c8033a",
+    measurementId: "G-C2KDRE88ZW"
+  };
 
-<style id="review-notify-style">
-.review-notify-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:12px}
-.review-notify-btn{border:1px solid #b91e35;background:#b91e35;color:#fff;padding:9px 13px;border-radius:9px;cursor:pointer;font-weight:900}
-.review-notify-btn:hover{background:#8e1528}
-.review-notify-btn:disabled{background:#d9d9d9 !important;color:#777 !important;border-color:#c8c8c8 !important;opacity:.65;cursor:not-allowed;filter:grayscale(1)}
-.review-progress{font-size:11px;color:#756965;font-weight:700}
+  // Use the verified Firebase Console configuration as the source of truth.
+  // This prevents an old/stale firebase-config.js from overriding the working key.
+  const cfg = EMBEDDED_CONFIG;
+  window.MCKENZIE_FIREBASE_CONFIG = EMBEDDED_CONFIG;
+  window.MCKENZIE_ADMIN_UID = window.MCKENZIE_ADMIN_UID || "OHDs2DV4jyO3eBrww8d0gUQkNli2";
 
-/* Elegant in-page notification toast */
-#adminToast{
-  position:fixed;
-  top:24px;
-  right:24px;
-  z-index:99999;
-  width:min(390px,calc(100vw - 32px));
-  background:rgba(255,255,255,.98);
-  border:1px solid rgba(185,30,53,.18);
-  border-left:5px solid #b91e35;
-  border-radius:16px;
-  box-shadow:0 18px 50px rgba(0,0,0,.20);
-  padding:15px 16px;
-  display:flex;
-  align-items:flex-start;
-  gap:12px;
-  transform:translateY(-18px);
-  opacity:0;
-  pointer-events:none;
-  transition:opacity .22s ease,transform .22s ease;
-  font-family:inherit;
-}
-#adminToast.show{
-  transform:translateY(0);
-  opacity:1;
-}
-#adminToast.show::after{
-  content:"";
-  position:absolute;
-  left:0;bottom:0;height:3px;width:100%;
-  background:#b91e35;
-  transform-origin:left center;
-  animation:adminToastProgress 4.2s linear forwards;
-  border-radius:0 0 16px 16px;
-}
-@keyframes adminToastProgress{from{transform:scaleX(1)}to{transform:scaleX(0)}}
-.review-notify-btn{position:relative;overflow:hidden;transition:transform .18s ease,box-shadow .22s ease,background .22s ease,opacity .22s ease}
-.review-notify-btn:not(:disabled):hover{transform:translateY(-1px);box-shadow:0 7px 18px rgba(185,30,53,.18)}
-.review-notify-btn.review-sending{min-width:176px;background:#8e1528 !important;color:#fff !important;border-color:#8e1528 !important;cursor:wait !important;transform:scale(.98);box-shadow:none !important}
-.review-notify-btn.review-sending::before{content:"";display:inline-block;width:13px;height:13px;margin-right:8px;border:2px solid rgba(255,255,255,.38);border-top-color:#fff;border-radius:50%;vertical-align:-2px;animation:reviewSpin .65s linear infinite}
-.review-notify-btn.review-success{min-width:176px;background:#23824a !important;color:#fff !important;border-color:#23824a !important;animation:reviewSuccessPop .42s cubic-bezier(.2,.8,.2,1) both}
-.review-notify-btn.review-success::before{content:"✓";display:inline-grid;place-items:center;width:18px;height:18px;margin-right:7px;border-radius:50%;background:rgba(255,255,255,.18);animation:reviewCheck .38s ease both}
-@keyframes reviewSpin{to{transform:rotate(360deg)}}
-@keyframes reviewSuccessPop{0%{transform:scale(.96);opacity:.65}60%{transform:scale(1.04);opacity:1}100%{transform:scale(1)}}
-@keyframes reviewCheck{0%{transform:scale(0) rotate(-20deg);opacity:0}70%{transform:scale(1.15) rotate(4deg);opacity:1}100%{transform:scale(1) rotate(0)}}
-#adminToast .toast-icon{
-  width:38px;height:38px;flex:0 0 38px;
-  border-radius:50%;
-  display:grid;place-items:center;
-  background:#fff1f3;
-  font-size:19px;
-}
-#adminToast .toast-copy{min-width:0;flex:1}
-#adminToast .toast-title{
-  font-weight:900;
-  color:#5b1020;
-  font-size:14px;
-  margin-bottom:3px;
-}
-#adminToast .toast-message{
-  color:#6f6f6f;
-  font-size:13px;
-  line-height:1.4;
-}
-#adminToast .toast-close{
-  border:0;background:transparent;color:#999;
-  cursor:pointer;font-size:18px;line-height:1;
-  padding:2px 3px;
-}
-#adminToast .toast-close:hover{color:#5b1020}
-@media(max-width:600px){
-  #adminToast{top:14px;right:16px;left:16px;width:auto}
-}
+  const READY = (async function () {
+    try {
+      const appMod = await import("https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js");
+      const authMod = await import("https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js");
+      const fsMod = await import("https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js");
+      const app = appMod.initializeApp(cfg, "mckenzie-ramen-house");
+      const auth = authMod.getAuth(app);
+      const db = fsMod.getFirestore(app);
+      console.log("McKenzie Ramen House Firebase initialized successfully.");
+      return { app, auth, db, ...authMod, ...fsMod };
+    } catch (error) {
+      console.error("McKenzie Firebase initialization failed:", error);
+      throw error;
+    }
+  })();
 
+  window.MckenzieFirebaseReady = READY;
 
-.review-notify-btn.review-pending{
-  background:#ececec !important;
-  color:#777 !important;
-  border-color:#ddd !important;
-  cursor:not-allowed !important;
-  box-shadow:none !important;
-}
-
-</style>
-<style id="review-resend-animation">
-.review-notify-btn{position:relative;overflow:hidden;transition:transform .22s ease,opacity .22s ease,background .22s ease,box-shadow .22s ease}
-.review-notify-btn.review-sending{min-width:180px;opacity:.92;transform:scale(.98);box-shadow:0 6px 18px rgba(0,0,0,.12)}
-.review-notify-btn.review-success{background:#2f8f5b !important;border-color:#2f8f5b !important;color:#fff !important;transform:scale(1.02);box-shadow:0 8px 20px rgba(47,143,91,.22)}
-.notify-spinner{display:inline-block;width:13px;height:13px;margin-right:7px;border:2px solid rgba(255,255,255,.45);border-top-color:#fff;border-radius:50%;vertical-align:-2px;animation:notifySpin .7s linear infinite}
-.notify-check{display:inline-block;animation:notifyCheck .38s ease both}
-@keyframes notifySpin{to{transform:rotate(360deg)}}
-@keyframes notifyCheck{0%{opacity:0;transform:scale(.4)}70%{opacity:1;transform:scale(1.22)}100%{opacity:1;transform:scale(1)}}
-</style>
-<style id="delivered-lock-style">
-.order-actions button:disabled,
-.item-status-select:disabled {
-  opacity: .45 !important;
-  filter: grayscale(1) !important;
-  cursor: not-allowed !important;
-  pointer-events: none !important;
-  background: #d9d9d9 !important;
-  color: #777 !important;
-  border-color: #c8c8c8 !important;
-  box-shadow: none !important;
-}
-.order-card.order-delivered-locked .order-actions button {
-  opacity: .45 !important;
-  filter: grayscale(1) !important;
-  cursor: not-allowed !important;
-}
-.order-card.order-delivered-locked .item-status-select {
-  opacity: .55 !important;
-  filter: grayscale(1) !important;
-  cursor: not-allowed !important;
-}
-</style>
-
-<style id="mckenzieDeliveredHardLock">
-.order-card.order-delivered-locked .order-actions button,
-.order-card.order-delivered-locked .item-status-select {
-  background: #d6d6d6 !important;
-  color: #777 !important;
-  border-color: #c5c5c5 !important;
-  opacity: 1 !important;
-  filter: grayscale(1) !important;
-  cursor: not-allowed !important;
-  pointer-events: none !important;
-  box-shadow: none !important;
-}
-.order-card.order-delivered-locked .order-actions button.active {
-  background: #d6d6d6 !important;
-  color: #777 !important;
-  border-color: #c5c5c5 !important;
-}
-.review-notify-row {
-  border-top: 1px solid var(--line);
-  padding-top: 12px;
-}
-.review-notify-btn {
-  min-height: 38px;
-}
-.review-notify-btn.review-done {
-  background: #d6d6d6 !important;
-  color: #777 !important;
-  border-color: #c5c5c5 !important;
-  filter: grayscale(1);
-  cursor: not-allowed !important;
-}
-</style>
-
-<style id="brand-settings-style">
-.settings-wrap{display:none}.settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}.settings-card{background:#fff;border:1px solid var(--line);border-radius:17px;padding:22px}.settings-card h3{margin:0 0 6px;font-family:'Cormorant Garamond',serif;font-size:28px;color:#60151f}.settings-card p{margin:0 0 16px;color:var(--muted);font-size:12px}.brand-upload{border:2px dashed #d8c4b7;border-radius:14px;padding:15px;text-align:center;background:#fffaf5;cursor:pointer}.brand-upload input{display:none}.brand-preview{display:none;width:100%;height:210px;object-fit:contain;border:1px solid var(--line);border-radius:12px;background:#fff;margin-top:12px}.background-preview{object-fit:cover}.brand-preview-wrap{position:relative;margin-top:12px}.brand-preview-wrap .brand-preview{margin-top:0}.image-remove-btn{position:absolute;top:8px;right:8px;width:32px;height:32px;border:0;border-radius:50%;background:#b91e35;color:#fff;font-size:21px;line-height:32px;text-align:center;cursor:pointer;box-shadow:0 5px 14px rgba(0,0,0,.22);z-index:2}.image-remove-btn:hover{background:#8e1528}.image-remove-btn[hidden]{display:none!important}.upload.has-image{border-color:#b91e35;background:#fff7f8}.settings-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:18px}.settings-save{border:0;background:var(--red);color:#fff;padding:11px 20px;border-radius:10px;font-weight:800;cursor:pointer}.settings-save:disabled{opacity:.55;cursor:wait}.settings-msg{font-size:12px;color:#23824a;margin-top:10px;min-height:18px}.settings-note{margin-top:14px;padding:11px 13px;background:#fff7ec;border:1px solid var(--line);border-radius:10px;font-size:11px;color:#756965;line-height:1.5}.settings-current{font-size:10px;color:#756965;margin-top:7px;word-break:break-all}@media(max-width:800px){.settings-grid{grid-template-columns:1fr}}
-</style>
-
-<style id="centered-update-style">
-#centeredUpdateOverlay{position:fixed;inset:0;z-index:2147483647;display:flex;align-items:center;justify-content:center;background:rgba(16,7,5,.32);backdrop-filter:blur(2px);opacity:0;pointer-events:none;transition:opacity .25s ease}
-#centeredUpdateOverlay.show{opacity:1;pointer-events:auto}
-.centered-update-card{width:min(380px,calc(100vw - 36px));background:#fff;border:1px solid #eaded1;border-radius:20px;padding:28px 24px;text-align:center;box-shadow:0 24px 70px rgba(0,0,0,.28);transform:translateY(8px) scale(.98);transition:transform .25s ease}
-#centeredUpdateOverlay.show .centered-update-card{transform:none}
-.centered-update-check{width:58px;height:58px;border-radius:50%;margin:0 auto 12px;display:grid;place-items:center;background:#e8f7ec;color:#23824a;font-size:30px;font-weight:900}
-.centered-update-card h3{margin:0;color:#60151f;font-family:'Cormorant Garamond',serif;font-size:31px}
-.centered-update-card p{margin:7px 0 0;color:#756965;font-size:13px;line-height:1.5}
-.centered-update-card .update-ok{margin-top:18px;border:0;background:#b91e35;color:#fff;padding:10px 24px;border-radius:10px;font-weight:800;cursor:pointer}
-</style>
-</head>
-<body>
-
-<div id="adminToast" role="status" aria-live="polite">
-  <div class="toast-icon">🔔</div>
-  <div class="toast-copy">
-    <div class="toast-title" id="adminToastTitle">Customer notified</div>
-    <div class="toast-message" id="adminToastMessage">The review notification was sent successfully.</div>
-  </div>
-  <button class="toast-close" type="button" onclick="hideAdminToast()" aria-label="Close">×</button>
-</div>
-
-
-
-<div id="centeredUpdateOverlay" aria-hidden="true"><div class="centered-update-card" role="status"><div class="centered-update-check">✓</div><h3 id="centeredUpdateTitle">Updated</h3><p id="centeredUpdateMessage">Your changes were saved successfully.</p><button type="button" class="update-ok" onclick="hideCenteredUpdate()">OK</button></div></div>
-<div id="deliveryConfirmModal" class="custom-confirm-overlay" aria-hidden="true">
-  <div class="custom-confirm-card" role="dialog" aria-modal="true" aria-labelledby="deliveryConfirmTitle">
-    <div class="custom-confirm-icon">🍜</div>
-    <h2 id="deliveryConfirmTitle">Mark Order as Delivered?</h2>
-    <p id="deliveryConfirmMessage">Are you sure you want to mark this order as Delivered?</p>
-    <div class="custom-confirm-actions">
-      <button type="button" class="custom-confirm-cancel" onclick="closeDeliveryConfirm()">Cancel</button>
-      <button type="button" class="custom-confirm-ok" onclick="approveDeliveryConfirm()">Yes, Mark Delivered</button>
-    </div>
-  </div>
-</div>
-
-<div id="login" class="login">
-  <div class="login-card">
-    <img id="adminLoginLogo" class="admin-login-logo" src="images/mckenzie-logo.png" alt="McKenzie Ramen House Logo">
-    <h1>McKenzie Admin</h1>
-    <p>Owner access · Products & Orders</p>
-    <div id="apiStatus" style="text-align:center;font-size:11px;color:#756965;margin:8px 0 2px">Connecting to Firebase…</div>
-    <label>Admin Email</label><input id="loginEmail" type="email" autocomplete="username">
-    <label>Password</label><input id="loginPassword" type="password" autocomplete="current-password">
-    <button id="adminLoginBtn" class="login-btn" type="button">LOGIN TO DASHBOARD</button>
-    <div id="loginMsg" class="msg"></div>
-  </div>
-</div>
-
-<div class="layout" id="app" style="display:none">
-<aside class="side">
-  <div class="brand"><img id="adminSidebarLogo" class="admin-logo-img" src="images/mckenzie-logo.png" alt="McKenzie Ramen House Logo"><h2>McKenzie</h2><small>Ramen House · Admin</small></div>
-  <div class="nav">
-    <button id="navProducts" class="active" onclick="showSection('products')">📦 <span>Products</span></button>
-    <button id="navOrders" onclick="showSection('orders')">🧾 <span>Orders</span><b id="orderBadge" style="display:none;margin-left:auto;background:#b91e35;color:#fff;border-radius:999px;padding:2px 7px;font-size:10px">0</b></button>
-    <button onclick="alert('Customers module next.')">👥 <span>Customers</span></button>
-    <button id="navReviews" onclick="showSection('reviews')">⭐ <span>Reviews</span><b id="reviewBadge" style="display:none;margin-left:auto;background:#b91e35;color:#fff;border-radius:999px;padding:2px 7px;font-size:10px">0</b></button>
-    <button id="navSettings" onclick="showSection('settings')">⚙️ <span>Settings</span></button>
-  </div>
-  <button class="nav logout" onclick="logout()">↪ <span>Logout</span></button>
-</aside>
-
-<main class="main">
-  <div class="top">
-    <div><h1>Product Management</h1><p>Add, edit, hide, or remove menu items.</p></div>
-    <button class="add" onclick="openModal()">＋ Add Product</button>
-  </div>
-
-  <div class="stats">
-    <div class="stat"><span>Total Products</span><strong id="total">0</strong></div>
-    <div class="stat"><span>Available</span><strong id="available">0</strong></div>
-    <div class="stat"><span>Best Sellers</span><strong id="best">0</strong></div>
-    <div class="stat"><span>New Products</span><strong id="new">0</strong></div>
-  </div>
-
-  <section class="panel">
-    <div class="toolbar"><strong>Menu Products</strong><input class="search" id="search" placeholder="Search products..." oninput="render()"></div>
-    <div class="products" id="products"><div class="empty">Loading products…</div></div>
-  </section>
-
-  <section class="panel orders-wrap" id="ordersSection">
-    <div class="orders-toolbar">
-      <div><strong>Customer Orders</strong><div id="orderNotice" style="font-size:12px;color:#756965;margin-top:4px">Checking for new orders…</div></div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap">
-        <div class="search-wrap"><span class="search-icon">🔎</span><input class="search" id="orderSearch" type="search" autocomplete="off" placeholder="Search order / customer..." oninput="renderOrders()" onkeydown="if(event.key==='Enter'){renderOrders();}"><button type="button" class="search-btn" onclick="renderOrders()">Search</button></div>
-        <select class="status-filter" id="orderStatusFilter" onchange="renderOrders()">
-          <option value="">All statuses</option>
-          <option>Preparing</option><option>Ready</option><option>Delivered</option><option>Cancelled</option>
-        </select>
-        <button class="add" id="refreshOrdersBtn" type="button" onclick="refreshOrders()">↻ Refresh</button>
-      </div>
-    </div>
-    <div class="orders" id="orders"></div>
-  </section>
-
-  <section class="panel reviews-wrap" id="reviewsSection" style="display:none">
-    <div class="orders-toolbar">
-      <div><strong>Customer Reviews</strong><div id="reviewNotice" style="font-size:12px;color:#756965;margin-top:4px">Loading reviews…</div></div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap">
-        <input class="search" id="reviewSearch" placeholder="Search customer, menu, review..." oninput="renderReviews()">
-        <select class="status-filter" id="reviewStatusFilter" onchange="renderReviews()"><option value="">All reviews</option><option>Published</option><option>Hidden</option></select>
-        <button class="add" id="refreshReviewsBtn" type="button" onclick="loadReviews()">↻ Refresh</button>
-      </div>
-    </div>
-    <div class="review-stats">
-      <div class="stat"><span>Total Reviews</span><strong id="reviewTotal">0</strong></div>
-      <div class="stat"><span>Published</span><strong id="reviewPublished">0</strong></div>
-      <div class="stat"><span>Hidden</span><strong id="reviewHidden">0</strong></div>
-      <div class="stat"><span>Average Rating</span><strong id="reviewAverage">0.0 ★</strong></div>
-    </div>
-    <div id="reviews" class="reviews-list"></div>
-  </section>
-
-  <section class="panel settings-wrap" id="settingsSection">
-    <div class="orders-toolbar">
-      <div><strong>Website Settings</strong><div id="settingsNotice" style="font-size:12px;color:#756965;margin-top:4px">Manage your website logo and background.</div></div>
-    </div>
-    <div class="settings-grid">
-      <div class="settings-card">
-        <h3>🍜 Website Logo</h3>
-        <p>Upload the logo that will be used on the McKenzie Ramen House customer website.</p>
-        <label class="brand-upload" for="brandLogoFile">
-          <strong>📷 Choose Logo</strong>
-          <small>JPG, PNG, or WEBP</small>
-          <input id="brandLogoFile" type="file" accept="image/png,image/jpeg,image/webp">
-        </label>
-        <div class="brand-preview-wrap"><img id="brandLogoPreview" class="brand-preview" alt="Website logo preview"><button id="removeBrandLogoBtn" class="image-remove-btn" type="button" onclick="removeBrandAsset('logo')" aria-label="Remove logo" hidden>×</button></div>
-        <div id="brandLogoCurrent" class="settings-current"></div>
-      </div>
-      <div class="settings-card">
-        <h3>🌄 Website Background</h3>
-        <p>Upload the background image that will be used on the customer website.</p>
-        <label class="brand-upload" for="brandBackgroundFile">
-          <strong>📷 Choose Background</strong>
-          <small>JPG, PNG, or WEBP</small>
-          <input id="brandBackgroundFile" type="file" accept="image/png,image/jpeg,image/webp">
-        </label>
-        <div class="brand-preview-wrap"><img id="brandBackgroundPreview" class="brand-preview background-preview" alt="Website background preview"><button id="removeBrandBackgroundBtn" class="image-remove-btn" type="button" onclick="removeBrandAsset('background')" aria-label="Remove background" hidden>×</button></div>
-        <div id="brandBackgroundCurrent" class="settings-current"></div>
-      </div>
-    </div>
-    <div class="settings-note">Images are compressed in your browser before being saved to Firebase Firestore, so Firebase Storage is not required.</div>
-    <div class="settings-actions"><button id="saveBrandAssetsBtn" class="settings-save" type="button" onclick="saveBrandAssets()">Save Website Branding</button></div>
-    <div id="brandAssetsMsg" class="settings-msg"></div>
-  </section>
-
-</main>
-</div>
-
-<div class="modal" id="modal">
-<div class="box">
-  <h2 id="modalTitle">Add New Product</h2>
-  <input type="hidden" id="productId">
-  <div class="form">
-    <div class="field"><label>Product Name *</label><input id="name" placeholder="e.g. Tonkotsu Ramen"></div>
-    <div class="field"><label>Price *</label><input id="price" type="number" min="0" step="0.01" placeholder="329"></div>
-    <div class="field"><label>Category *</label><select id="category"><option>Ramen</option><option>Rice Meals</option><option>Side Dishes</option><option>Drinks</option><option>Desserts</option><option>Promos</option></select></div>
-    <div class="field"><label>Status</label><select id="available"><option value="true">Available</option><option value="false">Unavailable</option></select></div>
-    <div class="field full"><label>Product Photo <span id="productPhotoRequired" style="color:#a51620">*</span></label>
-      <label class="upload" for="image"><strong>📷 Choose Product Photo</strong><small id="productPhotoHint">JPG, PNG, WEBP · Required for a new product. For edits, keep the existing photo or use × to remove/replace it.</small><input id="image" type="file" accept="image/png,image/jpeg,image/webp" hidden onchange="previewImage(event)"></label>
-      <div class="brand-preview-wrap"><img id="preview" class="preview"><button id="removeProductImageBtn" class="image-remove-btn" type="button" onclick="removeProductImage()" aria-label="Remove product photo" hidden>×</button></div>
-    </div>
-    <div class="field full"><label>Description</label><textarea id="description" placeholder="Describe the ramen..."></textarea></div>
-    <div class="field full"><label>Product Labels</label><div class="checks">
-      <label><input id="bestSeller" type="checkbox"> Best Seller</label>
-      <label><input id="newProduct" type="checkbox"> New Product</label>
-    </div></div>
-  </div>
-  <div class="modal-actions"><button class="cancel" onclick="closeModal()">Cancel</button><button class="save" onclick="saveProduct()">Save Product</button></div>
-  <div id="saveMsg" class="msg"></div>
-</div>
-</div>
-
-<script src="js/firebase-config.js?v=20260911-2"></script>
-<script src="js/firebase-standalone.js?v=20260911-2"></script>
-<script>
-/* McKenzie Ramen House — GitHub/Firebase Admin UI */
-(function(){
-  var nativeAlert=window.alert;
-  window.alert=function(message){try{if(typeof window.showCenteredUpdate==='function')window.showCenteredUpdate('Notice',String(message||''),true);else nativeAlert(message);}catch(e){}};
-})();
-let token=sessionStorage.getItem('mck_admin_token')||'';
-let products=[]; let selectedImage=null; let editing=null; let removeProductImageFlag=false;
-let removeBrandLogoFlag=false; let removeBrandBackgroundFlag=false;
-let orders=[]; let reviews=[];
-let lastOrderIds=new Set(); let orderPollTimer=null; let firstOrderLoad=true;
-const savingOrderItems=new Set(); const savingOrderStatuses=new Set();
-let audioCtx=null; let adminToastTimer=null;
-
-function run(name,args,onSuccess){
-  args=Array.isArray(args)?args:[]; onSuccess=typeof onSuccess==='function'?onSuccess:function(){};
-  if(window.MckenzieFirebaseReady){
-    window.MckenzieFirebaseReady.then(function(){
-      try{
-        var r=window.google&&window.google.script&&window.google.script.run;
-        if(!r||typeof r[name]!=='function'){onSuccess(null,'Firebase bridge is not ready.');return;}
-        r.withSuccessHandler(function(v){onSuccess(v,null);}).withFailureHandler(function(e){onSuccess(null,e&&e.message?e.message:String(e||'Firebase request failed.'))})[name].apply(null,args);
-      }catch(e){onSuccess(null,e.message||String(e));}
-    }).catch(function(e){onSuccess(null,e&&e.message?e.message:String(e||'Firebase initialization failed.'));});
-    return;
+  function makeError(message) {
+    const e = new Error(String(message || "Firebase request failed."));
+    return e;
   }
-  onSuccess(null,'Firebase bridge is not loaded.');
-}
 
-function showApp(){
-  const loginBox=document.getElementById('login');
-  const appBox=document.getElementById('app');
-  if(loginBox)loginBox.style.display='none';
-  if(appBox)appBox.style.display='flex';
-}
+  function isoNow() { return new Date().toISOString(); }
 
-function showLogin(){
-  const loginBox=document.getElementById('login');
-  const appBox=document.getElementById('app');
-  if(appBox)appBox.style.display='none';
-  if(loginBox)loginBox.style.display='flex';
-}
+  async function currentUser(required) {
+    const f = await READY;
+    if (f.auth.currentUser) return f.auth.currentUser;
+    if (!required) return null;
+    throw makeError("Please log in again.");
+  }
 
-async function completeAdminLogin(user){
-  const adminUid=String(window.MCKENZIE_ADMIN_UID||'').trim();
-  const msg=document.getElementById('loginMsg');
-
-  if(!user){
-    showLogin();
+  async function isAdmin() {
+    const f = await READY;
+    const u = f.auth.currentUser;
+    if (!u) return false;
+    const configuredUid = String(window.MCKENZIE_ADMIN_UID || "").trim();
+    if (configuredUid && configuredUid !== "PASTE_ADMIN_USER_UID_HERE") {
+      return u.uid === configuredUid;
+    }
+    // Safety fallback: no UID configured means admin operations are disabled.
     return false;
   }
 
-  if(!adminUid || user.uid!==adminUid){
-    try{
-      const f=await window.MckenzieFirebaseReady;
-      if(f&&f.auth&&f.signOut)await f.signOut(f.auth);
-    }catch(e){}
-    showLogin();
-    if(msg)msg.textContent='This Firebase account is not authorized as the McKenzie admin.';
-    return false;
+  async function requireAdmin() {
+    if (!(await isAdmin())) throw makeError("Admin access is not configured for this account.");
+    return true;
   }
 
-  try{
-    token=await user.getIdToken(true);
-    sessionStorage.setItem('mck_admin_token',token);
-  }catch(e){
-    console.error('Unable to get Firebase admin token:',e);
-    if(msg)msg.textContent=e&&e.message?e.message:'Unable to establish the admin session.';
-    showLogin();
-    return false;
+  function cleanTimestamp(v) {
+    if (!v) return "";
+    if (typeof v === "string") return v;
+    if (v && typeof v.toDate === "function") return v.toDate().toISOString();
+    if (v instanceof Date) return v.toISOString();
+    return String(v);
   }
 
-  if(msg)msg.textContent='';
-  showApp();
-  loadProducts();
-  loadOrders({setBaseline:true});
-  initAdminNotifications();
-  return true;
-}
-
-async function login(){
-  const emailEl=document.getElementById('loginEmail');
-  const passwordEl=document.getElementById('loginPassword');
-  const msg=document.getElementById('loginMsg');
-  const btn=document.getElementById('adminLoginBtn');
-
-  const email=emailEl?emailEl.value.trim().toLowerCase():'';
-  const password=passwordEl?passwordEl.value:'';
-
-  if(!email||!password){
-    if(msg)msg.textContent='Please enter your admin email and password.';
-    return;
+  function docData(snap) {
+    return snap.exists() ? { id: snap.id, ...snap.data() } : null;
   }
 
-  if(btn){
-    btn.disabled=true;
-    btn.textContent='SIGNING IN…';
-  }
-  if(msg)msg.textContent='Signing in securely…';
-
-  try{
-    const f=await window.MckenzieFirebaseReady;
-
-    if(!f||!f.auth||!f.signInWithEmailAndPassword){
-      throw new Error('Firebase Authentication is not ready. Please refresh the page.');
-    }
-
-    const credential=await f.signInWithEmailAndPassword(
-      f.auth,
-      email,
-      password
-    );
-
-    const ok=await completeAdminLogin(credential.user);
-
-    if(!ok){
-      throw new Error('This account is not authorized as the McKenzie admin.');
-    }
-  }catch(e){
-    console.error('Admin login failed:',e);
-    if(msg){
-      const code=e&&e.code?String(e.code):'';
-      if(code==='auth/invalid-credential' || code==='auth/wrong-password' || code==='auth/user-not-found'){
-        msg.textContent='Invalid admin email or password.';
-      }else{
-        msg.textContent=e&&e.message?e.message:'Unable to sign in.';
-      }
-    }
-  }finally{
-    if(btn){
-      btn.disabled=false;
-      btn.textContent='LOGIN TO DASHBOARD';
-    }
-  }
-}
-
-(function bindAdminLogin(){
-  function bind(){
-    const btn=document.getElementById('adminLoginBtn');
-    const email=document.getElementById('loginEmail');
-    const password=document.getElementById('loginPassword');
-
-    if(btn && !btn.dataset.bound){
-      btn.dataset.bound='1';
-      btn.addEventListener('click',function(e){
-        e.preventDefault();
-        login();
-      });
-    }
-
-    if(password && !password.dataset.bound){
-      password.dataset.bound='1';
-      password.addEventListener('keydown',function(e){
-        if(e.key==='Enter'){
-          e.preventDefault();
-          login();
-        }
-      });
-    }
-
-    if(email && !email.dataset.bound){
-      email.dataset.bound='1';
-      email.addEventListener('keydown',function(e){
-        if(e.key==='Enter'){
-          e.preventDefault();
-          if(password)password.focus();
-        }
-      });
-    }
+  async function getDocById(collectionName, id) {
+    const f = await READY;
+    const snap = await f.getDoc(f.doc(f.db, collectionName, String(id)));
+    return docData(snap);
   }
 
-  if(document.readyState==='loading'){
-    document.addEventListener('DOMContentLoaded',bind,{once:true});
-  }else{
-    bind();
+  async function getCollection(collectionName, queryConstraint) {
+    const f = await READY;
+    const ref = f.collection(f.db, collectionName);
+    const snap = queryConstraint
+      ? await f.getDocs(f.query(ref, queryConstraint))
+      : await f.getDocs(ref);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
   }
-})();
 
-function loadProducts(afterLoad){
-  run('adminGetProducts',[token],function(v,e){
-    if(e||!v||!v.success){
-      if(token)alert(e||'Unable to load products.');
-      return;
-    }
-    products=(v.products||[]).map(function(p){
-      p.available=(p.available===true || p.available==='true' || p.available===1 || p.available==='1');
-      p.image=p.image||'';
-      return p;
-    });
-    render();
-    if(typeof afterLoad==='function')afterLoad(products);
-  });
-}
-function render(){const q=document.getElementById('search').value.toLowerCase();const list=products.filter(p=>(p.name+' '+p.category).toLowerCase().includes(q));document.getElementById('total').textContent=products.length;document.getElementById('available').textContent=products.filter(p=>p.available).length;document.getElementById('best').textContent=products.filter(p=>p.bestSeller).length;document.getElementById('new').textContent=products.filter(p=>p.newProduct).length;document.getElementById('products').innerHTML=list.length?list.map(p=>`<article class="product"><img src="${escAttr(p.image||'')}" onerror="this.style.visibility='hidden'" alt=""><div class="pbody">${p.bestSeller?'<span class="badge">BEST SELLER</span>':''}${p.newProduct?'<span class="badge">NEW</span>':''}<h3>${esc(p.name)}</h3><div class="price">₱${Number(p.price||0).toLocaleString()}</div><div class="meta">${esc(p.category)} · ${p.available?'Available':'Unavailable'}</div><div class="actions"><button class="edit" onclick="editProduct('${esc(p.id)}')">Edit</button><button class="del" onclick="deleteProduct('${esc(p.id)}')">Delete</button></div></div></article>`).join(''):'<div class="empty">No products found.</div>'; }
-function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
-function escAttr(s){return String(s??'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");}
-function setProductPreview(src){
-  const pr=document.getElementById('preview'), btn=document.getElementById('removeProductImageBtn');
-  if(pr){pr.src=src||'';pr.style.display=src?'block':'none';}
-  if(btn)btn.hidden=!src;
-}
-function openModal(p=null){
-  editing=p;p=p||{};
-  document.getElementById('modal').classList.add('open');
-  document.getElementById('modalTitle').textContent=p.id?'Edit Product':'Add New Product';
-  document.getElementById('productId').value=p.id||'';
-  document.getElementById('name').value=p.name||'';
-  document.getElementById('price').value=p.price??'';
-  document.getElementById('category').value=p.category||'Ramen';
-  document.getElementById('available').value=p.available?'true':'false';
-  document.getElementById('description').value=p.description||'';
-  document.getElementById('bestSeller').checked=!!p.bestSeller;
-  document.getElementById('newProduct').checked=!!p.newProduct;
-  selectedImage=null;
-  removeProductImageFlag=false;
-  document.getElementById('image').value='';
-  setProductPreview(p.image||'');
-  const req=document.getElementById('productPhotoRequired');
-  const hint=document.getElementById('productPhotoHint');
-  if(req)req.style.display=p.id?'none':'inline';
-  if(hint)hint.textContent=p.id?'Existing photo loaded. You can keep it, replace it, or click × to remove it.':'JPG, PNG, WEBP · Required for a new product.';
-  document.getElementById('saveMsg').textContent=p.image?'Current product photo is loaded. You can keep it, replace it, or click × to remove it.':'';
-}
-function closeModal(){document.getElementById('modal').classList.remove('open')}
-function editProduct(id){const p=products.find(x=>String(x.id)===String(id));if(p)openModal(p)}
-function previewImage(e){
-  const file=e.target.files&&e.target.files[0];
-  if(!file)return;
-  if(file.size>6*1024*1024){alert('Please use an image smaller than 6 MB.');e.target.value='';return}
-  selectedImage=file;
-  removeProductImageFlag=false;
-  const r=new FileReader();
-  r.onload=()=>setProductPreview(r.result);
-  r.readAsDataURL(file);
-}
-function removeProductImage(){
-  selectedImage=null;
-  removeProductImageFlag=true;
-  const input=document.getElementById('image');if(input)input.value='';
-  setProductPreview('');
-  document.getElementById('saveMsg').textContent='Product photo removed. Choose a new photo if you want to replace it, then save.';
-}
-function fileData(file){return new Promise((resolve,reject)=>{if(!file)return resolve(null);const r=new FileReader();r.onload=()=>resolve({name:file.name,type:file.type,base64:String(r.result).split(',')[1]});r.onerror=reject;r.readAsDataURL(file)})}
-async function clearProductImageInFirestore(id){
-  const idToken=token||sessionStorage.getItem('mck_admin_token')||'';
-  if(!idToken||!id)return;
-  const url='https://firestore.googleapis.com/v1/projects/mckenzie-ramen-house/databases/(default)/documents/products/'+encodeURIComponent(String(id))+'?updateMask.fieldPaths=image';
-  const r=await fetch(url,{method:'PATCH',headers:{'Authorization':'Bearer '+idToken,'Content-Type':'application/json'},body:JSON.stringify({fields:{image:{stringValue:''}}})});
-  if(!r.ok){let t=await r.text();let d={};try{d=JSON.parse(t)}catch(e){};throw new Error(d.error&&d.error.message?d.error.message:'Unable to remove the product photo.')}
-}
-async function saveProduct(){
-  const name=document.getElementById('name').value.trim();
-  const price=document.getElementById('price').value;
-  const id=document.getElementById('productId').value.trim();
-  const saveMsg=document.getElementById('saveMsg');
-  if(!name||price===''){
-    saveMsg.textContent='Product name and price are required.';
-    return;
-  }
-  if(!id && !selectedImage){
-    saveMsg.textContent='Please upload a product photo for a new product.';
-    return;
-  }
-  saveMsg.textContent=removeProductImageFlag?'Saving product and removing photo…':'Saving product…';
-  try{
-    const data={
-      token,
-      id,
-      name,
-      price:Number(price),
-      category:document.getElementById('category').value,
-      available:document.getElementById('available').value==='true',
-      description:document.getElementById('description').value.trim(),
-      bestSeller:document.getElementById('bestSeller').checked,
-      newProduct:document.getElementById('newProduct').checked
+  function profileFromUser(u, data) {
+    const p = data || {};
+    return {
+      success: true,
+      userId: u.uid,
+      username: p.username || "",
+      email: u.email || p.email || "",
+      mobile: p.mobile || "",
+      fullName: p.fullName || u.displayName || "",
+      houseUnit: p.houseUnit || "",
+      street: p.street || "",
+      barangay: p.barangay || "",
+      city: p.city || "",
+      province: p.province || "",
+      postalCode: p.postalCode || "",
+      country: p.country || "Philippines",
+      region: p.region || "",
+      additionalInstruction: p.additionalInstruction || ""
     };
-    // On edit, do NOT send image unless the owner selected a new image or explicitly removed it.
-    if(selectedImage){
-      data.image=await fileData(selectedImage);
-    }else if(removeProductImageFlag){
-      data.image='';
-    }
-    const saved=await new Promise((resolve,reject)=>run('adminSaveProduct',[data],(v,e)=>e?reject(new Error(e)):(!v||!v.success)?reject(new Error('Unable to save product.')):resolve(v)));
-    if(saved && Array.isArray(saved.products)){
-      products=(saved.products||[]).map(function(p){
-        p.available=(p.available===true || p.available==='true' || p.available===1 || p.available==='1');
-        p.image=p.image||'';
-        return p;
-      });
-      render();
-    }
-    closeModal();
-    loadProducts();
-    showCenteredUpdate('Product Updated','The product was saved successfully.');
-  }catch(e){
-    saveMsg.textContent=e&&e.message?e.message:String(e);
   }
-}
-function deleteProduct(id){if(!confirm('Delete this product?'))return;run('adminDeleteProduct',[token,id],function(v,e){if(e||!v||!v.success){alert(e||'Delete failed.');return}loadProducts();showCenteredUpdate('Product Updated','The product was deleted successfully.')})}
 
-function showSection(section){const productsPanel=document.querySelector('.main > .panel:not(#ordersSection):not(#reviewsSection):not(#settingsSection)'),productsStats=document.querySelector('.main > .stats'),productsTop=document.querySelector('.main > .top'),ordersSection=document.getElementById('ordersSection'),reviewsSection=document.getElementById('reviewsSection'),settingsSection=document.getElementById('settingsSection'),navProducts=document.getElementById('navProducts'),navOrders=document.getElementById('navOrders'),navReviews=document.getElementById('navReviews'),navSettings=document.getElementById('navSettings');const isOrders=section==='orders',isReviews=section==='reviews',isSettings=section==='settings';if(productsPanel)productsPanel.style.display=(isOrders||isReviews||isSettings)?'none':'';if(productsStats)productsStats.style.display=(isOrders||isReviews||isSettings)?'none':'';if(productsTop)productsTop.style.display=(isOrders||isReviews||isSettings)?'none':'';if(ordersSection)ordersSection.style.display=isOrders?'block':'none';if(reviewsSection)reviewsSection.style.display=isReviews?'block':'none';if(settingsSection)settingsSection.style.display=isSettings?'block':'none';if(navProducts)navProducts.classList.toggle('active',!isOrders&&!isReviews&&!isSettings);if(navOrders)navOrders.classList.toggle('active',isOrders);if(navReviews)navReviews.classList.toggle('active',isReviews);if(navSettings)navSettings.classList.toggle('active',isSettings);if(isOrders)loadOrders();if(isReviews)loadReviews();if(isSettings)loadBrandAssets();}
+  async function getProfile(userId) {
+    const u = await currentUser(true);
+    if (String(userId) !== String(u.uid)) throw makeError("You can only access your own profile.");
+    const p = await getDocById("users", u.uid);
+    return profileFromUser(u, p || {});
+  }
 
-// ============================================================
-// WEBSITE BRANDING
-// ============================================================
-let selectedBrandLogo=null;let selectedBrandBackground=null;let currentBrandAssets={};
+  async function saveProfile(data) {
+    const f = await READY;
+    const u = await currentUser(true);
+    data = data || {};
+    if (String(data.userId || "") !== u.uid) throw makeError("Invalid customer account.");
+    const fullName = String(data.fullName || "").trim();
+    const email = String(data.email || u.email || "").trim().toLowerCase();
+    const mobile = String(data.mobile || "").trim();
+    if (!fullName) throw makeError("Full name is required.");
+    if (!email) throw makeError("Email address is required.");
+    if (!mobile) throw makeError("Phone number is required.");
 
-function previewBrandFile(file,id){const img=document.getElementById(id);if(!img)return;if(!file){img.src='';img.style.display='none';return}const r=new FileReader();r.onload=function(){img.src=r.result;img.style.display='block'};r.readAsDataURL(file)}
-function updateBrandRemoveButtons(){
-  const logo=currentBrandAssets.logo||currentBrandAssets.logoUrl||'';
-  const bg=currentBrandAssets.background||currentBrandAssets.backgroundUrl||'';
-  const lp=document.getElementById('brandLogoPreview'),bp=document.getElementById('brandBackgroundPreview');
-  const lbtn=document.getElementById('removeBrandLogoBtn'),bbtn=document.getElementById('removeBrandBackgroundBtn');
-  if(lbtn)lbtn.hidden=!(selectedBrandLogo||(!removeBrandLogoFlag&&logo));
-  if(bbtn)bbtn.hidden=!(selectedBrandBackground||(!removeBrandBackgroundFlag&&bg));
-  const lf=document.getElementById('brandLogoFile'),bf=document.getElementById('brandBackgroundFile');
-  if(lf)lf.closest('.brand-upload')?.classList.toggle('has-image',!!(selectedBrandLogo||(!removeBrandLogoFlag&&logo)));
-  if(bf)bf.closest('.brand-upload')?.classList.toggle('has-image',!!(selectedBrandBackground||(!removeBrandBackgroundFlag&&bg)));
-}
-function loadBrandAssets(){
-  const msg=document.getElementById('brandAssetsMsg');if(msg)msg.textContent='Loading current website branding…';
-  run('getBrandAssets',[],function(v,e){
-    if(e){if(msg)msg.textContent='Unable to load current branding: '+e;return;}
-    currentBrandAssets=v||{};
-    removeBrandLogoFlag=false;removeBrandBackgroundFlag=false;selectedBrandLogo=null;selectedBrandBackground=null;
-    const logo=currentBrandAssets.logo||currentBrandAssets.logoUrl||'';
-    const bg=currentBrandAssets.background||currentBrandAssets.backgroundUrl||'';
-    const lp=document.getElementById('brandLogoPreview'),bp=document.getElementById('brandBackgroundPreview');
-    const lc=document.getElementById('brandLogoCurrent'),bc=document.getElementById('brandBackgroundCurrent');
-    if(lp){lp.src=logo;lp.style.display=logo?'block':'none';}
-    if(bp){bp.src=bg;bp.style.display=bg?'block':'none';}
-    const sidebarLogo=document.getElementById('adminSidebarLogo'),loginLogo=document.getElementById('adminLoginLogo');
-    const fallbackLogo='images/mckenzie-logo.png';
-    if(sidebarLogo)sidebarLogo.src=logo||fallbackLogo;if(loginLogo)loginLogo.src=logo||fallbackLogo;
-    if(lc)lc.textContent=logo?'Current logo saved in Firebase. Click × to remove it or choose a new one.':'No custom logo saved. The local logo is being used.';
-    if(bc)bc.textContent=bg?'Current background saved in Firebase. Click × to remove it or choose a new one.':'No custom background saved yet.';
-    updateBrandRemoveButtons();if(msg)msg.textContent='';
-  });
-}
-function removeBrandAsset(kind){
-  if(kind==='logo'){selectedBrandLogo=null;removeBrandLogoFlag=true;const f=document.getElementById('brandLogoFile');if(f)f.value='';const p=document.getElementById('brandLogoPreview');if(p){p.src='';p.style.display='none';}const b=document.getElementById('removeBrandLogoBtn');if(b)b.hidden=true;}
-  if(kind==='background'){selectedBrandBackground=null;removeBrandBackgroundFlag=true;const f=document.getElementById('brandBackgroundFile');if(f)f.value='';const p=document.getElementById('brandBackgroundPreview');if(p){p.src='';p.style.display='none';}const b=document.getElementById('removeBrandBackgroundBtn');if(b)b.hidden=true;}
-  const msg=document.getElementById('brandAssetsMsg');if(msg)msg.textContent=(kind==='logo'?'Logo':'Background')+' marked for removal. Click Save Website Branding to apply.';
-}
-function compressBrandImage(file,maxSide,quality){return new Promise(function(resolve,reject){if(!file)return resolve('');const r=new FileReader();r.onload=function(){const img=new Image();img.onload=function(){try{const scale=Math.min(1,maxSide/Math.max(img.width||1,img.height||1));const c=document.createElement('canvas');c.width=Math.max(1,Math.round((img.width||1)*scale));c.height=Math.max(1,Math.round((img.height||1)*scale));const ctx=c.getContext('2d',{alpha:false});ctx.fillStyle='#fff';ctx.fillRect(0,0,c.width,c.height);ctx.drawImage(img,0,0,c.width,c.height);let q=quality||.72;let out=c.toDataURL('image/jpeg',q);while(out.length>700000&&q>.35){q-=.06;out=c.toDataURL('image/jpeg',q)}if(out.length>360000)reject(new Error('Image is still too large after compression. Please choose a smaller image.'));else resolve(out)}catch(e){reject(e)}};img.onerror=function(){reject(new Error('Unable to read the selected image.'))};img.src=r.result};r.onerror=reject;r.readAsDataURL(file)})}
-async function brandPatch(fields){
-  const idToken=token||sessionStorage.getItem('mck_admin_token')||'';if(!idToken)throw new Error('Admin session expired. Please log in again.');
-  const r=await fetch('https://firestore.googleapis.com/v1/projects/mckenzie-ramen-house/databases/(default)/documents/brandAssets/main',{method:'PATCH',headers:{'Authorization':'Bearer '+idToken,'Content-Type':'application/json'},body:JSON.stringify({fields})});
-  if(!r.ok){let t=await r.text(),d={};try{d=JSON.parse(t)}catch(e){};throw new Error(d.error&&d.error.message?d.error.message:'Unable to save website branding.')}
-}
-async function deleteBrandDoc(key){
-  const idToken=token||sessionStorage.getItem('mck_admin_token')||'';if(!idToken)return;
-  const r=await fetch('https://firestore.googleapis.com/v1/projects/mckenzie-ramen-house/databases/(default)/documents/brandAssets/'+key,{method:'DELETE',headers:{'Authorization':'Bearer '+idToken}});
-  if(!r.ok&&r.status!==404){let t=await r.text(),d={};try{d=JSON.parse(t)}catch(e){};throw new Error(d.error&&d.error.message?d.error.message:'Unable to update website branding.')}
-}
-async function saveBrandAssets(){
-  const btn=document.getElementById('saveBrandAssetsBtn'),msg=document.getElementById('brandAssetsMsg');if(btn){btn.disabled=true;btn.textContent='Saving Branding…'}if(msg)msg.textContent='Preparing images…';
-  try{
-    const vals=await Promise.all([compressBrandImage(selectedBrandLogo,1400,.76),compressBrandImage(selectedBrandBackground,1600,.68)]);
-    const oldLogo=currentBrandAssets.logo||currentBrandAssets.logoUrl||'',oldBg=currentBrandAssets.background||currentBrandAssets.backgroundUrl||'';
-    const logo=vals[0] || (removeBrandLogoFlag?'':oldLogo);
-    const background=vals[1] || (removeBrandBackgroundFlag?'':oldBg);
-    if(msg)msg.textContent='Saving to Firebase…';
-    await brandPatch({logo:{stringValue:logo},background:{stringValue:background},updatedAt:{stringValue:new Date().toISOString()}});
-    // Remove legacy per-asset documents so they cannot override the new main branding.
-    await Promise.all([deleteBrandDoc('logo'),deleteBrandDoc('background')]);
-    currentBrandAssets={logo,background};removeBrandLogoFlag=false;removeBrandBackgroundFlag=false;selectedBrandLogo=null;selectedBrandBackground=null;
-    if(document.getElementById('brandLogoFile'))document.getElementById('brandLogoFile').value='';if(document.getElementById('brandBackgroundFile'))document.getElementById('brandBackgroundFile').value='';
-    if(msg)msg.textContent='✓ Website logo/background saved successfully.';
-    loadBrandAssets();
-    showCenteredUpdate('Website Updated','Your logo and background changes were saved successfully.');
-  }catch(e){if(msg)msg.textContent=e&&e.message?e.message:String(e)}finally{if(btn){btn.disabled=false;btn.textContent='Save Website Branding'}}
-}
-(function(){const lf=document.getElementById('brandLogoFile'),bf=document.getElementById('brandBackgroundFile');if(lf)lf.addEventListener('change',function(){selectedBrandLogo=this.files&&this.files[0]?this.files[0]:null;removeBrandLogoFlag=false;previewBrandFile(selectedBrandLogo,'brandLogoPreview');updateBrandRemoveButtons()});if(bf)bf.addEventListener('change',function(){selectedBrandBackground=this.files&&this.files[0]?this.files[0]:null;removeBrandBackgroundFlag=false;previewBrandFile(selectedBrandBackground,'brandBackgroundPreview');updateBrandRemoveButtons()});})();
+    await f.setDoc(f.doc(f.db, "users", u.uid), {
+      username: data.username || "",
+      email, fullName, mobile,
+      houseUnit: String(data.houseUnit || "").trim(),
+      street: String(data.street || "").trim(),
+      barangay: String(data.barangay || "").trim(),
+      city: String(data.city || "").trim(),
+      province: String(data.province || "").trim(),
+      postalCode: String(data.postalCode || "").trim(),
+      country: String(data.country || "Philippines").trim() || "Philippines",
+      region: String(data.region || "").trim(),
+      additionalInstruction: String(data.additionalInstruction || "").trim(),
+      updatedAt: isoNow()
+    }, { merge: true });
 
-function loadOrders(options){
-  options = options || {};
-  run('adminGetOrders',[token],(v,e)=>{
-    if(e||!v||!v.success){ if(!options.silent) alert(e||'Unable to load orders.'); return; }
-    orders=Array.isArray(v.orders)?v.orders:[];
-    if(options.setBaseline !== false){
-      lastOrderIds = new Set(orders.map(function(o){return String(o.orderId||'');}));
-      firstOrderLoad = false;
+    return getProfile(u.uid);
+  }
+
+  async function loginUser(identifier, password) {
+    const f = await READY;
+    identifier = String(identifier || "").trim().toLowerCase();
+    password = String(password || "");
+    if (!identifier || !password) throw makeError("Please enter username/email and password.");
+
+    // Firebase Auth signs in by email. Username login is intentionally disabled
+    // in the standalone version because exposing a username→email directory
+    // would weaken privacy.
+    if (!identifier.includes("@")) {
+      throw makeError("Please log in using your registered email address.");
     }
-    renderOrders();
-    updateOrderBadge(orders);
-    const notice=document.getElementById('orderNotice');
-    if(notice) notice.textContent=orders.length ? ('Live • Last checked: '+new Date().toLocaleTimeString()) : 'Live • No customer orders yet.';
-  });
-}
-function refreshOrders(){
-  const btn=document.getElementById('refreshOrdersBtn');
-  if(btn){btn.disabled=true;btn.textContent='↻ Refreshing...';}
-  run('adminGetOrders',[token],(v,e)=>{
-    if(e||!v||!v.success){alert(e||'Unable to refresh orders.');}
-    else{
-      orders=Array.isArray(v.orders)?v.orders:[];
-      lastOrderIds=new Set(orders.map(function(o){return String(o.orderId||'');}));
-      firstOrderLoad=false;
-      renderOrders();
-      updateOrderBadge(orders);
-      const notice=document.getElementById('orderNotice');
-      if(notice) notice.textContent=orders.length ? ('Live • Updated '+new Date().toLocaleTimeString()) : 'Live • No customer orders yet.';
+
+    const cred = await f.signInWithEmailAndPassword(f.auth, identifier, password);
+    const p = await getDocById("users", cred.user.uid);
+    return profileFromUser(cred.user, p || {});
+  }
+
+  async function createAccount(fullName, email, username, password, mobile) {
+    const f = await READY;
+    const cred = await f.createUserWithEmailAndPassword(f.auth, String(email).trim().toLowerCase(), String(password));
+    await f.setDoc(f.doc(f.db, "users", cred.user.uid), {
+      username: String(username || "").trim(),
+      email: cred.user.email || String(email).trim().toLowerCase(),
+      fullName: String(fullName || "").trim(),
+      mobile: String(mobile || "").trim(),
+      country: "Philippines",
+      status: "ACTIVE",
+      createdAt: isoNow(),
+      updatedAt: isoNow()
+    }, { merge: true });
+
+    try { await f.sendEmailVerification(cred.user); } catch (e) {
+      console.warn("Verification email could not be sent:", e);
     }
-    if(btn){btn.disabled=false;btn.textContent='↻ Refresh';}
-  });
-}
-function orderStatusClass(status){return 'status-'+String(status||'Preparing').toLowerCase().replace(/\s+/g,'-');}
-function itemStatusClass(status){return 'item-'+String(status||'Preparing').toLowerCase().replace(/\s+/g,'-');}
-function renderOrders(){
-  const container=document.getElementById('orders');
-  if(!container)return;
-  const q=String(document.getElementById('orderSearch')?.value||'').toLowerCase();
-  const filter=String(document.getElementById('orderStatusFilter')?.value||'');
-  const list=orders.filter(o=>{
-    const hay=[o.orderId,o.customerName,o.email,o.mobile,o.address].join(' ').toLowerCase();
-    const uiStatus=(String(o.orderStatus||'Preparing').trim()==='Pending'?'Preparing':String(o.orderStatus||'Preparing').trim()||'Preparing');
-    return (!q||hay.includes(q))&&(!filter||uiStatus===filter);
-  });
-  if(!list.length){container.innerHTML='<div class="orders-empty">No orders found yet. New customer orders will appear here. 🍜</div>';return;}
-  container.innerHTML=list.map(o=>{
-    // Pending is no longer shown in the Admin workflow. Every active order starts in Preparing.
-    const rawStatus=String(o.orderStatus||'Preparing').trim();
-    // Admin workflow: Pending is never shown. Every active order begins in Preparing.
-    const status=(rawStatus==='Pending' || !rawStatus ? 'Preparing' : rawStatus);
-    const closed=o.customerConfirmed===true;
-    const deliveredLocked=status==='Delivered';
-    const items=(o.items||[]).map((i,idx)=>{
-      const st=(String(i.itemStatus||'Preparing').trim()==='Ready'?'Ready':'Preparing');
-      return '<div class="admin-item-row">'+
-        '<div class="admin-item-main"><strong>'+esc(i.productName)+'</strong><span>× '+Number(i.quantity||0)+' · ₱'+Number(i.subtotal||0).toLocaleString(undefined,{minimumFractionDigits:2})+'</span></div>'+ 
-        '<select class="item-status-select '+itemStatusClass(st)+'" '+((status!=='Preparing'||closed)?'disabled':'')+' onchange="updateOrderItemStatus(\''+escAttr(o.orderId)+'\','+idx+',this.value)">'+
-        '<option '+(st==='Preparing'?'selected':'')+'>Preparing</option><option '+(st==='Ready'?'selected':'')+'>Ready</option></select>'+ 
-        '</div>';
-    }).join('');
-    const allItemsReady=(o.items||[]).length>0 && (o.items||[]).every(function(i){
-      return String(i.itemStatus||'Preparing').trim()==='Ready';
+    return {
+      success: true,
+      message: "Account created. Please verify your email, then log in.",
+      verificationToken: cred.user.uid,
+      email: cred.user.email || email,
+      expiresInSeconds: 600
+    };
+  }
+
+  async function verifyEmailCode(token, code) {
+    const f = await READY;
+    const u = await currentUser(true);
+    await f.auth.currentUser.reload();
+    if (!f.auth.currentUser.emailVerified) {
+      throw makeError("Please open the verification email and click the verification link first.");
+    }
+    return { success: true, message: "Email verified." };
+  }
+
+  async function sendPasswordReset(identifier) {
+    const f = await READY;
+    const email = String(identifier || "").trim().toLowerCase();
+    if (!email || !email.includes("@")) {
+      throw makeError("Please enter your registered email address.");
+    }
+    await f.sendPasswordResetEmail(f.auth, email);
+    return { success: true, email, message: "Password reset email sent." };
+  }
+
+  async function changePassword(userId, oldPassword, newPassword) {
+    const f = await READY;
+    const u = await currentUser(true);
+    if (u.uid !== String(userId)) throw makeError("Invalid customer account.");
+    if (!newPassword || String(newPassword).length < 6) throw makeError("Password must be at least 6 characters.");
+    // Re-authenticate with the old password, then update.
+    if (!u.email) throw makeError("Your account has no email address.");
+    const cred = f.EmailAuthProvider.credential(u.email, String(oldPassword || ""));
+    await f.reauthenticateWithCredential(u, cred);
+    await f.updatePassword(u, String(newPassword));
+    return { success: true };
+  }
+
+  async function addresses(userId) {
+    const f = await READY;
+    const u = await currentUser(true);
+    if (u.uid !== String(userId)) throw makeError("Invalid customer account.");
+    const list = await getCollection("addresses");
+    return list
+      .filter(a => String(a.userId) === u.uid)
+      .sort((a,b) => (b.isDefault ? 1 : 0) - (a.isDefault ? 1 : 0))
+      .map(a => ({
+        addressId: a.id, userId: a.userId, label: a.label || "Saved Address",
+        houseUnit: a.houseUnit || "", street: a.street || "", barangay: a.barangay || "",
+        city: a.city || "", province: a.province || "", region: a.region || "",
+        postalCode: a.postalCode || "", country: a.country || "Philippines",
+        additionalInstruction: a.additionalInstruction || "",
+        isDefault: !!a.isDefault, createdAt: cleanTimestamp(a.createdAt), updatedAt: cleanTimestamp(a.updatedAt)
+      }));
+  }
+
+  async function saveAddress(data) {
+    const f = await READY;
+    const u = await currentUser(true);
+    data = data || {};
+    if (String(data.userId || "") !== u.uid) throw makeError("Invalid customer account.");
+    const required = [["region","region"],["province","province"],["city","city/municipality"],["barangay","barangay"],["houseUnit","lot/house/unit number"],["street","street"]];
+    for (const [key,label] of required) if (!String(data[key] || "").trim()) throw makeError("Please select/enter your " + label + ".");
+    const all = await addresses(u.uid);
+    const id = String(data.addressId || ("ADDR-" + Date.now() + "-" + Math.floor(Math.random()*10000)));
+    if (data.isDefault !== false) {
+      for (const a of all) if (a.isDefault) {
+        await f.updateDoc(f.doc(f.db, "addresses", a.addressId), { isDefault:false, updatedAt:isoNow() });
+      }
+    }
+    await f.setDoc(f.doc(f.db, "addresses", id), {
+      userId:u.uid, label:String(data.label || "Saved Address").trim(),
+      houseUnit:String(data.houseUnit || "").trim(), street:String(data.street || "").trim(),
+      barangay:String(data.barangay || "").trim(), city:String(data.city || "").trim(),
+      province:String(data.province || "").trim(), region:String(data.region || "").trim(),
+      postalCode:String(data.postalCode || "").trim(), country:String(data.country || "Philippines").trim(),
+      additionalInstruction:String(data.additionalInstruction || "").trim(),
+      isDefault:data.isDefault !== false, createdAt:data.createdAt || isoNow(), updatedAt:isoNow()
+    }, {merge:true});
+    if (data.isDefault !== false) {
+      await f.setDoc(f.doc(f.db, "users", u.uid), {
+        houseUnit:data.houseUnit || "", street:data.street || "", barangay:data.barangay || "",
+        city:data.city || "", province:data.province || "", region:data.region || "",
+        postalCode:data.postalCode || "", country:data.country || "Philippines",
+        additionalInstruction:data.additionalInstruction || "", updatedAt:isoNow()
+      }, {merge:true});
+    }
+    return addresses(u.uid);
+  }
+
+  async function setDefaultAddress(userId, addressId) {
+    const f = await READY;
+    const u = await currentUser(true);
+    if (u.uid !== String(userId)) throw makeError("Invalid customer account.");
+    const all = await addresses(u.uid);
+    const selected = all.find(a => a.addressId === String(addressId));
+    if (!selected) throw makeError("Address not found.");
+    for (const a of all) {
+      await f.updateDoc(f.doc(f.db, "addresses", a.addressId), {isDefault:a.addressId === selected.addressId, updatedAt:isoNow()});
+    }
+    return addresses(u.uid);
+  }
+
+  async function getProducts() {
+    const f = await READY;
+    const list = await getCollection("products");
+    return list.filter(p => p.name).map(p => {
+      // Always normalize the stored Firestore value to a real boolean.
+      // This handles correct booleans and older records containing
+      // "true"/"false" strings or numeric 1/0 values.
+      const available =
+        p.available === true ||
+        p.available === "true" ||
+        p.available === 1 ||
+        p.available === "1";
+
+      return {
+        id:p.id,
+        name:p.name,
+        category:p.category || "Ramen",
+        price:Number(p.price || 0),
+        image:p.image || "",
+        description:p.description || "",
+        available,
+        bestSeller:!!p.bestSeller,
+        newProduct:!!p.newProduct
+      };
     });
-    // Exact workflow: Preparing -> Ready -> On the Way -> Delivered.
-    // Ready becomes clickable only after every purchased menu item is Ready.
-    const canMarkReady=status==='Preparing' && allItemsReady;
-    const canDeliver=status==='On the Way';
-    return '<article class="order-card '+(deliveredLocked?'order-delivered-locked':'')+'">'+
-      '<div class="order-head"><div><div class="order-id">#'+esc(o.orderId)+'</div><div class="order-meta">'+esc(o.customerName||'Guest')+' · '+esc(o.mobile||'')+'</div><div class="order-meta">'+(o.orderedAt?new Date(o.orderedAt).toLocaleString():'')+'</div></div>'+
-      '<span class="status-pill '+orderStatusClass(status)+'">'+esc(status)+(closed?' · Closed':'')+'</span></div>'+
-      '<div class="order-grid">'+
-      '<div class="order-box"><strong>🍜 Items — update each item</strong><div class="admin-items">'+(items||'<div class="order-meta">No items</div>')+'</div><div class="order-total">₱'+Number(o.total||0).toLocaleString(undefined,{minimumFractionDigits:2})+'</div></div>'+
-      '<div class="order-box"><strong>📍 Customer</strong><div style="font-size:13px">'+esc(o.customerName||'Guest')+'</div><div class="order-meta">Phone: '+esc(o.mobile||'—')+'</div><div class="order-meta">Payment: '+esc(o.paymentMethod||'—')+'</div><div class="order-meta">Payment status: '+esc(o.paymentStatus||'Pending')+'</div><div class="order-meta">'+esc(o.address||'No address provided')+'</div></div>'+
-      '<div class="order-box"><strong>📝 Instruction</strong><div style="font-size:13px">'+esc(o.instruction||'No special instruction.')+'</div></div>'+
-      '</div>'+
-      '<div class="order-workflow-note">Workflow: <b>Preparing</b> → <b>Ready</b> → <b>On the Way</b> → <b>Delivered</b><br><span style="font-size:11px">Admin uses only Preparing, Ready, and Delivered buttons. Ready automatically advances to On the Way.</span></div>'+
-      '<div class="order-actions">'+
-      '<button class="'+(status==='Preparing' && !allItemsReady ? 'active':'')+'" disabled title="Order is being prepared">Preparing</button>'+
-      '<button class="'+(canMarkReady?'active':'')+'" '+(deliveredLocked||closed||!canMarkReady?'disabled':'')+' onclick="updateOrderStatus(\''+escAttr(o.orderId)+'\',\'Ready\')" title="Click when every item is Ready. The order will move directly to On the Way.">Ready</button>'+
-      '<button class="'+(canDeliver?'active':'')+'" '+(deliveredLocked||closed||!canDeliver?'disabled':'')+' onclick="updateOrderStatus(\''+escAttr(o.orderId)+'\',\'Delivered\')">Delivered</button>'+
-      '</div>'+
-      '<div class="review-notify-row">'+
-      '<button type="button" class="review-notify-btn '+(o.reviewCompleted?'review-done':'')+'" '+((status!=='Delivered'||!o.customerConfirmed||o.reviewCompleted)?'disabled':'')+' onclick="notifyCustomerReview(\''+escAttr(o.orderId)+'\',this,'+(o.reviewRequested?'true':'false')+')">'+(o.reviewCompleted?'✓ Review Completed':(o.reviewRequested?'🔔 Notify Again':'🔔 Notify Customer to Review'))+'</button>'+
-      '<span class="review-progress">'+(status!=='Delivered'?'Available after Delivered':(!o.customerConfirmed?'Waiting for customer to confirm receipt':(o.reviewCompleted?'Customer has reviewed this order':(o.reviewRequested?'Waiting for customer to open the review notification':'Customer can now review'))))+'</span>'+
-      '</div>'+
-      (closed?'<div class="order-closed-note">✓ Customer confirmed receipt. Order is closed. You can notify the customer to review below.</div>':'')+
-      '</article>';
-  }).join('');
-}
-function escAttr(s){return String(s??'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");}
-function updateOrderItemStatus(orderId,itemIndex,status){
-  const idx=orders.findIndex(function(o){return String(o.orderId)===String(orderId);});
-  if(idx<0)return;
-  status=(String(status||'Preparing').trim()==='Ready'?'Ready':'Preparing');
-  const order=orders[idx];
-  if(String(order.orderStatus||'Preparing')!=='Preparing')return;
-
-  // Update the UI immediately and keep the selection stable while the backend saves.
-  if(!order.items)order.items=[];
-  if(!order.items || !order.items[itemIndex])return;
-  order.items[itemIndex].itemStatus=status;
-  savingOrderItems.add(String(orderId));
-  renderOrders();
-
-  run('adminUpdateOrderItemStatus',[token,orderId,itemIndex,status],function(v,e){
-    savingOrderItems.delete(String(orderId));
-    if(e||!v||!v.success){
-      showAdminToast('⚠ Unable to save item status',String(e||'Please try again.'));
-      loadOrders({silent:true});
-      return;
-    }
-    // Keep the exact returned item status, but do NOT let item readiness
-    // automatically advance the order. The Admin must click Ready.
-    const fresh=v.order;
-    if(fresh){
-      fresh.orderStatus=(String(fresh.orderStatus||'Preparing')==='Pending'?'Preparing':String(fresh.orderStatus||'Preparing'));
-      orders[idx]=fresh;
-    }
-    renderOrders();
-  });
-}
-let pendingDeliveryConfirmOrderId = '';
-function openDeliveryConfirm(orderId){
-  pendingDeliveryConfirmOrderId=String(orderId||'');
-  const modal=document.getElementById('deliveryConfirmModal');
-  const msg=document.getElementById('deliveryConfirmMessage');
-  if(msg) msg.textContent='Are you sure you want to mark order '+pendingDeliveryConfirmOrderId+' as Delivered?';
-  if(modal){modal.classList.add('show');modal.setAttribute('aria-hidden','false');}
-}
-function closeDeliveryConfirm(){
-  pendingDeliveryConfirmOrderId='';
-  const modal=document.getElementById('deliveryConfirmModal');
-  if(modal){modal.classList.remove('show');modal.setAttribute('aria-hidden','true');}
-}
-function approveDeliveryConfirm(){
-  const id=pendingDeliveryConfirmOrderId;
-  closeDeliveryConfirm();
-  if(id) updateOrderStatus(id,'Delivered',true);
-}
-function updateOrderStatus(orderId,status,confirmed){
-  const idx=orders.findIndex(function(x){return String(x.orderId)===String(orderId);});
-  if(idx<0)return;
-  const o=orders[idx];
-  const current=String((o&&o.orderStatus)||'Preparing')==='Pending'?'Preparing':String((o&&o.orderStatus)||'Preparing');
-  const items=(o&&o.items)||[];
-  const allReady=items.length>0 && items.every(function(i){return String(i.itemStatus||'Preparing').trim()==='Ready';});
-  if(status==='Ready' && (current!=='Preparing'||!allReady)) return;
-  if(status==='Delivered' && current!=='On the Way') return;
-  if(status==='Delivered' && confirmed!==true){
-    openDeliveryConfirm(orderId);
-    return;
   }
 
-  // Instant Admin UI: do not make the user wait for the server round-trip.
-  // Clicking Ready immediately shows On the Way; there is NO On the Way button.
-  const previousStatus=o.orderStatus;
-  const nextStatus=(status==='Ready'?'On the Way':status);
-  o.orderStatus=nextStatus;
-  if(nextStatus==='Delivered'){
-    o.customerConfirmed=true;
-    o.closed=true;
+  async function getBrandAssets() {
+    const p = await getDocById("brandAssets", "main");
+    return p || {};
   }
-  savingOrderStatuses.add(String(orderId));
-  renderOrders();
 
-  run('adminUpdateOrderStatus',[token,orderId,status],function(v,e){
-    savingOrderStatuses.delete(String(orderId));
-    if(e||!v||!v.success){
-      // Revert only when the backend rejects the change.
-      o.orderStatus=previousStatus;
-      if(nextStatus==='Delivered'){
-        o.customerConfirmed=false;
-        o.closed=false;
-      }
-      renderOrders();
-      showAdminToast('⚠ Unable to update order',String(e||'Please try again.'));
-      return;
-    }
-    if(v.order) orders[idx]=v.order;
-    renderOrders();
-  });
-}
+  async function getRamenLoadingImage() {
+    const p = await getBrandAssets();
+    return p.ramenLoadingImage || "";
+  }
 
-orderPollTimer = null;
-firstOrderLoad = true;
-// Existing state declarations are defined near the top of the admin script.
+  function orderAddress(payload) {
+    return [payload.houseUnit,payload.street,payload.barangay,payload.city,payload.province,payload.region]
+      .map(v => String(v || "").trim()).filter(Boolean).join(", ");
+  }
 
-function initAdminNotifications(){
-  if (orderPollTimer) clearInterval(orderPollTimer);
-  orderPollTimer = setInterval(function(){
-    if (!token) return;
-    // Never refresh while an item dropdown change is being saved.
-    // Otherwise the old server value can overwrite the user's Ready selection.
-    if ((savingOrderItems && savingOrderItems.size) || (savingOrderStatuses && savingOrderStatuses.size)) return;
-    run('adminGetOrders',[token],function(v,e){
-      if(e||!v||!v.success) return;
-      const latest = Array.isArray(v.orders) ? v.orders : [];
-      const ids = new Set(latest.map(function(o){ return String(o.orderId||''); }));
-      if (!firstOrderLoad) {
-        const newOrders = latest.filter(function(o){ return !lastOrderIds.has(String(o.orderId||'')); });
-        if (newOrders.length) {
-          orders = latest;
-          lastOrderIds = ids;
-          showNewOrderNotification(newOrders);
-          showSection('orders');
-          const search=document.getElementById('orderSearch');
-          const filter=document.getElementById('orderStatusFilter');
-          if(search) search.value='';
-          if(filter) filter.value='';
-          renderOrders();
-          updateOrderBadge(latest);
-          return;
-        }
-      }
-      firstOrderLoad = false;
-      lastOrderIds = ids;
-      if (!savingOrderItems.size) orders = latest;
-      const notice = document.getElementById('orderNotice');
-      if (notice) notice.textContent = latest.length ? ('Live • Last checked: ' + new Date().toLocaleTimeString()) : 'Live • No customer orders yet.';
-      if (document.getElementById('ordersSection') && document.getElementById('ordersSection').style.display !== 'none') renderOrders();
-      updateOrderBadge(latest);
+  async function saveOrder(orderId, payload) {
+    const f = await READY;
+    const u = await currentUser(true);
+    payload = payload || {};
+    if (String(payload.userId || "") !== u.uid) throw makeError("Please log in again.");
+    const cleanItems = Array.isArray(payload.items) ? payload.items.map(item => ({
+      productId:String(item.id || item.productId || ""),
+      productName:String(item.name || item.productName || "Ramen item"),
+      price:Number(item.price || 0), quantity:Number(item.quantity || 0),
+      subtotal:Number(item.subtotal != null ? item.subtotal : Number(item.price||0)*Number(item.quantity||0)),
+      itemStatus:"Preparing"
+    })).filter(x => x.quantity > 0) : [];
+    if (!cleanItems.length) throw makeError("The order contains no items.");
+    const total = cleanItems.reduce((s,i)=>s+i.subtotal,0);
+    const ref = f.doc(f.db, "orders", String(orderId));
+    const existing = await f.getDoc(ref);
+    if (existing.exists()) return {success:true, orderId:String(orderId), duplicate:true};
+    await f.setDoc(ref, {
+      orderId:String(orderId), userId:u.uid, customerName:String(payload.fullName || ""),
+      fullName:String(payload.fullName || ""), email:u.email || "", mobile:String(payload.mobile || ""),
+      items:cleanItems, total, paymentMethod:String(payload.paymentMethod || ""),
+      paymentStatus:"Pending", orderStatus:"Preparing", address:orderAddress(payload),
+      instruction:String(payload.additionalInstruction || ""), orderedAt:isoNow(),
+      customerConfirmed:false, confirmedAt:"", deliveredAt:"", closed:false
     });
-  },3000);
-}
-
-function updateOrderBadge(list){
-  const badge=document.getElementById('orderBadge');
-  if(!badge)return;
-  const active=list.filter(function(o){return ['Preparing','Ready','On the Way'].includes(String(o.orderStatus||'Preparing'));}).length;
-  badge.textContent=active;
-  badge.style.display=active?'inline-block':'none';
-}
-
-function showNewOrderNotification(newOrders){
-  const count=newOrders.length;
-  const names=newOrders.slice(0,2).map(function(o){return o.customerName||'Customer';}).join(', ');
-  const text=count===1 ? 'New order received from '+names+'!' : count+' new orders received!';
-  let toast=document.getElementById('newOrderToast');
-  if(!toast){
-    toast=document.createElement('div');
-    toast.id='newOrderToast';
-    toast.style.cssText='position:fixed;right:24px;top:24px;z-index:100;background:#130807;color:#fff;border:2px solid #e4ad32;border-radius:14px;padding:16px 18px;box-shadow:0 14px 40px #0008;max-width:360px;font-weight:800;cursor:pointer';
-    document.body.appendChild(toast);
-  }
-  toast.innerHTML='🔔 '+esc(text)+'<div style="font-size:11px;color:#e8d8cf;margin-top:5px">Click Orders to view and process the order.</div>';
-  toast.style.display='block';
-  toast.onclick=function(){ showSection('orders'); loadOrders(); toast.style.display='none'; };
-  setTimeout(function(){ if(toast) toast.style.display='none'; },9000);
-  try{
-    if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)();
-    if(audioCtx.state==='suspended') audioCtx.resume();
-    const osc=audioCtx.createOscillator(), gain=audioCtx.createGain();
-    osc.frequency.value=880; gain.gain.value=.08; osc.connect(gain); gain.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime+.18);
-  }catch(err){}
-}
-
-function loadReviews(){
-  const btn=document.getElementById('refreshReviewsBtn');
-  if(btn){btn.disabled=true;btn.textContent='↻ Loading...';}
-  run('adminGetReviews',[token],(v,e)=>{
-    if(e||!v||!v.success){if(btn){btn.disabled=false;btn.textContent='↻ Refresh';} alert(e||'Unable to load reviews.');return;}
-    reviews=Array.isArray(v.reviews)?v.reviews:[];
-    const st=v.stats||{};
-    document.getElementById('reviewTotal').textContent=st.total||0;
-    document.getElementById('reviewPublished').textContent=st.published||0;
-    document.getElementById('reviewHidden').textContent=st.hidden||0;
-    document.getElementById('reviewAverage').textContent=Number(st.average||0).toFixed(1)+' ★';
-    const notice=document.getElementById('reviewNotice');
-    if(notice) notice.textContent=reviews.length?'Live • '+reviews.length+' customer review'+(reviews.length===1?'':'s'):'No customer reviews yet.';
-    renderReviews();
-    updateReviewBadge(reviews);
-    if(btn){btn.disabled=false;btn.textContent='↻ Refresh';}
-  });
-}
-function renderReviews(){
-  const container=document.getElementById('reviews'); if(!container)return;
-  const q=String(document.getElementById('reviewSearch')?.value||'').toLowerCase();
-  const filter=String(document.getElementById('reviewStatusFilter')?.value||'');
-  const list=reviews.filter(r=>{
-    const hay=[r.customerName,r.productName,r.review,r.orderId].join(' ').toLowerCase();
-    return (!q||hay.includes(q))&&(!filter||String(r.status||'Published')===filter);
-  });
-  if(!list.length){container.innerHTML='<div class="orders-empty">No reviews found. Customer reviews will appear here after a completed order is received. ⭐</div>';return;}
-  container.innerHTML=list.map(r=>{
-    const status=String(r.status||'Published');
-    const stars='★★★★★'.split('').map((x,i)=>i<Number(r.rating||0)?'★':'☆').join('');
-    return '<article class="review-card"><div class="review-card-head"><div><div class="review-customer">'+esc(r.customerName||'Customer')+'</div><div class="review-menu">'+esc(r.productName||'Menu item')+' · Order #'+esc(r.orderId||'')+'</div></div><span class="review-status '+(status==='Published'?'published':'hidden')+'">'+esc(status)+'</span></div><div class="review-stars">'+stars+'</div><div class="review-text">'+(r.review?esc(r.review):'<em>No written comment.</em>')+'</div><div class="review-meta">Submitted '+esc(r.submittedAt?new Date(r.submittedAt).toLocaleString():'')+'</div><div class="review-actions"><button class="'+(status==='Published'?'active':'')+'" onclick="updateReviewStatus(\''+escAttr(r.reviewId)+'\',\'Published\')">✓ Publish</button><button class="'+(status==='Hidden'?'active':'')+'" onclick="updateReviewStatus(\''+escAttr(r.reviewId)+'\',\'Hidden\')">Hide</button></div></article>';
-  }).join('');
-}
-function updateReviewStatus(reviewId,status){
-  run('adminUpdateReviewStatus',[token,reviewId,status],(v,e)=>{
-    if(e||!v||!v.success){alert(e||'Unable to update review.');return;}
-    const r=reviews.find(x=>String(x.reviewId)===String(reviewId));
-    if(r)r.status=status;
-    renderReviews(); updateReviewBadge(reviews);
-    const notice=document.getElementById('reviewNotice');
-    if(notice)notice.textContent='Live • Updated '+new Date().toLocaleTimeString();
-  });
-}
-function updateReviewBadge(list){
-  const badge=document.getElementById('reviewBadge'); if(!badge)return;
-  const published=list.filter(r=>String(r.status||'Published')==='Published').length;
-  badge.textContent=published; badge.style.display=published?'inline-block':'none';
-}
-
-function notifyCustomerReview(orderId,button,isResend){
-  if(!orderId)return;
-  isResend=!!isResend;
-
-  if(button){
-    button.disabled=true;
-    button.classList.remove('review-success','review-pending');
-    button.classList.add('review-sending');
-    button.innerHTML='<span class="notify-spinner"></span>'+(isResend?'Resending review…':'Sending review…');
+    return {success:true, orderId:String(orderId), status:"Preparing"};
   }
 
-  run('adminNotifyCustomerReview',[token,orderId,isResend],function(v,e){
-    var message=(v&&v.message)?String(v.message):String(e||'');
-
-    if(e||!v||!v.success){
-      if(button){
-        button.disabled=false;
-        button.classList.remove('review-sending');
-        button.textContent=isResend?'🔔 Notify Again':'🔔 Notify Customer to Review';
-      }
-      showAdminToast('⚠ Notification failed',message||'The review notification could not be sent.');
-      return;
-    }
-
-    var idx=orders.findIndex(function(o){return String(o.orderId)===String(orderId);});
-    if(idx>=0){
-      orders[idx].reviewRequested=true;
-      orders[idx].reviewCompleted=!!v.completed;
-    }
-
-    if(button){
-      button.classList.remove('review-sending');
-      button.classList.add('review-success');
-      button.innerHTML='<span class="notify-check">✓</span> '+(v.resent||isResend?'Review Resent':'Sent to Customer');
-    }
-
-    showAdminToast(
-      v.resent||isResend?'✓ Review resent to customer':'✓ Customer notified',
-      v.resent||isResend?'The review notification was resent successfully.':(message||'The review notification was sent successfully.')
-    );
-
-    setTimeout(function(){renderOrders();},1600);
-  });
-}
-
-function showCenteredUpdate(title,message,isNotice){
-  const overlay=document.getElementById('centeredUpdateOverlay');
-  const titleEl=document.getElementById('centeredUpdateTitle');
-  const msgEl=document.getElementById('centeredUpdateMessage');
-  const check=overlay?overlay.querySelector('.centered-update-check'):null;
-  if(!overlay)return;
-  if(titleEl)titleEl.textContent=String(title||'Updated');
-  if(msgEl)msgEl.textContent=String(message||'Your changes were saved successfully.');
-  if(check){check.textContent=isNotice?'!':'✓';check.style.background=isNotice?'#fff1d8':'#e8f7ec';check.style.color=isNotice?'#8a5b00':'#23824a';}
-  overlay.classList.add('show');
-  overlay.setAttribute('aria-hidden','false');
-  clearTimeout(window._centeredUpdateTimer);
-  window._centeredUpdateTimer=setTimeout(hideCenteredUpdate,2600);
-}
-function showAdminToast(title,message){showCenteredUpdate(title,message,/failed|unable|error|notice/i.test(String(title||'')));}
-function hideCenteredUpdate(){
-  const overlay=document.getElementById('centeredUpdateOverlay');
-  if(!overlay)return;
-  overlay.classList.remove('show');
-  overlay.setAttribute('aria-hidden','true');
-  clearTimeout(window._centeredUpdateTimer);
-}
-function hideAdminToast(){hideCenteredUpdate();}
-
-async function logout(){
-  try{
-    if(window.MckenzieFirebaseReady){
-      const f=await window.MckenzieFirebaseReady;
-      if(f&&f.auth&&f.signOut)await f.signOut(f.auth);
-    }
-  }catch(e){console.warn('Firebase sign-out:',e);}
-  token='';
-  sessionStorage.removeItem('mck_admin_token');
-  document.getElementById('app').style.display='none';
-  document.getElementById('login').style.display='flex';
-  const pw=document.getElementById('loginPassword');
-  if(pw)pw.value='';
-}
-
-// ============================================================
-// FIREBASE AUTH SESSION RESTORE
-// ============================================================
-// Do NOT inspect auth.currentUser only once. Firebase restores the
-// persisted browser session asynchronously. onAuthStateChanged is
-// the reliable way to wait for that restoration after a refresh.
-(function restoreAdminSession(){
-  const loginBox=document.getElementById('login');
-  const appBox=document.getElementById('app');
-  const status=document.getElementById('apiStatus');
-  const msg=document.getElementById('loginMsg');
-
-  showLogin();
-
-  if(status){
-    status.textContent='Connecting to Firebase…';
-    status.style.color='#756965';
+  function normalizeOrder(o) {
+    if (!o) return null;
+    return {
+      orderId:String(o.orderId || o.id || ""), userId:String(o.userId || ""),
+      customerName:o.customerName || o.fullName || "Customer", fullName:o.fullName || o.customerName || "Customer",
+      email:o.email || "", mobile:o.mobile || "", items:Array.isArray(o.items) ? o.items.map((it,idx)=>({
+        itemIndex:idx, productId:String(it.productId || it.id || ""), productName:it.productName || it.name || "Ramen item",
+        price:Number(it.price || 0), quantity:Number(it.quantity || 0),
+        subtotal:Number(it.subtotal != null ? it.subtotal : Number(it.price||0)*Number(it.quantity||0)),
+        itemStatus:String(it.itemStatus || "Preparing")
+      })) : [],
+      total:Number(o.total || 0), paymentMethod:o.paymentMethod || "", paymentStatus:o.paymentStatus || "Pending",
+      orderStatus:o.orderStatus === "Pending" ? "Preparing" : (o.orderStatus || "Preparing"),
+      address:o.address || "", instruction:o.instruction || o.additionalInstruction || "",
+      orderedAt:cleanTimestamp(o.orderedAt), customerConfirmed:!!o.customerConfirmed,
+      confirmedAt:cleanTimestamp(o.confirmedAt), deliveredAt:cleanTimestamp(o.deliveredAt),
+      closed:!!o.closed, canRate:(o.orderStatus === "Delivered" && !!o.customerConfirmed)
+    };
   }
 
-  window.MckenzieFirebaseReady.then(function(f){
-    if(status){
-      status.textContent='● Firebase connected';
-      status.style.color='#23824a';
+  async function getOrdersForUser(userId) {
+    const f = await READY;
+    const u = await currentUser(true);
+    if (u.uid !== String(userId)) throw makeError("Invalid customer account.");
+    const list = await getCollection("orders");
+    return list.filter(o => String(o.userId) === u.uid).map(normalizeOrder)
+      .sort((a,b)=>String(b.orderedAt).localeCompare(String(a.orderedAt)));
+  }
+
+  async function getReviewsForOrder(orderId, userId) {
+    const list = await getCollection("reviews");
+    return list.filter(r => String(r.orderId)===String(orderId) && String(r.customerId || r.userId)===String(userId));
+  }
+
+  async function getReviewForm(userId, orderId) {
+    const u = await currentUser(true);
+    if (u.uid !== String(userId)) throw makeError("Invalid customer account.");
+    const order = (await getOrdersForUser(u.uid)).find(o=>o.orderId===String(orderId));
+    if (!order) throw makeError("Order not found.");
+    if (order.orderStatus !== "Delivered" || !order.customerConfirmed) throw makeError("You can review this order only after it has been delivered and received.");
+    const reviews = await getReviewsForOrder(orderId,u.uid);
+    const byProduct = {};
+    reviews.forEach(r=>byProduct[String(r.productId)] = r);
+    return {
+      success:true, orderId:order.orderId, customerName:order.customerName || "Customer",
+      items:order.items.map(item=>({
+        productId:item.productId, productName:item.productName, quantity:item.quantity,
+        reviewed:!!byProduct[item.productId], existingRating:byProduct[item.productId]?.rating || 0,
+        existingReview:byProduct[item.productId]?.review || ""
+      })),
+      completed:order.items.every(item=>!!byProduct[item.productId])
+    };
+  }
+
+  async function submitReview(userId, orderId, productId, rating, review) {
+    const f = await READY;
+    const u = await currentUser(true);
+    if (u.uid !== String(userId)) throw makeError("Invalid customer account.");
+    rating = Number(rating); review=String(review||"").trim();
+    if (!Number.isFinite(rating) || rating<1 || rating>5) throw makeError("Please select a rating from 1 to 5 stars.");
+    if (review.length>1000) throw makeError("Review is too long. Please keep it under 1000 characters.");
+    const form = await getReviewForm(u.uid,orderId);
+    const item = form.items.find(i=>String(i.productId)===String(productId));
+    if (!item) throw makeError("That menu item was not part of this order.");
+    if (item.reviewed) throw makeError("You already reviewed this menu item.");
+    const id = "REV-" + Date.now() + "-" + Math.floor(Math.random()*10000);
+    await f.setDoc(f.doc(f.db,"reviews",id), {
+      reviewId:id, orderId:String(orderId), customerId:u.uid, productId:String(productId),
+      productName:item.productName, rating, review, customerName:form.customerName || "Customer",
+      submittedAt:isoNow(), status:"Published"
+    });
+    return {success:true,message:"Your review has been submitted.",reviewId:id};
+  }
+
+  async function getPublishedReviews() {
+    const f = await READY;
+    const list = await getCollection("reviews");
+    return list.filter(r=>String(r.status||"Published").toLowerCase()==="published")
+      .sort((a,b)=>String(b.submittedAt||"").localeCompare(String(a.submittedAt||""))).slice(0,12)
+      .map(r=>({reviewId:r.reviewId||r.id,orderId:r.orderId,productId:r.productId,productName:r.productName,rating:r.rating,review:r.review,customerName:r.customerName,submittedAt:cleanTimestamp(r.submittedAt)}));
+  }
+
+  async function getNotifications(userId) {
+    const f = await READY;
+    const u = await currentUser(true);
+    if (u.uid !== String(userId)) throw makeError("Invalid customer account.");
+    const list = await getCollection("notifications");
+    return list.filter(n=>String(n.userId)===u.uid && !n.readAt)
+      .sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0))
+      .map(n=>({...n,notificationId:n.notificationId||n.id,createdAt:cleanTimestamp(n.createdAt),readAt:cleanTimestamp(n.readAt)}));
+  }
+
+  async function markNotificationRead(userId, notificationId) {
+    const f = await READY;
+    const u = await currentUser(true);
+    if (u.uid !== String(userId)) throw makeError("Invalid customer account.");
+    const ref = f.doc(f.db,"notifications",String(notificationId));
+    const snap=await f.getDoc(ref);
+    if (!snap.exists() || String(snap.data().userId)!==u.uid) throw makeError("Notification not found.");
+    await f.updateDoc(ref,{readAt:isoNow()});
+    return {success:true};
+  }
+
+  async function respondReceipt(userId, orderId, received, notificationId) {
+    const f = await READY;
+    const u = await currentUser(true);
+    if (u.uid !== String(userId)) throw makeError("Invalid customer account.");
+    const ref=f.doc(f.db,"orders",String(orderId));
+    const snap=await f.getDoc(ref);
+    if(!snap.exists() || String(snap.data().userId)!==u.uid) throw makeError("Order not found.");
+    const o=snap.data();
+    if(String(o.orderStatus)!=="Delivered") throw makeError("The order has not been marked as delivered yet.");
+    const now=isoNow();
+    await f.updateDoc(ref,{customerConfirmed:!!received,confirmedAt:received?now:"",closed:!!received});
+    if(notificationId) {
+      try { await markNotificationRead(u.uid,notificationId); } catch(e) {}
     }
+    return {success:true,received:!!received,closed:!!received,contact:{phone:"09123456789",email:"Mckenzieramenhouse@gmail.com",facebook:"Mckenzie Ramen House"}};
+  }
 
-    if(!f || !f.auth || !f.onAuthStateChanged){
-      throw new Error('Firebase Authentication is unavailable.');
+  async function getAdminProducts() {
+    await requireAdmin();
+    return {success:true,products:await getProducts()};
+  }
+
+  function dataUrlFromImageObject(image) {
+    if (!image || typeof image !== "object") return null;
+    const type = String(image.type || "image/jpeg").toLowerCase();
+    const base64 = String(image.base64 || "").trim();
+    if (!base64) return null;
+    if (!/^image\/(jpeg|jpg|png|webp)$/i.test(type)) {
+      throw makeError("Product photo must be JPG, PNG, or WEBP.");
     }
+    return "data:" + type + ";base64," + base64;
+  }
 
-    let firstAuthEvent=true;
-
-    f.onAuthStateChanged(f.auth,function(user){
-      if(user){
-        completeAdminLogin(user).catch(function(e){
-          console.error('Admin session restore failed:',e);
-          showLogin();
-          if(msg)msg.textContent=e&&e.message?e.message:'Unable to restore the admin session.';
-        });
+  function compressImageDataUrl(dataUrl) {
+    return new Promise((resolve, reject) => {
+      if (!dataUrl || !dataUrl.startsWith("data:image/")) {
+        resolve(dataUrl || "");
         return;
       }
 
-      // Firebase sends null while determining the initial session only
-      // very briefly. We keep the login screen available and do NOT call
-      // signOut or clear Firebase persistence here.
-      if(firstAuthEvent){
-        firstAuthEvent=false;
-      }
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const maxDimension = 1400;
+          const scale = Math.min(1, maxDimension / Math.max(img.width || 1, img.height || 1));
+          const width = Math.max(1, Math.round((img.width || 1) * scale));
+          const height = Math.max(1, Math.round((img.height || 1) * scale));
+          const canvas = document.createElement("canvas");
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d", { alpha: false });
+          if (!ctx) throw makeError("Your browser cannot process the product photo.");
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(0, 0, width, height);
+          ctx.drawImage(img, 0, 0, width, height);
 
-      if(appBox)appBox.style.display='none';
-      if(loginBox)loginBox.style.display='flex';
-    });
-  }).catch(function(e){
-    console.error('Admin Firebase initialization failed:',e);
-    if(status){
-      status.textContent='⚠ Firebase connection failed';
-      status.style.color='#b91e35';
-    }
-    if(msg)msg.textContent=e&&e.message?e.message:'Unable to connect to Firebase.';
-    showLogin();
-  });
-})();
+          // JPEG keeps the Firestore document comfortably below 1 MiB for normal menu photos.
+          let quality = 0.82;
+          let result = canvas.toDataURL("image/jpeg", quality);
+          while (result.length > 760000 && quality > 0.45) {
+            quality -= 0.07;
+            result = canvas.toDataURL("image/jpeg", quality);
+          }
 
-</script>
+          if (result.length > 820000) {
+            // One more resize pass for unusually detailed/large images.
+            const smaller = document.createElement("canvas");
+            smaller.width = Math.max(1, Math.round(width * 0.75));
+            smaller.height = Math.max(1, Math.round(height * 0.75));
+            const sctx = smaller.getContext("2d", { alpha: false });
+            sctx.fillStyle = "#ffffff";
+            sctx.fillRect(0, 0, smaller.width, smaller.height);
+            sctx.drawImage(img, 0, 0, smaller.width, smaller.height);
+            result = smaller.toDataURL("image/jpeg", 0.65);
+          }
 
+          if (result.length > 850000) {
+            reject(makeError("The product photo is too large. Please choose a smaller image."));
+            return;
+          }
 
-<script id="mckenzie-final-order-workflow-lock">
-(function(){
-  // FINAL ADMIN ORDER WORKFLOW v3 — Preparing / Ready / Delivered buttons only.
-  function scrub(){
-    document.querySelectorAll('#orders .order-actions button').forEach(function(btn){
-      var t=String(btn.textContent||'').trim();
-      if(t==='Pending' || t==='On the Way') btn.remove();
+          resolve(result);
+        } catch (e) {
+          reject(e);
+        }
+      };
+      img.onerror = () => reject(makeError("Unable to process the selected product photo."));
+      img.src = dataUrl;
     });
   }
-  scrub();
-  new MutationObserver(scrub).observe(document.body,{subtree:true,childList:true});
-  setInterval(scrub,500);
+
+  async function prepareProductImage(data) {
+    const raw = data.image;
+
+    if (raw && typeof raw === "object") {
+      return compressImageDataUrl(dataUrlFromImageObject(raw));
+    }
+
+    if (typeof raw === "string" && raw.trim()) {
+      const value = raw.trim();
+      if (value.startsWith("data:image/")) {
+        return compressImageDataUrl(value);
+      }
+      return value;
+    }
+
+    if (typeof data.imageUrl === "string" && data.imageUrl.trim()) {
+      return data.imageUrl.trim();
+    }
+
+    return "";
+  }
+
+  async function saveProduct(data) {
+    const f=await READY;
+    await requireAdmin();
+    data=data||{};
+    const name=String(data.name||"").trim(), category=String(data.category||"").trim();
+    const description=String(data.description||"").trim(), price=Number(data.price);
+    if(!name) throw makeError("Product name is required.");
+    if(!category) throw makeError("Product category is required.");
+    if(!Number.isFinite(price)||price<0) throw makeError("Please enter a valid product price.");
+
+    const id=String(data.id||"").trim() || ("PROD-" + Date.now());
+    const existing = await getDocById("products", id);
+    let image = await prepareProductImage(data);
+
+    // When editing an existing product without choosing a new photo, keep its current image.
+    if (!image && existing && existing.image) image = String(existing.image);
+
+    if (image.startsWith("data:") && image.length > 850000) {
+      throw makeError("The product photo is too large. Please choose a smaller image.");
+    }
+
+    // Normalize the admin status value explicitly.
+    // The HTML select sends "true"/"false" strings, so comparing only
+    // against the boolean false would incorrectly save "false" as true.
+    const available = (
+      data.available === true ||
+      data.available === 1 ||
+      data.available === "true" ||
+      data.available === "1"
+    );
+
+    await f.setDoc(f.doc(f.db,"products",id),{
+      name,category,price,image,description,
+      available,
+      bestSeller:!!data.bestSeller,newProduct:!!data.newProduct,
+      updatedAt:isoNow()
+    },{merge:true});
+    return {success:true,productId:id,products:await getProducts()};
+  }
+
+  async function deleteProduct(id) {
+    const f=await READY;
+    await requireAdmin();
+    id=String(id||"").trim();
+    if(!id) throw makeError("Product ID is required.");
+    await f.deleteDoc(f.doc(f.db,"products",id));
+    return {success:true,products:await getProducts()};
+  }
+
+  async function adminOrders() {
+    await requireAdmin();
+    const list=await getCollection("orders");
+    const orders=list.map(normalizeOrder);
+    const reviews=await getCollection("reviews");
+    const notes=await getCollection("notifications");
+    orders.forEach(o=>{
+      const rs=reviews.filter(r=>String(r.orderId)===o.orderId);
+      const productIds=new Set(rs.map(r=>String(r.productId)));
+      o.reviewTotal=o.items.length;
+      o.reviewedCount=o.items.filter(i=>productIds.has(String(i.productId))).length;
+      o.reviewCompleted=o.reviewTotal>0 && o.reviewedCount>=o.reviewTotal;
+      o.reviewRequested=notes.some(n=>String(n.orderId)===o.orderId && n.type==="REVIEW_REQUEST");
+    });
+    return {success:true,orders:orders.sort((a,b)=>String(b.orderedAt).localeCompare(String(a.orderedAt)))};
+  }
+
+  async function updateOrderItemStatus(orderId,index,status) {
+    const f=await READY; await requireAdmin();
+    const ref=f.doc(f.db,"orders",String(orderId)); const snap=await f.getDoc(ref);
+    if(!snap.exists()) throw makeError("Order not found.");
+    const o=snap.data();
+    if(o.orderStatus==="Delivered" || o.closed) throw makeError("This order is already closed and can no longer be changed.");
+    const items=Array.isArray(o.items)?o.items.map(x=>({...x})):[];
+    const i=Number(index);
+    if(!items[i]) throw makeError("Order item not found.");
+    const current=String(items[i].itemStatus||"Preparing");
+    if(current==="Ready" && String(status)!=="Ready") return {success:true,order:normalizeOrder(o)};
+    items[i].itemStatus=String(status)==="Ready"?"Ready":"Preparing";
+    await f.updateDoc(ref,{items,updatedAt:isoNow()});
+    const fresh=(await f.getDoc(ref)).data();
+    return {success:true,order:normalizeOrder(fresh)};
+  }
+
+  async function updateOrderStatus(orderId,status) {
+    const f=await READY; await requireAdmin();
+    const ref=f.doc(f.db,"orders",String(orderId)); const snap=await f.getDoc(ref);
+    if(!snap.exists()) throw makeError("Order not found.");
+    const o=snap.data(), current=o.orderStatus==="Pending"?"Preparing":(o.orderStatus||"Preparing");
+    if(current==="Delivered" || o.closed) throw makeError("This order is already closed and can no longer be changed.");
+    let next=String(status||"");
+    if(next==="Ready") {
+      if(current!=="Preparing") throw makeError("Order must be in Preparing before it can be marked Ready.");
+      if(!Array.isArray(o.items)||!o.items.length||!o.items.every(i=>String(i.itemStatus||"Preparing")==="Ready")) {
+        throw makeError("All menu items must be Ready before the order can be moved On the Way.");
+      }
+      next="On the Way";
+    } else if(next==="On the Way" && current!=="Ready") {
+      // Kept for compatibility; admin UI normally jumps Ready -> On the Way.
+      throw makeError("Order must be Ready before it can be moved On the Way.");
+    } else if(next==="Delivered" && current!=="On the Way") {
+      throw makeError("Order must be On the Way before it can be marked Delivered.");
+    }
+    const patch={orderStatus:next,updatedAt:isoNow()};
+    if(next==="Delivered") { patch.deliveredAt=isoNow(); patch.customerConfirmed=false; patch.closed=false; }
+    await f.updateDoc(ref,patch);
+    if(next==="Delivered" && o.userId) {
+      const nid="NTF-"+Date.now()+"-"+Math.floor(Math.random()*10000);
+      await f.setDoc(f.doc(f.db,"notifications",nid),{
+        notificationId:nid,userId:o.userId,orderId:String(orderId),type:"RECEIPT_CONFIRMATION",
+        title:"🍜 Did you receive your food?",
+        message:"Your McKenzie Ramen House order was marked as Delivered. Did you receive your food?",
+        createdAt:isoNow(),readAt:""
+      });
+    }
+    return {success:true,order:normalizeOrder((await f.getDoc(ref)).data())};
+  }
+
+  async function adminReviews() {
+    await requireAdmin();
+    const reviews=await getCollection("reviews");
+    const published=reviews.filter(r=>String(r.status||"Published").toLowerCase()==="published");
+    const avg=published.length ? published.reduce((s,r)=>s+Number(r.rating||0),0)/published.length : 0;
+    return {success:true,reviews:reviews.sort((a,b)=>String(b.submittedAt||"").localeCompare(String(a.submittedAt||""))).map(r=>({
+      reviewId:r.reviewId||r.id,orderId:r.orderId,customerId:r.customerId,productId:r.productId,
+      productName:r.productName,rating:r.rating,review:r.review,customerName:r.customerName,
+      submittedAt:cleanTimestamp(r.submittedAt),status:r.status||"Published"
+    })),stats:{total:reviews.length,published:published.length,hidden:reviews.length-published.length,average:Math.round(avg*10)/10}};
+  }
+
+  async function updateReviewStatus(id,status) {
+    const f=await READY; await requireAdmin();
+    if(!["Published","Hidden"].includes(String(status))) throw makeError("Invalid review status.");
+    const ref=f.doc(f.db,"reviews",String(id)); const snap=await f.getDoc(ref);
+    if(!snap.exists()) throw makeError("Review not found.");
+    await f.updateDoc(ref,{status:String(status)});
+    return {success:true,status:String(status)};
+  }
+
+  async function notifyCustomerReview(orderId,forceResend) {
+    const f=await READY; await requireAdmin();
+    const orderSnap=await f.getDoc(f.doc(f.db,"orders",String(orderId)));
+    if(!orderSnap.exists()) throw makeError("Order not found.");
+    const order=orderSnap.data();
+    if(order.orderStatus!=="Delivered") throw makeError("The customer can only be notified after the order is Delivered.");
+    if(!order.customerConfirmed) throw makeError("Wait for the customer to confirm that the order was received before sending the review request.");
+    const reviews=await getCollection("reviews");
+    const complete=(Array.isArray(order.items)?order.items:[]).every(item=>reviews.some(r=>String(r.orderId)===String(orderId)&&String(r.productId)===String(item.productId)));
+    if(complete) return {success:true,sent:false,completed:true,message:"Customer has already reviewed this order."};
+    const notes=await getCollection("notifications");
+    const existing=notes.find(n=>String(n.orderId)===String(orderId)&&n.type==="REVIEW_REQUEST"&&!n.readAt);
+    if(existing && !forceResend) return {success:true,sent:false,alreadyNotified:true,notificationId:existing.notificationId||existing.id,message:"Review notification is already waiting for the customer."};
+    if(forceResend && existing) await f.updateDoc(f.doc(f.db,"notifications",existing.id),{readAt:isoNow()});
+    const nid="NTF-"+Date.now()+"-"+Math.floor(Math.random()*10000);
+    await f.setDoc(f.doc(f.db,"notifications",nid),{
+      notificationId:nid,userId:String(order.userId),orderId:String(orderId),type:"REVIEW_REQUEST",
+      title:"🍜 Your ramen review is ready!",
+      message:"Your order has been delivered. Please share your rating and review for the menu items you received.",
+      createdAt:isoNow(),readAt:""
+    });
+    return {success:true,sent:true,resent:!!forceResend,notificationId:nid,message:forceResend?"Review resent to the customer.":"Review notification sent to the customer."};
+  }
+
+  async function psgc(url) {
+    const r=await fetch(url,{headers:{Accept:"application/json"}});
+    if(!r.ok) throw makeError("Unable to load Philippine location data.");
+    return r.json();
+  }
+
+  async function dispatch(name,args) {
+    args=args||[];
+    switch(name) {
+      case "loginUser": return loginUser(args[0],args[1]);
+      case "requestEmailVerification": return createAccount(args[0],args[1],args[2],args[3],args[4]);
+      case "verifyEmailCode": return verifyEmailCode(args[0],args[1]);
+      case "getUserProfile": return getProfile(args[0]);
+      case "updateUserProfile": return saveProfile(args[0]);
+      case "getCheckoutCustomerById": return getProfile(args[0]);
+      case "getCustomerAddresses": return addresses(args[0]);
+      case "saveCustomerAddress": return saveAddress(args[0]);
+      case "setDefaultCustomerAddress": return setDefaultAddress(args[0],args[1]);
+      case "getProducts": return getProducts();
+      case "getBrandAssets": return getBrandAssets();
+      case "getRamenLoadingImage": return getRamenLoadingImage();
+      case "recordCompletedCustomerOrder": return saveOrder(args[0],args[1]);
+      case "recordOrder": return saveOrder(args[0],args[1]);
+      case "getCustomerOrderHistory": return getOrdersForUser(args[0]);
+      case "getCustomerPaymentHistory": return (await getOrdersForUser(args[0])).map(o=>({orderId:o.orderId,total:o.total,paymentMethod:o.paymentMethod,paymentStatus:o.paymentStatus,orderStatus:o.orderStatus,orderedAt:o.orderedAt}));
+      case "confirmCustomerOrderReceived": return respondReceipt(args[0],args[1],true,"");
+      case "respondCustomerReceipt": return respondReceipt(args[0],args[1],String(args[2]).toLowerCase()==="true",args[3]);
+      case "getCustomerReviewForm": return getReviewForm(args[0],args[1]);
+      case "submitCustomerReview": return submitReview(args[0],args[1],args[2],args[3],args[4]);
+      case "getPublishedReviews": return getPublishedReviews();
+      case "getCustomerNotifications": return getNotifications(args[0]);
+      case "markCustomerNotificationRead": return markNotificationRead(args[0],args[1]);
+      case "requestPasswordResetOtp": return sendPasswordReset(args[0]);
+      case "requestPasswordResetOtpForUser": {
+        const p=await getProfile(args[0]); return sendPasswordReset(p.email);
+      }
+      case "resetPasswordWithOtp": throw makeError("Please use the password-reset link sent to your email.");
+      case "changePassword": return changePassword(args[0],args[1],args[2]);
+      case "getAddressRegions": return psgc("https://psgc.cloud/api/regions");
+      case "getAddressProvinces": return psgc("https://psgc.cloud/api/regions/"+encodeURIComponent(args[0])+"/provinces");
+      case "getAddressCities": return psgc("https://psgc.cloud/api/provinces/"+encodeURIComponent(args[0])+"/cities-municipalities");
+      case "getAddressBarangays": return psgc("https://psgc.cloud/api/cities-municipalities/"+encodeURIComponent(args[0])+"/barangays");
+      case "adminLogin": {
+        const f=await READY;
+        const cred=await f.signInWithEmailAndPassword(f.auth,String(args[0]||"").trim().toLowerCase(),String(args[1]||""));
+        if (!(await isAdmin())) { await f.signOut(f.auth); throw makeError("This Firebase account is not configured as the McKenzie admin."); }
+        return {success:true,token:await cred.user.getIdToken(),email:cred.user.email};
+      }
+      case "adminGetProducts": return getAdminProducts();
+      case "adminSaveProduct": return saveProduct(args[0]);
+      case "adminDeleteProduct": return deleteProduct(args[1]);
+      case "adminGetOrders": return adminOrders();
+      case "adminUpdateOrderItemStatus": return updateOrderItemStatus(args[1],args[2],args[3]);
+      case "adminUpdateOrderStatus": return updateOrderStatus(args[1],args[2]);
+      case "adminGetReviews": return adminReviews();
+      case "adminUpdateReviewStatus": return updateReviewStatus(args[1],args[2]);
+      case "adminNotifyCustomerReview": return notifyCustomerReview(args[1],args[2]);
+      default: throw makeError("Standalone backend function not implemented: " + name);
+    }
+  }
+
+  // Immediate browser-compatible replacement for google.script.run.
+  // Existing UI calls are queued until Firebase modules finish loading.
+  const runner = {
+    _success: null, _failure: null,
+    withSuccessHandler(fn){ this._success=fn; return this; },
+    withFailureHandler(fn){ this._failure=fn; return this; }
+  };
+
+  window.google = window.google || {};
+  window.google.script = window.google.script || {};
+  window.google.script.run = new Proxy(runner, {
+    get(target, prop) {
+      if (prop in target) return target[prop];
+      return function () {
+        const args = Array.from(arguments);
+        const ok = target._success, fail = target._failure;
+        // Reset handlers per invocation, matching google.script.run's behavior.
+        target._success = null; target._failure = null;
+        READY.then(()=>dispatch(String(prop),args))
+          .then(v=>{ if(ok) ok(v); })
+          .catch(e=>{ if(fail) fail(e); else console.error(e); });
+        return target;
+      };
+    }
+  });
+
+  window.dispatchEvent(new Event("mckenzie-firebase-ready"));
 })();
-</script>
