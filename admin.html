@@ -372,6 +372,8 @@ button,input,select,textarea{font:inherit}
 </div>
 </div>
 
+<script src="js/firebase-config.js"></script>
+<script src="js/firebase-standalone.js"></script>
 <script>
 /* McKenzie Ramen House — GitHub/Firebase Admin UI */
 (function(){
@@ -416,7 +418,7 @@ function showApp(){document.getElementById('login').style.display='none';documen
 function loadProducts(){run('adminGetProducts',[token],function(v,e){if(e||!v||!v.success){if(token)alert(e||'Unable to load products.');return;}products=v.products||[];render();});}
 function render(){const q=document.getElementById('search').value.toLowerCase();const list=products.filter(p=>(p.name+' '+p.category).toLowerCase().includes(q));document.getElementById('total').textContent=products.length;document.getElementById('available').textContent=products.filter(p=>p.available).length;document.getElementById('best').textContent=products.filter(p=>p.bestSeller).length;document.getElementById('new').textContent=products.filter(p=>p.newProduct).length;document.getElementById('products').innerHTML=list.length?list.map(p=>`<article class="product"><img src="${p.image||''}" onerror="this.style.visibility='hidden'" alt=""><div class="pbody">${p.bestSeller?'<span class="badge">BEST SELLER</span>':''}${p.newProduct?'<span class="badge">NEW</span>':''}<h3>${esc(p.name)}</h3><div class="price">₱${Number(p.price||0).toLocaleString()}</div><div class="meta">${esc(p.category)} · ${p.available?'Available':'Unavailable'}</div><div class="actions"><button class="edit" onclick="editProduct('${esc(p.id)}')">Edit</button><button class="del" onclick="deleteProduct('${esc(p.id)}')">Delete</button></div></div></article>`).join(''):'<div class="empty">No products found.</div>'; }
 function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
-function escAttr(s){return String(s??'').replace(/\/g,'\\').replace(/'/g,"\'")}
+function escAttr(s){return String(s??'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");}
 function openModal(p=null){editing=p;p=p||{};document.getElementById('modal').classList.add('open');document.getElementById('modalTitle').textContent=p.id?'Edit Product':'Add New Product';document.getElementById('productId').value=p.id||'';document.getElementById('name').value=p.name||'';document.getElementById('price').value=p.price??'';document.getElementById('category').value=p.category||'Ramen';document.getElementById('available').value=p.available?'true':'false';document.getElementById('description').value=p.description||'';document.getElementById('bestSeller').checked=!!p.bestSeller;document.getElementById('newProduct').checked=!!p.newProduct;selectedImage=null;document.getElementById('image').value='';const pr=document.getElementById('preview');pr.src=p.image||'';pr.style.display=p.image?'block':'none';document.getElementById('saveMsg').textContent='';}
 function closeModal(){document.getElementById('modal').classList.remove('open')}
 function editProduct(id){const p=products.find(x=>String(x.id)===String(id));if(p)openModal(p)}
@@ -565,7 +567,7 @@ function renderOrders(){
       '</article>';
   }).join('');
 }
-function escAttr(s){return String(s??'').replace(/\\/g,'\\\\').replace(/'/g,"\\'")}
+function escAttr(s){return String(s??'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");}
 function updateOrderItemStatus(orderId,itemIndex,status){
   const idx=orders.findIndex(function(o){return String(o.orderId)===String(orderId);});
   if(idx<0)return;
@@ -659,12 +661,9 @@ function updateOrderStatus(orderId,status,confirmed){
   });
 }
 
-let lastOrderIds = new Set();
-let orderPollTimer = null;
-let firstOrderLoad = true;
-const savingOrderItems = new Set();
-const savingOrderStatuses = new Set();
-let audioCtx = null;
+orderPollTimer = null;
+firstOrderLoad = true;
+// Existing state declarations are defined near the top of the admin script.
 
 function initAdminNotifications(){
   if (orderPollTimer) clearInterval(orderPollTimer);
@@ -735,7 +734,6 @@ function showNewOrderNotification(newOrders){
   }catch(err){}
 }
 
-let reviews=[];
 function loadReviews(){
   const btn=document.getElementById('refreshReviewsBtn');
   if(btn){btn.disabled=true;btn.textContent='↻ Loading...';}
@@ -848,13 +846,58 @@ function hideAdminToast(){
   clearTimeout(adminToastTimer);
 }
 
-function logout(){token='';sessionStorage.removeItem('mck_admin_token');document.getElementById('app').style.display='none';document.getElementById('login').style.display='flex'}
-if(token){showApp();loadProducts();loadOrders({setBaseline:true});initAdminNotifications()}
+async function logout(){
+  try{
+    if(window.MckenzieFirebaseReady){
+      const f=await window.MckenzieFirebaseReady;
+      if(f&&f.auth&&f.signOut)await f.signOut(f.auth);
+    }
+  }catch(e){console.warn('Firebase sign-out:',e);}
+  token='';
+  sessionStorage.removeItem('mck_admin_token');
+  document.getElementById('app').style.display='none';
+  document.getElementById('login').style.display='flex';
+  const pw=document.getElementById('loginPassword');
+  if(pw)pw.value='';
+}
+
+// Restore the Firebase Auth session after refresh. Firebase Auth uses local
+// persistence by default, so a normal browser refresh should NOT log the admin out.
+(async function restoreAdminSession(){
+  const loginBox=document.getElementById('login');
+  const appBox=document.getElementById('app');
+  const status=document.getElementById('apiStatus');
+  const msg=document.getElementById('loginMsg');
+  try{
+    if(status){status.textContent='Connecting to Firebase…';status.style.color='#756965';}
+    const f=await window.MckenzieFirebaseReady;
+    if(status){status.textContent='● Firebase connected';status.style.color='#23824a';}
+    const user=f&&f.auth?f.auth.currentUser:null;
+    const adminUid=String(window.MCKENZIE_ADMIN_UID||'').trim();
+    if(user && adminUid && user.uid===adminUid){
+      token=await user.getIdToken();
+      sessionStorage.setItem('mck_admin_token',token);
+      if(msg)msg.textContent='';
+      showApp();
+      loadProducts();
+      loadOrders({setBaseline:true});
+      initAdminNotifications();
+      return;
+    }
+    // No valid Firebase admin session. Keep the login screen visible.
+    if(appBox)appBox.style.display='none';
+    if(loginBox)loginBox.style.display='flex';
+  }catch(e){
+    console.error('Admin Firebase session restore failed:',e);
+    if(status){status.textContent='⚠ Firebase connection failed';status.style.color='#b91e35';}
+    if(msg)msg.textContent=e&&e.message?e.message:'Unable to connect to Firebase.';
+    if(appBox)appBox.style.display='none';
+    if(loginBox)loginBox.style.display='flex';
+  }
+})();
 
 </script>
 
-
-</script>
 
 <script id="mckenzie-final-order-workflow-lock">
 (function(){
