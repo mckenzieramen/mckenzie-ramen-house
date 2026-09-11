@@ -226,8 +226,10 @@
 .order-confirm-card {
   position: relative;
   width: min(470px, 94vw);
-  max-height: min(78vh, 620px);
+  max-height: calc(100vh - 24px);
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
   padding: 25px 24px 22px;
   border: 2px solid #e9ad35;
   border-radius: 22px;
@@ -250,8 +252,10 @@
   text-align: center;
 }
 .order-confirm-items {
-  max-height: 34vh;
+  max-height: 42vh;
+  min-height: 0;
   overflow-y: auto;
+  flex: 1 1 auto;
   padding: 3px 4px 3px 0;
   border-top: 1px solid #ead8cf;
   border-bottom: 1px solid #ead8cf;
@@ -291,6 +295,7 @@
   grid-template-columns: 1fr 1.25fr;
   gap: 10px;
   margin-top: 15px;
+  flex: 0 0 auto;
 }
 .order-confirm-actions button {
   min-height: 44px;
@@ -307,7 +312,7 @@
 @media (max-width: 520px) {
   .order-confirm-card { width: min(440px, 94vw); padding: 22px 18px 18px; }
   .order-confirm-card h2 { font-size: 25px; }
-  .order-confirm-items { max-height: 38vh; }
+  .order-confirm-items { max-height: 44vh; }
   .order-confirm-actions { grid-template-columns: 1fr 1fr; }
 }
 
