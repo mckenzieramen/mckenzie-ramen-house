@@ -595,9 +595,19 @@
       throw makeError("The product photo is too large. Please choose a smaller image.");
     }
 
+    // Normalize the admin status value explicitly.
+    // The HTML select sends "true"/"false" strings, so comparing only
+    // against the boolean false would incorrectly save "false" as true.
+    const available = (
+      data.available === true ||
+      data.available === 1 ||
+      data.available === "true" ||
+      data.available === "1"
+    );
+
     await f.setDoc(f.doc(f.db,"products",id),{
       name,category,price,image,description,
-      available:data.available!==false,
+      available,
       bestSeller:!!data.bestSeller,newProduct:!!data.newProduct,
       updatedAt:isoNow()
     },{merge:true});
