@@ -249,7 +249,7 @@ button,input,select,textarea{font:inherit}
 
 <div id="login" class="login">
   <div class="login-card">
-    <img id="adminLoginLogo" class="admin-login-logo" src="images/mckenzie-logo.png" alt="McKenzie Ramen House Logo">
+    <img id="adminLoginLogo" class="admin-login-logo" src="images/mckenzie-logo.png" onerror="this.onerror=null;this.src='images/mckenzie-logo.png'" alt="McKenzie Ramen House Logo">
     <h1>McKenzie Admin</h1>
     <p>Owner access · Products & Orders</p>
     <div id="apiStatus" style="text-align:center;font-size:11px;color:#756965;margin:8px 0 2px">Connecting to Firebase…</div>
@@ -262,7 +262,7 @@ button,input,select,textarea{font:inherit}
 
 <div class="layout" id="app" style="display:none">
 <aside class="side">
-  <div class="brand"><img id="adminSidebarLogo" class="admin-logo-img" src="images/mckenzie-logo.png" alt="McKenzie Ramen House Logo"><h2>McKenzie</h2><small>Ramen House · Admin</small></div>
+  <div class="brand"><img id="adminSidebarLogo" class="admin-logo-img" src="images/mckenzie-logo.png" onerror="this.onerror=null;this.src='images/mckenzie-logo.png'" alt="McKenzie Ramen House Logo"><h2>McKenzie</h2><small>Ramen House · Admin</small></div>
   <div class="nav">
     <button id="navProducts" class="active" onclick="showSection('products')">📦 <span>Products</span></button>
     <button id="navOrders" onclick="showSection('orders')">🧾 <span>Orders</span><b id="orderBadge" style="display:none;margin-left:auto;background:#b91e35;color:#fff;border-radius:999px;padding:2px 7px;font-size:10px">0</b></button>
@@ -405,7 +405,7 @@ button,input,select,textarea{font:inherit}
 })();
 let token=sessionStorage.getItem('mck_admin_token')||'';
 let products=[]; let selectedImage=null; let editing=null; let removeProductImageFlag=false;
-let removeBrandLogoFlag=false; let removeBrandBackgroundFlag=false;
+let removeBrandLogoFlag=false; let removeBrandBackgroundFlag=false; let removeBrandLoadingFlag=false;
 let orders=[]; let reviews=[];
 let lastOrderIds=new Set(); let orderPollTimer=null; let firstOrderLoad=true;
 const savingOrderItems=new Set(); const savingOrderStatuses=new Set();
@@ -749,37 +749,78 @@ function removeBrandAsset(kind){
   const msg=document.getElementById('brandAssetsMsg');if(msg)msg.textContent=(kind==='logo'?'Logo':kind==='background'?'Background':'Loading image')+' marked for removal. Click Save Website Branding to apply.';
 }
 function compressBrandImage(file,maxSide,quality,preserveAlpha){return new Promise(function(resolve,reject){if(!file)return resolve('');const r=new FileReader();r.onload=function(){const img=new Image();img.onload=function(){try{const scale=Math.min(1,maxSide/Math.max(img.width||1,img.height||1));const c=document.createElement('canvas');c.width=Math.max(1,Math.round((img.width||1)*scale));c.height=Math.max(1,Math.round((img.height||1)*scale));const ctx=c.getContext('2d',{alpha:!!preserveAlpha});if(!preserveAlpha){ctx.fillStyle='#fff';ctx.fillRect(0,0,c.width,c.height);}ctx.drawImage(img,0,0,c.width,c.height);let q=quality||.72;let mime=preserveAlpha?'image/png':'image/jpeg';let out=c.toDataURL(mime,q);if(preserveAlpha){if(out.length>700000){let scale2=.9;while(out.length>700000&&scale2>.45){c.width=Math.max(1,Math.round(c.width*scale2));c.height=Math.max(1,Math.round(c.height*scale2));const c2=c.getContext('2d',{alpha:true});c2.clearRect(0,0,c.width,c.height);c2.drawImage(img,0,0,c.width,c.height);out=c.toDataURL('image/png');scale2-=.08;}}}else{while(out.length>700000&&q>.35){q-=.06;out=c.toDataURL(mime,q)}}if(out.length>360000)reject(new Error('Image is still too large after compression. Please choose a smaller image.'));else resolve(out)}catch(e){reject(e)}};img.onerror=function(){reject(new Error('Unable to read the selected image.'))};img.src=r.result};r.onerror=reject;r.readAsDataURL(file)})}
-async function brandPatch(fields){
-  const idToken=token||sessionStorage.getItem('mck_admin_token')||'';if(!idToken)throw new Error('Admin session expired. Please log in again.');
-  const r=await fetch('https://firestore.googleapis.com/v1/projects/mckenzie-ramen-house/databases/(default)/documents/brandAssets/main',{method:'PATCH',headers:{'Authorization':'Bearer '+idToken,'Content-Type':'application/json'},body:JSON.stringify({fields})});
-  if(!r.ok){let t=await r.text(),d={};try{d=JSON.parse(t)}catch(e){};throw new Error(d.error&&d.error.message?d.error.message:'Unable to save website branding.')}
+async function brandPatchDoc(key,fields){
+  const idToken=token||sessionStorage.getItem('mck_admin_token')||'';
+  if(!idToken)throw new Error('Admin session expired. Please log in again.');
+  const r=await fetch('https://firestore.googleapis.com/v1/projects/mckenzie-ramen-house/databases/(default)/documents/brandAssets/'+encodeURIComponent(String(key)),{
+    method:'PATCH',
+    headers:{'Authorization':'Bearer '+idToken,'Content-Type':'application/json'},
+    body:JSON.stringify({fields:fields})
+  });
+  if(!r.ok){
+    let t=await r.text(),d={};try{d=JSON.parse(t)}catch(e){}
+    throw new Error(d.error&&d.error.message?d.error.message:'Unable to save website branding.')
+  }
 }
 async function deleteBrandDoc(key){
   const idToken=token||sessionStorage.getItem('mck_admin_token')||'';if(!idToken)return;
-  const r=await fetch('https://firestore.googleapis.com/v1/projects/mckenzie-ramen-house/databases/(default)/documents/brandAssets/'+key,{method:'DELETE',headers:{'Authorization':'Bearer '+idToken}});
+  const r=await fetch('https://firestore.googleapis.com/v1/projects/mckenzie-ramen-house/databases/(default)/documents/brandAssets/'+encodeURIComponent(String(key)),{method:'DELETE',headers:{'Authorization':'Bearer '+idToken}});
   if(!r.ok&&r.status!==404){let t=await r.text(),d={};try{d=JSON.parse(t)}catch(e){};throw new Error(d.error&&d.error.message?d.error.message:'Unable to update website branding.')}
 }
 async function saveBrandAssets(){
-  const btn=document.getElementById('saveBrandAssetsBtn'),msg=document.getElementById('brandAssetsMsg');if(btn){btn.disabled=true;btn.textContent='Saving Branding…'}if(msg)msg.textContent='Preparing images…';
+  const btn=document.getElementById('saveBrandAssetsBtn'),msg=document.getElementById('brandAssetsMsg');
+  if(btn){btn.disabled=true;btn.textContent='Saving Branding…'}
+  if(msg)msg.textContent='Preparing images…';
   try{
     const vals=await Promise.all([
       compressBrandImage(selectedBrandLogo,1400,.76,true),
       compressBrandImage(selectedBrandBackground,1600,.68,false),
       compressBrandImage(selectedBrandLoading,1400,.70,true)
     ]);
-    const oldLogo=currentBrandAssets.logo||currentBrandAssets.logoUrl||'',oldBg=currentBrandAssets.background||currentBrandAssets.backgroundUrl||'',oldLoading=currentBrandAssets.loading||currentBrandAssets.ramenLoadingImage||currentBrandAssets.ramenLoading||'';
+    const oldLogo=currentBrandAssets.logo||currentBrandAssets.logoUrl||'';
+    const oldBg=currentBrandAssets.background||currentBrandAssets.backgroundUrl||'';
+    const oldLoading=currentBrandAssets.loading||currentBrandAssets.ramenLoadingImage||currentBrandAssets.ramenLoading||'';
     const logo=vals[0] || (removeBrandLogoFlag?'':oldLogo);
     const background=vals[1] || (removeBrandBackgroundFlag?'':oldBg);
     const loading=vals[2] || (removeBrandLoadingFlag?'':oldLoading);
     if(msg)msg.textContent='Saving to Firebase…';
-    await brandPatch({logo:{stringValue:logo},background:{stringValue:background},loading:{stringValue:loading},ramenLoadingImage:{stringValue:loading},updatedAt:{stringValue:new Date().toISOString()}});
-    await Promise.all([deleteBrandDoc('logo'),deleteBrandDoc('background'),deleteBrandDoc('loading')]);
-    currentBrandAssets={logo,background,loading,ramenLoadingImage:loading};removeBrandLogoFlag=false;removeBrandBackgroundFlag=false;removeBrandLoadingFlag=false;selectedBrandLogo=null;selectedBrandBackground=null;selectedBrandLoading=null;
+
+    // Store each image in its own document. This avoids exceeding Firestore's
+    // 1 MiB document limit when logo + background + loading are all present.
+    const now=new Date().toISOString();
+    const writes=[];
+    if(logo){
+      writes.push(brandPatchDoc('logo',{imageUrl:{stringValue:logo},logo:{stringValue:logo},updatedAt:{stringValue:now}}));
+    }else{
+      writes.push(deleteBrandDoc('logo'));
+    }
+    if(background){
+      writes.push(brandPatchDoc('background',{imageUrl:{stringValue:background},background:{stringValue:background},updatedAt:{stringValue:now}}));
+    }else{
+      writes.push(deleteBrandDoc('background'));
+    }
+    if(loading){
+      writes.push(brandPatchDoc('loading',{imageUrl:{stringValue:loading},loading:{stringValue:loading},ramenLoadingImage:{stringValue:loading},updatedAt:{stringValue:now}}));
+    }else{
+      writes.push(deleteBrandDoc('loading'));
+    }
+    await Promise.all(writes);
+
+    // Keep only lightweight metadata in main. Do not store the image strings here.
+    await brandPatchDoc('main',{updatedAt:{stringValue:now},brandingVersion:{integerValue:'2'}});
+
+    currentBrandAssets={logo,background,loading,ramenLoadingImage:loading};
+    removeBrandLogoFlag=false;removeBrandBackgroundFlag=false;removeBrandLoadingFlag=false;
+    selectedBrandLogo=null;selectedBrandBackground=null;selectedBrandLoading=null;
     ['brandLogoFile','brandBackgroundFile','brandLoadingFile'].forEach(function(id){const f=document.getElementById(id);if(f)f.value='';});
     if(msg)msg.textContent='✓ Website branding and loading image saved successfully.';
     loadBrandAssets();
     showCenteredUpdate('Website Updated','Your logo, background, and loading image changes were saved successfully.');
-  }catch(e){if(msg)msg.textContent=e&&e.message?e.message:String(e)}finally{if(btn){btn.disabled=false;btn.textContent='Save Website Branding'}}
+  }catch(e){
+    if(msg)msg.textContent=e&&e.message?e.message:String(e)
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent='Save Website Branding'}
+  }
 }
 (function(){
   const lf=document.getElementById('brandLogoFile'),bf=document.getElementById('brandBackgroundFile'),xf=document.getElementById('brandLoadingFile');
