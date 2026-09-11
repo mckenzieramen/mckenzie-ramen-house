@@ -249,7 +249,7 @@ button,input,select,textarea{font:inherit}
 
 <div id="login" class="login">
   <div class="login-card">
-    <img id="adminLoginLogo" class="admin-login-logo" src="images/mckenzie-logo.png" onerror="this.onerror=null;this.src='images/mckenzie-logo.png'" alt="McKenzie Ramen House Logo">
+    <img id="adminLoginLogo" class="admin-login-logo" src="images/mckenzie-logo.png" alt="McKenzie Ramen House Logo">
     <h1>McKenzie Admin</h1>
     <p>Owner access · Products & Orders</p>
     <div id="apiStatus" style="text-align:center;font-size:11px;color:#756965;margin:8px 0 2px">Connecting to Firebase…</div>
@@ -262,7 +262,7 @@ button,input,select,textarea{font:inherit}
 
 <div class="layout" id="app" style="display:none">
 <aside class="side">
-  <div class="brand"><img id="adminSidebarLogo" class="admin-logo-img" src="images/mckenzie-logo.png" onerror="this.onerror=null;this.src='images/mckenzie-logo.png'" alt="McKenzie Ramen House Logo"><h2>McKenzie</h2><small>Ramen House · Admin</small></div>
+  <div class="brand"><img id="adminSidebarLogo" class="admin-logo-img" src="images/mckenzie-logo.png" alt="McKenzie Ramen House Logo"><h2>McKenzie</h2><small>Ramen House · Admin</small></div>
   <div class="nav">
     <button id="navProducts" class="active" onclick="showSection('products')">📦 <span>Products</span></button>
     <button id="navOrders" onclick="showSection('orders')">🧾 <span>Orders</span><b id="orderBadge" style="display:none;margin-left:auto;background:#b91e35;color:#fff;border-radius:999px;padding:2px 7px;font-size:10px">0</b></button>
@@ -405,7 +405,7 @@ button,input,select,textarea{font:inherit}
 })();
 let token=sessionStorage.getItem('mck_admin_token')||'';
 let products=[]; let selectedImage=null; let editing=null; let removeProductImageFlag=false;
-let removeBrandLogoFlag=false; let removeBrandBackgroundFlag=false; let removeBrandLoadingFlag=false;
+let removeBrandLogoFlag=false; let removeBrandBackgroundFlag=false;
 let orders=[]; let reviews=[];
 let lastOrderIds=new Set(); let orderPollTimer=null; let firstOrderLoad=true;
 const savingOrderItems=new Set(); const savingOrderStatuses=new Set();
@@ -575,19 +575,13 @@ async function login(){
   }
 })();
 
-function normalizeAvailability(value){
-  if(value===true || value===1) return true;
-  if(typeof value==='string'){
-    const v=value.trim().toLowerCase();
-    return v==='true' || v==='1' || v==='available' || v==='yes' || v==='on';
-  }
-  if(value && typeof value==='object'){
-    if(value.booleanValue===true) return true;
-    if(value.booleanValue===false) return false;
-    if(typeof value.stringValue==='string') return normalizeAvailability(value.stringValue);
-    if(typeof value.integerValue==='string') return normalizeAvailability(value.integerValue);
-  }
-  return false;
+async function forceAvailabilitySave(productId, availableValue){
+  const idToken=token||sessionStorage.getItem('mck_admin_token')||'';
+  if(!idToken||!productId) throw new Error('Admin session expired. Please log in again.');
+  const url='https://firestore.googleapis.com/v1/projects/mckenzie-ramen-house/databases/(default)/documents/products/'+encodeURIComponent(String(productId))+'?updateMask.fieldPaths=available';
+  const r=await fetch(url,{method:'PATCH',headers:{'Authorization':'Bearer '+idToken,'Content-Type':'application/json'},body:JSON.stringify({fields:{available:{booleanValue:!!availableValue}}})});
+  if(!r.ok){let t=await r.text(),d={};try{d=JSON.parse(t)}catch(e){};throw new Error(d.error&&d.error.message?d.error.message:'Unable to save product availability.');}
+  return true;
 }
 
 function loadProducts(afterLoad){
@@ -597,7 +591,7 @@ function loadProducts(afterLoad){
       return;
     }
     products=(v.products||[]).map(function(p){
-      p.available=normalizeAvailability(p.available);
+      p.available=(p.available===true || p.available==='true' || p.available===1 || p.available==='1');
       p.image=p.image||'';
       return p;
     });
@@ -605,7 +599,7 @@ function loadProducts(afterLoad){
     if(typeof afterLoad==='function')afterLoad(products);
   });
 }
-function render(){const q=document.getElementById('search').value.toLowerCase();const list=products.filter(p=>(p.name+' '+p.category).toLowerCase().includes(q));document.getElementById('total').textContent=products.length;document.getElementById('available').textContent=products.filter(p=>normalizeAvailability(p.available)).length;document.getElementById('best').textContent=products.filter(p=>p.bestSeller).length;document.getElementById('new').textContent=products.filter(p=>p.newProduct).length;document.getElementById('products').innerHTML=list.length?list.map(p=>`<article class="product"><img src="${escAttr(p.image||'')}" onerror="this.style.visibility='hidden'" alt=""><div class="pbody">${p.bestSeller?'<span class="badge">BEST SELLER</span>':''}${p.newProduct?'<span class="badge">NEW</span>':''}<h3>${esc(p.name)}</h3><div class="price">₱${Number(p.price||0).toLocaleString()}</div><div class="meta">${esc(p.category)} · ${normalizeAvailability(p.available)?'Available':'Unavailable'}</div><div class="actions"><button class="edit" onclick="editProduct('${esc(p.id)}')">Edit</button><button class="del" onclick="deleteProduct('${esc(p.id)}')">Delete</button></div></div></article>`).join(''):'<div class="empty">No products found.</div>'; }
+function render(){const q=document.getElementById('search').value.toLowerCase();const list=products.filter(p=>(p.name+' '+p.category).toLowerCase().includes(q));document.getElementById('total').textContent=products.length;document.getElementById('available').textContent=products.filter(p=>p.available).length;document.getElementById('best').textContent=products.filter(p=>p.bestSeller).length;document.getElementById('new').textContent=products.filter(p=>p.newProduct).length;document.getElementById('products').innerHTML=list.length?list.map(p=>`<article class="product"><img src="${escAttr(p.image||'')}" onerror="this.style.visibility='hidden'" alt=""><div class="pbody">${p.bestSeller?'<span class="badge">BEST SELLER</span>':''}${p.newProduct?'<span class="badge">NEW</span>':''}<h3>${esc(p.name)}</h3><div class="price">₱${Number(p.price||0).toLocaleString()}</div><div class="meta">${esc(p.category)} · ${p.available?'Available':'Unavailable'}</div><div class="actions"><button class="edit" onclick="editProduct('${esc(p.id)}')">Edit</button><button class="del" onclick="deleteProduct('${esc(p.id)}')">Delete</button></div></div></article>`).join(''):'<div class="empty">No products found.</div>'; }
 function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
 function escAttr(s){return String(s??'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");}
 function setProductPreview(src){
@@ -621,7 +615,7 @@ function openModal(p=null){
   document.getElementById('name').value=p.name||'';
   document.getElementById('price').value=p.price??'';
   document.getElementById('category').value=p.category||'Ramen';
-  document.getElementById('available').value=normalizeAvailability(p.available!==undefined?p.available:(p.status!==undefined?p.status:p.availability))?'true':'false';
+  document.getElementById('available').value=p.available?'true':'false';
   document.getElementById('description').value=p.description||'';
   document.getElementById('bestSeller').checked=!!p.bestSeller;
   document.getElementById('newProduct').checked=!!p.newProduct;
@@ -683,7 +677,7 @@ async function saveProduct(){
       name,
       price:Number(price),
       category:document.getElementById('category').value,
-      available:normalizeAvailability(document.getElementById('available').value),
+      available:document.getElementById('available').value==='true',
       description:document.getElementById('description').value.trim(),
       bestSeller:document.getElementById('bestSeller').checked,
       newProduct:document.getElementById('newProduct').checked
@@ -695,9 +689,15 @@ async function saveProduct(){
       data.image='';
     }
     const saved=await new Promise((resolve,reject)=>run('adminSaveProduct',[data],(v,e)=>e?reject(new Error(e)):(!v||!v.success)?reject(new Error('Unable to save product.')):resolve(v)));
+
+    // Definitive availability write: the HTML select is converted to a real
+    // Firestore boolean here as a second guard, so legacy records or cached
+    // bridge versions cannot turn "Available" back into false.
+    await forceAvailabilitySave(saved.productId||id, data.available===true);
+
     if(saved && Array.isArray(saved.products)){
       products=(saved.products||[]).map(function(p){
-        p.available=normalizeAvailability(p.available);
+        p.available=(p.available===true || p.available==='true' || p.available===1 || p.available==='1');
         p.image=p.image||'';
         return p;
       });
@@ -763,143 +763,38 @@ function removeBrandAsset(kind){
   if(kind==='loading'){selectedBrandLoading=null;removeBrandLoadingFlag=true;const f=document.getElementById('brandLoadingFile');if(f)f.value='';const p=document.getElementById('brandLoadingPreview');if(p){p.src='';p.style.display='none';}const b=document.getElementById('removeBrandLoadingBtn');if(b)b.hidden=true;}
   const msg=document.getElementById('brandAssetsMsg');if(msg)msg.textContent=(kind==='logo'?'Logo':kind==='background'?'Background':'Loading image')+' marked for removal. Click Save Website Branding to apply.';
 }
-function compressBrandImage(file,maxSide,quality,preserveAlpha,targetBytes){
-  return new Promise(function(resolve,reject){
-    if(!file)return resolve('');
-    const r=new FileReader();
-    r.onload=function(){
-      const img=new Image();
-      img.onload=function(){
-        try{
-          const limit=targetBytes||260000;
-          const originalW=img.width||1, originalH=img.height||1;
-          let scale=Math.min(1,maxSide/Math.max(originalW,originalH));
-          let width=Math.max(1,Math.round(originalW*scale));
-          let height=Math.max(1,Math.round(originalH*scale));
-          let q=quality||.68;
-          const mime=preserveAlpha?'image/png':'image/jpeg';
-          let out='';
-
-          // Re-render from the original image each time so repeated resizing
-          // does not compound blur or accidentally retain an oversized canvas.
-          function render(){
-            const c=document.createElement('canvas');
-            c.width=width;c.height=height;
-            const ctx=c.getContext('2d',{alpha:!!preserveAlpha});
-            if(!preserveAlpha){
-              ctx.fillStyle='#fff';
-              ctx.fillRect(0,0,width,height);
-            }else{
-              ctx.clearRect(0,0,width,height);
-            }
-            ctx.drawImage(img,0,0,width,height);
-            out=preserveAlpha?c.toDataURL(mime):c.toDataURL(mime,q);
-          }
-
-          render();
-
-          // Keep branding documents comfortably below Firestore's 1 MiB limit.
-          // Loading images intentionally use JPEG in saveBrandAssets() because
-          // the supplied loading artwork does not need transparent alpha.
-          let guard=0;
-          while(out.length>limit && guard<30){
-            guard++;
-            if(!preserveAlpha && q>.28){
-              q=Math.max(.28,q-.08);
-            }else{
-              const shrink=out.length>limit*2?.72:.84;
-              width=Math.max(320,Math.round(width*shrink));
-              height=Math.max(240,Math.round(height*shrink));
-            }
-            render();
-            if(width<=320 && height<=240 && (!preserveAlpha || q<=.28) && out.length>limit)break;
-          }
-
-          if(out.length>limit){
-            throw new Error('Image is still too large after compression. Please choose a smaller image.');
-          }
-          resolve(out);
-        }catch(e){reject(e)}
-      };
-      img.onerror=function(){reject(new Error('Unable to read the selected image.'))};
-      img.src=r.result;
-    };
-    r.onerror=reject;
-    r.readAsDataURL(file);
-  });
-}
-async function brandPatchDoc(key,fields){
-  const idToken=token||sessionStorage.getItem('mck_admin_token')||'';
-  if(!idToken)throw new Error('Admin session expired. Please log in again.');
-  const r=await fetch('https://firestore.googleapis.com/v1/projects/mckenzie-ramen-house/databases/(default)/documents/brandAssets/'+encodeURIComponent(String(key)),{
-    method:'PATCH',
-    headers:{'Authorization':'Bearer '+idToken,'Content-Type':'application/json'},
-    body:JSON.stringify({fields:fields})
-  });
-  if(!r.ok){
-    let t=await r.text(),d={};try{d=JSON.parse(t)}catch(e){}
-    throw new Error(d.error&&d.error.message?d.error.message:'Unable to save website branding.')
-  }
+function compressBrandImage(file,maxSide,quality,preserveAlpha){return new Promise(function(resolve,reject){if(!file)return resolve('');const r=new FileReader();r.onload=function(){const img=new Image();img.onload=function(){try{const scale=Math.min(1,maxSide/Math.max(img.width||1,img.height||1));const c=document.createElement('canvas');c.width=Math.max(1,Math.round((img.width||1)*scale));c.height=Math.max(1,Math.round((img.height||1)*scale));const ctx=c.getContext('2d',{alpha:!!preserveAlpha});if(!preserveAlpha){ctx.fillStyle='#fff';ctx.fillRect(0,0,c.width,c.height);}ctx.drawImage(img,0,0,c.width,c.height);let q=quality||.72;let mime=preserveAlpha?'image/png':'image/jpeg';let out=c.toDataURL(mime,q);if(preserveAlpha){if(out.length>700000){let scale2=.9;while(out.length>700000&&scale2>.45){c.width=Math.max(1,Math.round(c.width*scale2));c.height=Math.max(1,Math.round(c.height*scale2));const c2=c.getContext('2d',{alpha:true});c2.clearRect(0,0,c.width,c.height);c2.drawImage(img,0,0,c.width,c.height);out=c.toDataURL('image/png');scale2-=.08;}}}else{while(out.length>700000&&q>.35){q-=.06;out=c.toDataURL(mime,q)}}if(out.length>360000)reject(new Error('Image is still too large after compression. Please choose a smaller image.'));else resolve(out)}catch(e){reject(e)}};img.onerror=function(){reject(new Error('Unable to read the selected image.'))};img.src=r.result};r.onerror=reject;r.readAsDataURL(file)})}
+async function brandPatch(fields){
+  const idToken=token||sessionStorage.getItem('mck_admin_token')||'';if(!idToken)throw new Error('Admin session expired. Please log in again.');
+  const r=await fetch('https://firestore.googleapis.com/v1/projects/mckenzie-ramen-house/databases/(default)/documents/brandAssets/main',{method:'PATCH',headers:{'Authorization':'Bearer '+idToken,'Content-Type':'application/json'},body:JSON.stringify({fields})});
+  if(!r.ok){let t=await r.text(),d={};try{d=JSON.parse(t)}catch(e){};throw new Error(d.error&&d.error.message?d.error.message:'Unable to save website branding.')}
 }
 async function deleteBrandDoc(key){
   const idToken=token||sessionStorage.getItem('mck_admin_token')||'';if(!idToken)return;
-  const r=await fetch('https://firestore.googleapis.com/v1/projects/mckenzie-ramen-house/databases/(default)/documents/brandAssets/'+encodeURIComponent(String(key)),{method:'DELETE',headers:{'Authorization':'Bearer '+idToken}});
+  const r=await fetch('https://firestore.googleapis.com/v1/projects/mckenzie-ramen-house/databases/(default)/documents/brandAssets/'+key,{method:'DELETE',headers:{'Authorization':'Bearer '+idToken}});
   if(!r.ok&&r.status!==404){let t=await r.text(),d={};try{d=JSON.parse(t)}catch(e){};throw new Error(d.error&&d.error.message?d.error.message:'Unable to update website branding.')}
 }
 async function saveBrandAssets(){
-  const btn=document.getElementById('saveBrandAssetsBtn'),msg=document.getElementById('brandAssetsMsg');
-  if(btn){btn.disabled=true;btn.textContent='Saving Branding…'}
-  if(msg)msg.textContent='Preparing images…';
+  const btn=document.getElementById('saveBrandAssetsBtn'),msg=document.getElementById('brandAssetsMsg');if(btn){btn.disabled=true;btn.textContent='Saving Branding…'}if(msg)msg.textContent='Preparing images…';
   try{
     const vals=await Promise.all([
-      compressBrandImage(selectedBrandLogo,1200,.76,true,300000),
-      compressBrandImage(selectedBrandBackground,1400,.66,false,300000),
-      compressBrandImage(selectedBrandLoading,900,.58,false,220000)
+      compressBrandImage(selectedBrandLogo,1400,.76,true),
+      compressBrandImage(selectedBrandBackground,1600,.68,false),
+      compressBrandImage(selectedBrandLoading,1400,.70,true)
     ]);
-    const oldLogo=currentBrandAssets.logo||currentBrandAssets.logoUrl||'';
-    const oldBg=currentBrandAssets.background||currentBrandAssets.backgroundUrl||'';
-    const oldLoading=currentBrandAssets.loading||currentBrandAssets.ramenLoadingImage||currentBrandAssets.ramenLoading||'';
+    const oldLogo=currentBrandAssets.logo||currentBrandAssets.logoUrl||'',oldBg=currentBrandAssets.background||currentBrandAssets.backgroundUrl||'',oldLoading=currentBrandAssets.loading||currentBrandAssets.ramenLoadingImage||currentBrandAssets.ramenLoading||'';
     const logo=vals[0] || (removeBrandLogoFlag?'':oldLogo);
     const background=vals[1] || (removeBrandBackgroundFlag?'':oldBg);
     const loading=vals[2] || (removeBrandLoadingFlag?'':oldLoading);
     if(msg)msg.textContent='Saving to Firebase…';
-
-    // Store each image in its own document. This avoids exceeding Firestore's
-    // 1 MiB document limit when logo + background + loading are all present.
-    const now=new Date().toISOString();
-    const writes=[];
-    if(logo){
-      writes.push(brandPatchDoc('logo',{imageUrl:{stringValue:logo},logo:{stringValue:logo},updatedAt:{stringValue:now}}));
-    }else{
-      writes.push(deleteBrandDoc('logo'));
-    }
-    if(background){
-      writes.push(brandPatchDoc('background',{imageUrl:{stringValue:background},background:{stringValue:background},updatedAt:{stringValue:now}}));
-    }else{
-      writes.push(deleteBrandDoc('background'));
-    }
-    if(loading){
-      writes.push(brandPatchDoc('loading',{imageUrl:{stringValue:loading},loading:{stringValue:loading},ramenLoadingImage:{stringValue:loading},updatedAt:{stringValue:now}}));
-    }else{
-      writes.push(deleteBrandDoc('loading'));
-    }
-    await Promise.all(writes);
-
-    // Keep only lightweight metadata in main. Do not store the image strings here.
-    await brandPatchDoc('main',{updatedAt:{stringValue:now},brandingVersion:{integerValue:'2'}});
-
-    currentBrandAssets={logo,background,loading,ramenLoadingImage:loading};
-    removeBrandLogoFlag=false;removeBrandBackgroundFlag=false;removeBrandLoadingFlag=false;
-    selectedBrandLogo=null;selectedBrandBackground=null;selectedBrandLoading=null;
+    await brandPatch({logo:{stringValue:logo},background:{stringValue:background},loading:{stringValue:loading},ramenLoadingImage:{stringValue:loading},updatedAt:{stringValue:new Date().toISOString()}});
+    await Promise.all([deleteBrandDoc('logo'),deleteBrandDoc('background'),deleteBrandDoc('loading')]);
+    currentBrandAssets={logo,background,loading,ramenLoadingImage:loading};removeBrandLogoFlag=false;removeBrandBackgroundFlag=false;removeBrandLoadingFlag=false;selectedBrandLogo=null;selectedBrandBackground=null;selectedBrandLoading=null;
     ['brandLogoFile','brandBackgroundFile','brandLoadingFile'].forEach(function(id){const f=document.getElementById(id);if(f)f.value='';});
     if(msg)msg.textContent='✓ Website branding and loading image saved successfully.';
     loadBrandAssets();
     showCenteredUpdate('Website Updated','Your logo, background, and loading image changes were saved successfully.');
-  }catch(e){
-    if(msg)msg.textContent=e&&e.message?e.message:String(e)
-  }finally{
-    if(btn){btn.disabled=false;btn.textContent='Save Website Branding'}
-  }
+  }catch(e){if(msg)msg.textContent=e&&e.message?e.message:String(e)}finally{if(btn){btn.disabled=false;btn.textContent='Save Website Branding'}}
 }
 (function(){
   const lf=document.getElementById('brandLogoFile'),bf=document.getElementById('brandBackgroundFile'),xf=document.getElementById('brandLoadingFile');
