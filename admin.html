@@ -353,7 +353,7 @@ button,input,select,textarea{font:inherit}
       </div>
       <div class="settings-card">
         <h3>🍜 Ramen Loading Image</h3>
-        <p>Upload the image shown while the customer website is loading.</p>
+        <p>Upload the image shown while the customer website is loading. It is compressed for Firestore compatibility.</p>
         <label class="brand-upload" for="brandLoadingFile">
           <strong>📷 Choose Loading Image</strong>
           <small>JPG, PNG, or WEBP</small>
@@ -775,7 +775,7 @@ async function saveBrandAssets(){
     const vals=await Promise.all([
       compressBrandImage(selectedBrandLogo,1400,.76,true),
       compressBrandImage(selectedBrandBackground,1600,.68,false),
-      compressBrandImage(selectedBrandLoading,1400,.70,true)
+      compressBrandImage(selectedBrandLoading,1400,.70,false)
     ]);
     const oldLogo=currentBrandAssets.logo||currentBrandAssets.logoUrl||'';
     const oldBg=currentBrandAssets.background||currentBrandAssets.backgroundUrl||'';
