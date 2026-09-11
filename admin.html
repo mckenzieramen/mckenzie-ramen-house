@@ -246,6 +246,17 @@ button,input,select,textarea{font:inherit}
     </div>
   </div>
 </div>
+<div id="productDeleteConfirmModal" class="custom-confirm-overlay" aria-hidden="true">
+  <div class="custom-confirm-card" role="dialog" aria-modal="true" aria-labelledby="productDeleteConfirmTitle">
+    <div class="custom-confirm-icon">🗑️</div>
+    <h2 id="productDeleteConfirmTitle">Delete Product?</h2>
+    <p id="productDeleteConfirmMessage">Are you sure you want to delete this product? This action cannot be undone.</p>
+    <div class="custom-confirm-actions">
+      <button type="button" class="custom-confirm-cancel" onclick="closeProductDeleteConfirm()">Cancel</button>
+      <button type="button" id="productDeleteConfirmBtn" class="custom-confirm-ok" onclick="approveProductDeleteConfirm()">Yes, Delete</button>
+    </div>
+  </div>
+</div>
 
 <div id="login" class="login">
   <div class="login-card">
@@ -1608,7 +1619,37 @@ async function saveProduct(){
     saveMsg.textContent=e&&e.message?e.message:String(e);
   }
 }
-function deleteProduct(id){if(!confirm('Delete this product?'))return;run('adminDeleteProduct',[token,id],function(v,e){if(e||!v||!v.success){alert(e||'Delete failed.');return}loadProducts();showCenteredUpdate('Product Updated','The product was deleted successfully.')})}
+let pendingProductDeleteId=null;
+function deleteProduct(id){
+  pendingProductDeleteId=id;
+  const p=products.find(function(item){return String(item.id)===String(id);});
+  const name=p&&p.name?p.name:'this product';
+  const msg=document.getElementById('productDeleteConfirmMessage');
+  const btn=document.getElementById('productDeleteConfirmBtn');
+  if(msg)msg.textContent='Are you sure you want to delete “'+name+'”? This action cannot be undone.';
+  if(btn){btn.disabled=false;btn.textContent='Yes, Delete';}
+  const overlay=document.getElementById('productDeleteConfirmModal');
+  if(overlay){overlay.classList.add('show');overlay.setAttribute('aria-hidden','false');}
+}
+function closeProductDeleteConfirm(){
+  pendingProductDeleteId=null;
+  const overlay=document.getElementById('productDeleteConfirmModal');
+  const btn=document.getElementById('productDeleteConfirmBtn');
+  if(btn){btn.disabled=false;btn.textContent='Yes, Delete';}
+  if(overlay){overlay.classList.remove('show');overlay.setAttribute('aria-hidden','true');}
+}
+function approveProductDeleteConfirm(){
+  const id=pendingProductDeleteId;
+  if(!id)return;
+  const btn=document.getElementById('productDeleteConfirmBtn');
+  if(btn){btn.disabled=true;btn.textContent='Deleting…';}
+  run('adminDeleteProduct',[token,id],function(v,e){
+    closeProductDeleteConfirm();
+    if(e||!v||!v.success){alert(e||'Delete failed.');return}
+    loadProducts();
+    showCenteredUpdate('Product Deleted','The product was deleted successfully.');
+  });
+}
 
 function showSection(section){const productsPanel=document.querySelector('.main > .panel:not(#ordersSection):not(#reviewsSection):not(#settingsSection)'),productsStats=document.querySelector('.main > .stats'),productsTop=document.querySelector('.main > .top'),ordersSection=document.getElementById('ordersSection'),reviewsSection=document.getElementById('reviewsSection'),settingsSection=document.getElementById('settingsSection'),navProducts=document.getElementById('navProducts'),navOrders=document.getElementById('navOrders'),navReviews=document.getElementById('navReviews'),navSettings=document.getElementById('navSettings');const isOrders=section==='orders',isReviews=section==='reviews',isSettings=section==='settings';if(productsPanel)productsPanel.style.display=(isOrders||isReviews||isSettings)?'none':'';if(productsStats)productsStats.style.display=(isOrders||isReviews||isSettings)?'none':'';if(productsTop)productsTop.style.display=(isOrders||isReviews||isSettings)?'none':'';if(ordersSection)ordersSection.style.display=isOrders?'block':'none';if(reviewsSection)reviewsSection.style.display=isReviews?'block':'none';if(settingsSection)settingsSection.style.display=isSettings?'block':'none';if(navProducts)navProducts.classList.toggle('active',!isOrders&&!isReviews&&!isSettings);if(navOrders)navOrders.classList.toggle('active',isOrders);if(navReviews)navReviews.classList.toggle('active',isReviews);if(navSettings)navSettings.classList.toggle('active',isSettings);if(isOrders)loadOrders();if(isReviews)loadReviews();if(isSettings)loadBrandAssets();}
 
