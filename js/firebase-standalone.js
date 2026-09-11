@@ -54,15 +54,6 @@
 
   function isoNow() { return new Date().toISOString(); }
 
-  // Product availability must always cross the UI/Firebase boundary as a
-  // real boolean. Older product documents may contain "true"/"false"
-  // strings, so normalize them while loading as well.
-  function toAvailableBoolean(value) {
-    if (value === false || value === "false" || value === 0 || value === "0") return false;
-    if (value === true || value === "true" || value === 1 || value === "1") return true;
-    return true;
-  }
-
   async function currentUser(required) {
     const f = await READY;
     if (f.auth.currentUser) return f.auth.currentUser;
@@ -319,7 +310,7 @@
     const list = await getCollection("products");
     return list.filter(p => p.name).map(p => ({
       id:p.id, name:p.name, category:p.category || "Ramen", price:Number(p.price || 0),
-      image:p.image || "", description:p.description || "", available:toAvailableBoolean(p.available),
+      image:p.image || "", description:p.description || "", available:p.available !== false,
       bestSeller:!!p.bestSeller, newProduct:!!p.newProduct
     }));
   }
@@ -604,9 +595,19 @@
       throw makeError("The product photo is too large. Please choose a smaller image.");
     }
 
+    // Normalize the admin status value explicitly.
+    // The HTML select sends "true"/"false" strings, so comparing only
+    // against the boolean false would incorrectly save "false" as true.
+    const available = (
+      data.available === true ||
+      data.available === 1 ||
+      data.available === "true" ||
+      data.available === "1"
+    );
+
     await f.setDoc(f.doc(f.db,"products",id),{
       name,category,price,image,description,
-      available:toAvailableBoolean(data.available),
+      available,
       bestSeller:!!data.bestSeller,newProduct:!!data.newProduct,
       updatedAt:isoNow()
     },{merge:true});
