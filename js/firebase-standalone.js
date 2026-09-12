@@ -57,43 +57,8 @@
   async function currentUser(required) {
     const f = await READY;
     if (f.auth.currentUser) return f.auth.currentUser;
-
-    // Firebase restores persisted auth asynchronously after a GitHub Pages
-    // reload. Wait for that restoration instead of treating a temporary
-    // null currentUser as a logged-out customer.
-    if (typeof f.auth.authStateReady === "function") {
-      try { await f.auth.authStateReady(); } catch (e) {}
-    }
-    if (f.auth.currentUser) return f.auth.currentUser;
-
-    if (typeof f.onAuthStateChanged === "function") {
-      const restored = await new Promise(function(resolve) {
-        let done = false;
-        let unsub = null;
-        const timer = setTimeout(function() {
-          if (done) return;
-          done = true;
-          try { if (unsub) unsub(); } catch (e) {}
-          resolve(null);
-        }, 6000);
-        try {
-          unsub = f.onAuthStateChanged(f.auth, function(user) {
-            if (done) return;
-            done = true;
-            clearTimeout(timer);
-            try { if (unsub) unsub(); } catch (e) {}
-            resolve(user || null);
-          });
-        } catch (e) {
-          clearTimeout(timer);
-          resolve(null);
-        }
-      });
-      if (restored) return restored;
-    }
-
     if (!required) return null;
-    throw makeError("Your Firebase login session is not ready. Please log in again and try once more.");
+    throw makeError("Please log in again.");
   }
 
   async function isAdmin() {
@@ -104,7 +69,6 @@
     if (configuredUid && configuredUid !== "PASTE_ADMIN_USER_UID_HERE") {
       return u.uid === configuredUid;
     }
-    // Safety fallback: no UID configured means admin operations are disabled.
     return false;
   }
 
@@ -473,6 +437,8 @@
     if (!cleanItems.length) throw makeError("The order contains no items.");
     const total = cleanItems.reduce((s,i)=>s+i.subtotal,0);
     const ref = f.doc(f.db, "orders", String(orderId));
+    const existing = await f.getDoc(ref);
+    if (existing.exists()) return {success:true, orderId:String(orderId), duplicate:true};
     await f.setDoc(ref, {
       orderId:String(orderId), userId:u.uid, customerName:String(payload.fullName || ""),
       fullName:String(payload.fullName || ""), email:u.email || "", mobile:String(payload.mobile || ""),
