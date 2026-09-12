@@ -2661,6 +2661,17 @@ body.quick-loading {
 })();
 </script>
 
+
+<style id="mckenzie-category-menu-style">
+.menu-category-filter{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin:22px auto 28px;max-width:1100px}
+.menu-category-filter button{border:1px solid rgba(165,22,32,.22);background:#fff8f0;color:#6b1c25;padding:9px 16px;border-radius:999px;font-weight:800;cursor:pointer;transition:.2s}
+.menu-category-filter button.active,.menu-category-filter button:hover{background:#a51620;color:#fff;border-color:#a51620}
+.menu-category-group{margin:0 auto 34px;max-width:1200px}
+.menu-category-title{font-family:'Cormorant Garamond',serif;font-size:34px;color:#60151f;text-align:center;margin:0 0 16px}
+.menu-category-group[hidden]{display:none}
+.menu-category-coming-soon{grid-column:1/-1;min-height:150px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:28px 18px;border:1px dashed rgba(165,22,32,.28);border-radius:16px;background:linear-gradient(180deg,#fffaf5,#fff7ef);color:#7b2a31;text-align:center}.menu-category-coming-soon .coming-soon-icon{font-size:34px;line-height:1;margin-bottom:2px}.menu-category-coming-soon strong{font-family:'Cormorant Garamond',serif;font-size:28px;color:#60151f}.menu-category-coming-soon span{font-size:12px;color:#8b6862}@media(max-width:600px){.menu-category-filter{gap:7px}.menu-category-filter button{padding:8px 11px;font-size:12px}.menu-category-title{font-size:29px}}
+</style>
+
 </head>
 
 
@@ -3473,6 +3484,17 @@ body.quick-loading {
 
   </div>
 
+
+  <div id="menuCategoryFilter" class="menu-category-filter" role="tablist" aria-label="Menu categories">
+    <button type="button" class="active" data-category="All" onclick="filterMenuCategory_('All')">All</button>
+    <button type="button" data-category="Promotion" onclick="filterMenuCategory_('Promotion')">Promotion</button>
+    <button type="button" data-category="Ramen" onclick="filterMenuCategory_('Ramen')">Ramen</button>
+    <button type="button" data-category="Side Dishes" onclick="filterMenuCategory_('Side Dishes')">Side Dishes</button>
+    <button type="button" data-category="Drinks" onclick="filterMenuCategory_('Drinks')">Drinks</button>
+    <button type="button" data-category="Dessert" onclick="filterMenuCategory_('Dessert')">Dessert</button>
+    <button type="button" data-category="Rice Meal" onclick="filterMenuCategory_('Rice Meal')">Rice Meal</button>
+    <button type="button" data-category="Coming Soon" onclick="filterMenuCategory_('Coming Soon')">Coming Soon</button>
+  </div>
 
   <div
     id="products"
@@ -5911,28 +5933,9 @@ function saveNewAddress_() {
     const ref = f.doc(f.db, "addresses", "MRH-ADDR-" + Date.now() + "-" + Math.random().toString(36).slice(2,8));
     const existingQ = f.query(f.collection(f.db, "addresses"), f.where("userId", "==", uid));
     const existingSnap = await f.getDocs(existingQ);
-
-    // "Save & Set as Default" means the newly added address becomes the
-    // address used automatically on the next checkout. Clear the old
-    // default first, then save the new address as the default.
-    const updates = [];
-    existingSnap.docs.forEach(function(docSnap) {
-      const data = docSnap.data() || {};
-      if (data.isDefault) {
-        updates.push(f.updateDoc(
-          f.doc(f.db, "addresses", docSnap.id),
-          { isDefault: false, updatedAt: new Date().toISOString() }
-        ));
-      }
-    });
-    await Promise.all(updates);
-
+    const isDefault = existingSnap.empty;
     await f.setDoc(ref, Object.assign({
-      addressId: ref.id,
-      userId: uid,
-      isDefault: true,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      addressId: ref.id, userId: uid, isDefault: isDefault, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()
     }, payload));
     return true;
   }, "Unable to save your address right now.")
@@ -7100,6 +7103,70 @@ function loadBrandAssets() {
    PRODUCTS
 ========================================================= */
 
+const MCKENZIE_MENU_CATEGORY_ORDER_ = ['Promotion','Ramen','Side Dishes','Drinks','Dessert','Rice Meal','Coming Soon'];
+let mckenzieMenuCategoryFilter_ = 'All';
+
+function normalizeMenuCategory_(value) {
+  const raw = String(value || '').trim().toLowerCase();
+  if (!raw) return 'Coming Soon';
+  if (raw === 'ramen') return 'Ramen';
+  if (raw === 'side dish' || raw === 'side dishes' || raw === 'sidedishes') return 'Side Dishes';
+  if (raw === 'drink' || raw === 'drinks') return 'Drinks';
+  if (raw === 'dessert' || raw === 'desserts') return 'Dessert';
+  if (raw === 'rice meal' || raw === 'rice meals' || raw === 'ricemeal' || raw === 'rice-meal') return 'Rice Meal';
+  if (raw === 'promotion' || raw === 'promotions' || raw === 'promo' || raw === 'promos') return 'Promotion';
+  return 'Coming Soon';
+}
+
+function filterMenuCategory_(category) {
+  mckenzieMenuCategoryFilter_ = category || 'All';
+  document.querySelectorAll('#menuCategoryFilter button').forEach(function(btn){
+    btn.classList.toggle('active', String(btn.dataset.category || '') === mckenzieMenuCategoryFilter_);
+  });
+  document.querySelectorAll('#products .menu-category-group').forEach(function(group){
+    const cat = String(group.getAttribute('data-category') || '');
+    group.hidden = mckenzieMenuCategoryFilter_ !== 'All' && cat !== mckenzieMenuCategoryFilter_;
+  });
+}
+
+function organizeCustomerMenuByCategory_() {
+  const container = document.getElementById('products');
+  if (!container) return;
+  const cards = Array.from(container.children).filter(function(el){ return el.classList && el.classList.contains('product-card'); });
+  const groups = {};
+  MCKENZIE_MENU_CATEGORY_ORDER_.forEach(function(cat){ groups[cat] = []; });
+  cards.forEach(function(card){
+    const catEl = card.querySelector('.product-category');
+    const cat = normalizeMenuCategory_(catEl ? catEl.textContent : '');
+    if (catEl) catEl.textContent = cat;
+    if (!groups[cat]) groups[cat] = [];
+    groups[cat].push(card);
+  });
+  container.innerHTML = '';
+  MCKENZIE_MENU_CATEGORY_ORDER_.forEach(function(cat){
+    const group = document.createElement('section');
+    group.className = 'menu-category-group';
+    group.setAttribute('data-category', cat);
+    const title = document.createElement('h3');
+    title.className = 'menu-category-title';
+    title.textContent = cat;
+    group.appendChild(title);
+    const grid = document.createElement('div');
+    grid.className = 'products';
+    if (groups[cat].length) {
+      groups[cat].forEach(function(card){ grid.appendChild(card); });
+    } else {
+      const empty = document.createElement('div');
+      empty.className = 'menu-category-coming-soon';
+      empty.innerHTML = '<div class="coming-soon-icon">🍜</div><strong>Coming Soon</strong><span>We are preparing something delicious for this category.</span>';
+      grid.appendChild(empty);
+    }
+    group.appendChild(grid);
+    container.appendChild(group);
+  });
+  filterMenuCategory_(mckenzieMenuCategoryFilter_);
+}
+
 function loadProducts() {
 
   google.script.run
@@ -7305,8 +7372,7 @@ function loadProducts() {
                 <span class="product-category">
 
                   ${escapeHtml(
-                    product.category ||
-                    "RAMEN"
+                    normalizeMenuCategory_(product.category)
                   )}
 
                 </span>
@@ -7377,6 +7443,8 @@ function loadProducts() {
 
           }
         );
+
+        organizeCustomerMenuByCategory_();
 
         // Migrate any cart entries from the older Product-ID-only format
         // after the complete product list is available.
@@ -7698,7 +7766,7 @@ function goToHomeFromLogo_() {
           return {
             id: rawId,
             name: String(firestoreValue_(f.name) || '').trim(),
-            category: String(firestoreValue_(f.category) || 'Ramen'),
+            category: normalizeMenuCategory_(firestoreValue_(f.category)),
             price: Number(firestoreValue_(f.price) || 0),
             image: String(firestoreValue_(f.image) || ''),
             description: String(firestoreValue_(f.description) || ''),
@@ -8121,7 +8189,7 @@ document.addEventListener('DOMContentLoaded',function(){
     clearTimeout(receiptPollTimer);
     receiptPollTimer=setTimeout(poll,300);
   }
-  document.addEventListener('DOMContentLoaded',function(){cccc
+  document.addEventListener('DOMContentLoaded',function(){
     document.getElementById('mckReceiptYes').onclick=function(){respond(true);};
     document.getElementById('mckReceiptNo').onclick=function(){respond(false);};
     poll();
@@ -8129,4 +8197,4 @@ document.addEventListener('DOMContentLoaded',function(){
 })();
 </script>
 </body>
-</html>c
+</html>
