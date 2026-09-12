@@ -5091,8 +5091,39 @@ function confirmPlaceOrder_() {
   }
 
   // GITHUB + FIREBASE ONLY.
-  // The order is written directly to Firestore /orders/{orderId}.
-  customerSaveOrderDirect_(orderId, payload)
+  // Use the SAME Firebase bridge/auth instance that powers the GitHub site.
+  // The bridge now waits for Firebase auth restoration before saving.
+  Promise.resolve(window.MckenzieFirebaseReady)
+    .then(function() {
+      return new Promise(function(resolve, reject) {
+        var settled = false;
+        var timer = setTimeout(function(){
+          if (settled) return;
+          settled = true;
+          reject(new Error("Your Firebase login session is not ready. Please log in again and try once more."));
+        }, 10000);
+
+        try {
+          window.google.script.run
+            .withSuccessHandler(function(result){
+              if (settled) return;
+              settled = true;
+              clearTimeout(timer);
+              resolve(result);
+            })
+            .withFailureHandler(function(error){
+              if (settled) return;
+              settled = true;
+              clearTimeout(timer);
+              reject(error instanceof Error ? error : new Error(String(error && error.message || error || "Firebase rejected the order.")));
+            })
+            .recordOrder(orderId, payload);
+        } catch (e) {
+          clearTimeout(timer);
+          if (!settled) { settled = true; reject(e); }
+        }
+      });
+    })
     .then(finishSuccessfulOrderSave_)
     .catch(failOrderSave_);
 }
@@ -5246,18 +5277,82 @@ async function customerConfirmReceiptDirect_(orderId) {
   },"Unable to confirm the order right now.");
 }
 
+function firestoreRestValue_(value) {
+  if (value === null || value === undefined) return { nullValue: null };
+  if (typeof value === "boolean") return { booleanValue: value };
+  if (typeof value === "number" && Number.isFinite(value)) return { doubleValue: value };
+  if (Array.isArray(value)) return { arrayValue: { values: value.map(firestoreRestValue_) } };
+  if (typeof value === "object") {
+    var fields = {};
+    Object.keys(value).forEach(function(k){ fields[k] = firestoreRestValue_(value[k]); });
+    return { mapValue: { fields: fields } };
+  }
+  return { stringValue: String(value) };
+}
+
+async function customerSaveOrderViaRest_(orderId,payload,token,uid) {
+  var cleanItems=(payload.items||[]).map(function(item){return {
+    productId:String(item.id||item.productId||""),
+    productName:String(item.name||item.productName||"Ramen item"),
+    price:Number(item.price||0),
+    quantity:Number(item.quantity||0),
+    subtotal:Number(item.price||0)*Number(item.quantity||0),
+    itemStatus:"Preparing"
+  };}).filter(function(x){return x.quantity>0;});
+  if(!cleanItems.length) throw new Error("The order contains no items.");
+  var total=cleanItems.reduce(function(sum,it){return sum+it.subtotal;},0);
+  var address=[payload.houseUnit,payload.street,payload.barangay,payload.city,payload.province,payload.region].filter(Boolean).join(", ");
+  var data={
+    orderId:String(orderId), userId:String(uid), customerName:String(payload.fullName||""),
+    fullName:String(payload.fullName||""), email:String(payload.email||""), mobile:String(payload.mobile||""),
+    items:cleanItems, total:total, paymentMethod:String(payload.paymentMethod||""),
+    paymentStatus:"Pending", orderStatus:"Preparing", address:address,
+    instruction:String(payload.additionalInstruction||""), orderedAt:new Date().toISOString(),
+    customerConfirmed:false, confirmedAt:"", deliveredAt:"", closed:false
+  };
+  var fields={};
+  Object.keys(data).forEach(function(k){ fields[k]=firestoreRestValue_(data[k]); });
+  var url="https://firestore.googleapis.com/v1/projects/mckenzie-ramen-house/databases/(default)/documents/orders/"+encodeURIComponent(String(orderId));
+  var response=await fetch(url,{
+    method:"PATCH",
+    headers:{"Content-Type":"application/json","Authorization":"Bearer "+String(token)},
+    body:JSON.stringify({fields:fields}),
+    cache:"no-store"
+  });
+  var body={};
+  try { body=await response.json(); } catch(e) {}
+  if(!response.ok) {
+    var detail=body&&body.error&&body.error.message ? body.error.message : ("Firebase returned HTTP "+response.status+".");
+    throw new Error(detail);
+  }
+  return {success:true,orderId:String(orderId),status:"Preparing"};
+}
+
 async function customerSaveOrderDirect_(orderId,payload) {
   var uid=customerCurrentUserId_();
+  if(!uid) throw new Error("Please log in again.");
+
   return customerFirebaseWithTimeout_(async function(f){
-    var u=await waitForFirebaseCustomerAuthReady_(f);
-    if(!u||String(u.uid)!==uid) throw new Error("Your Firebase login session is not ready. Please log in again and try once more.");
-    var cleanItems=(payload.items||[]).map(function(item){return {productId:String(item.id||item.productId||""),productName:String(item.name||item.productName||"Ramen item"),price:Number(item.price||0),quantity:Number(item.quantity||0),subtotal:Number(item.price||0)*Number(item.quantity||0),itemStatus:"Preparing"};}).filter(function(x){return x.quantity>0;});
-    if(!cleanItems.length) throw new Error("The order contains no items.");
-    var total=cleanItems.reduce(function(sum,it){return sum+it.subtotal;},0);
-    var ref=f.doc(f.db,"orders",String(orderId));
-    var address=[payload.houseUnit,payload.street,payload.barangay,payload.city,payload.province,payload.region].filter(Boolean).join(", ");
-    await f.setDoc(ref,{orderId:String(orderId),userId:uid,customerName:String(payload.fullName||""),fullName:String(payload.fullName||""),email:u.email||String(payload.email||""),mobile:String(payload.mobile||""),items:cleanItems,total:total,paymentMethod:String(payload.paymentMethod||""),paymentStatus:"Pending",orderStatus:"Preparing",address:address,instruction:String(payload.additionalInstruction||""),orderedAt:new Date().toISOString(),customerConfirmed:false,confirmedAt:"",deliveredAt:"",closed:false});
-    return {success:true,orderId:String(orderId),status:"Preparing"};
+    var u=null;
+    try { u=await waitForFirebaseCustomerAuthReady_(f); } catch(e) { console.warn("Firebase auth restore wait failed; using checkout token fallback.",e); }
+
+    if(u && String(u.uid)===uid) {
+      var cleanItems=(payload.items||[]).map(function(item){return {productId:String(item.id||item.productId||""),productName:String(item.name||item.productName||"Ramen item"),price:Number(item.price||0),quantity:Number(item.quantity||0),subtotal:Number(item.price||0)*Number(item.quantity||0),itemStatus:"Preparing"};}).filter(function(x){return x.quantity>0;});
+      if(!cleanItems.length) throw new Error("The order contains no items.");
+      var total=cleanItems.reduce(function(sum,it){return sum+it.subtotal;},0);
+      var ref=f.doc(f.db,"orders",String(orderId));
+      var address=[payload.houseUnit,payload.street,payload.barangay,payload.city,payload.province,payload.region].filter(Boolean).join(", ");
+      await f.setDoc(ref,{orderId:String(orderId),userId:uid,customerName:String(payload.fullName||""),fullName:String(payload.fullName||""),email:u.email||String(payload.email||""),mobile:String(payload.mobile||""),items:cleanItems,total:total,paymentMethod:String(payload.paymentMethod||""),paymentStatus:"Pending",orderStatus:"Preparing",address:address,instruction:String(payload.additionalInstruction||""),orderedAt:new Date().toISOString(),customerConfirmed:false,confirmedAt:"",deliveredAt:"",closed:false});
+      return {success:true,orderId:String(orderId),status:"Preparing"};
+    }
+
+    // Fallback: the login succeeded and cached an ID token, but Firebase's
+    // auth.currentUser restoration is unavailable. Firestore REST accepts the
+    // same Firebase ID token and enforces the same Firestore security rules.
+    var token="";
+    try { token=String(sessionStorage.getItem("mckenzieFirebaseIdToken")||""); } catch(e) {}
+    if(!token) throw new Error("Your Firebase login session is not ready. Please log in again and try once more.");
+    return customerSaveOrderViaRest_(orderId,payload,token,uid);
   },"Unable to save your order right now. Please try again.");
 }
 
@@ -6388,6 +6483,16 @@ async function submitLoginPopup(event) {
     const cred = await firebaseAuth.signInWithEmailAndPassword(firebaseAuth.auth, firebaseEmail, password);
     const firebaseUser = cred.user;
     await firebaseUser.reload();
+
+    // Keep a short-lived Firebase ID token for the checkout flow. This is a
+    // fallback for browsers where Firebase Auth persistence restores the
+    // localStorage login state but does not expose auth.currentUser in time.
+    try {
+      const checkoutToken = await firebaseUser.getIdToken(true);
+      sessionStorage.setItem("mckenzieFirebaseIdToken", checkoutToken);
+    } catch (tokenError) {
+      console.warn("Unable to cache Firebase checkout token:", tokenError);
+    }
 
     if (!firebaseUser.emailVerified) {
       setLoggedInState_(false);
