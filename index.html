@@ -4317,6 +4317,76 @@ function isLoggedIn_() {
   }
 }
 
+/* =========================================================
+   CUSTOMER VERIFICATION GUARD
+   Fixes the Add-to-Cart / Cart action when the customer is
+   logged in locally but Firebase auth is still restoring.
+   ========================================================= */
+async function requireVerifiedCustomer_(message) {
+  const fallbackMessage = message || "You should verify your account to proceed. Please verify your email before continuing.";
+  try {
+    const firebaseAuth = await mckenzieWithTimeout_(
+      getMcKenzieCustomerAuthDirect_(),
+      12000,
+      "Firebase Authentication is taking too long to load. Please refresh and try again."
+    );
+
+    let user = firebaseAuth.auth.currentUser;
+
+    // Wait briefly for Firebase to restore the existing session.
+    if (!user && firebaseAuth.authStateReady) {
+      try { await firebaseAuth.authStateReady(); } catch (e) {}
+      user = firebaseAuth.auth.currentUser;
+    }
+
+    if (!user) {
+      // LocalStorage can survive longer than Firebase's auth session.
+      // Never allow cart/order actions to proceed with a stale local login.
+      setLoggedInState_(false);
+      try { localStorage.removeItem("mckenzieUser"); } catch (e) {}
+      openLoginModal();
+      return false;
+    }
+
+    if (!user.emailVerified) {
+      try {
+        localStorage.setItem("mckenziePendingVerification", JSON.stringify({
+          userId: user.uid,
+          email: user.email || ""
+        }));
+      } catch (e) {}
+
+      openEmailVerificationModal_(user.email || "");
+      const vm = document.getElementById("verificationMessage");
+      if (vm) {
+        vm.style.color = "#a51620";
+        vm.textContent = fallbackMessage;
+      }
+      return false;
+    }
+
+    // Repair the local login state if Firebase says the customer is valid.
+    if (!isLoggedIn_()) setLoggedInState_(true);
+
+    return true;
+  } catch (error) {
+    console.error("Customer verification guard failed:", error);
+    const msgText = error && error.message
+      ? String(error.message)
+      : "Unable to verify your account right now. Please try again.";
+    // If the action is simply blocked by a missing/stale session, bring the
+    // customer back to the normal login flow instead of silently doing nothing.
+    if (/Please log in again|session|Authentication/i.test(msgText)) {
+      setLoggedInState_(false);
+      openLoginModal();
+      return false;
+    }
+    alert(msgText);
+    return false;
+  }
+}
+
+
 function getCart_() {
   try {
     const key = getCustomerStorageKey_("mckenzieCart");
@@ -5824,6 +5894,54 @@ function openOrderDetailByKey_(encodedOrderId){
     openOrderDetail_(order);
   }).catch(function(error){if(content)content.innerHTML='<div class="order-feature-error">'+escapeHtml(error&&error.message?error.message:"Unable to load order details.")+'</div>';});
 }
+
+
+/* Reliable Order History navigation: use one delegated handler instead of
+   relying only on inline onclick attributes generated inside innerHTML. */
+(function bindOrderHistoryNavigation_(){
+  function bind(){
+    const content = document.getElementById("orderHistoryContent");
+    if (!content || content.dataset.mckOrderNavBound === "1") return;
+    content.dataset.mckOrderNavBound = "1";
+
+    content.addEventListener("click", function(event){
+      const button = event.target && event.target.closest
+        ? event.target.closest(".order-view-btn")
+        : null;
+      if (button) {
+        event.preventDefault();
+        event.stopPropagation();
+        const card = button.closest(".order-history-card");
+        if (card) openOrderDetailByKey_(card.getAttribute("data-order-key") || "");
+        return;
+      }
+
+      const card = event.target && event.target.closest
+        ? event.target.closest(".order-history-card[data-order-key]")
+        : null;
+      if (card && !event.target.closest("button, a, input, select, textarea")) {
+        event.preventDefault();
+        openOrderDetailByKey_(card.getAttribute("data-order-key") || "");
+      }
+    });
+
+    content.addEventListener("keydown", function(event){
+      if (event.key !== "Enter" && event.key !== " ") return;
+      const card = event.target && event.target.closest
+        ? event.target.closest(".order-history-card[data-order-key]")
+        : null;
+      if (!card || event.target !== card) return;
+      event.preventDefault();
+      openOrderDetailByKey_(card.getAttribute("data-order-key") || "");
+    });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", bind, {once:true});
+  } else {
+    bind();
+  }
+})();
 
 function renderCustomerOrderDetail_(order) {
   const items = Array.isArray(order.items) ? order.items : [];
