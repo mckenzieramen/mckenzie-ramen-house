@@ -3718,6 +3718,7 @@ async function submitCreateAccountPopup(event) {
   const email = String(document.getElementById("createEmail").value || "").trim().toLowerCase();
   const mobile = String(document.getElementById("createMobile").value || "").trim();
   const username = String(document.getElementById("createUsername").value || "").trim();
+  const usernameKey = username.toLowerCase();
   const password = String(document.getElementById("createPassword").value || "");
   const confirmPassword = String(document.getElementById("createConfirmPassword").value || "");
   const button = document.getElementById("createAccountSubmit");
@@ -3745,6 +3746,10 @@ async function submitCreateAccountPopup(event) {
     msg("Username must be at least 3 characters.");
     return;
   }
+  if (!/^[A-Za-z0-9._-]{3,30}$/.test(username)) {
+    msg("Username may contain only letters, numbers, dot, underscore, or hyphen.");
+    return;
+  }
   if (password.length < 6) {
     msg("Password must be at least 6 characters.");
     return;
@@ -3766,6 +3771,24 @@ async function submitCreateAccountPopup(event) {
     const firebaseAuth = await getMcKenzieCustomerAuthDirect_();
     const cred = await firebaseAuth.createUserWithEmailAndPassword(firebaseAuth.auth, email, password);
     const user = cred.user;
+
+    // Reserve the username globally. The document ID is the normalized username,
+    // so two different customer accounts cannot claim the same username.
+    // Firestore rules should allow authenticated users to CREATE a username
+    // document only when its uid equals request.auth.uid, and READ username
+    // documents for login resolution.
+    try {
+      await firebaseAuth.create(
+        firebaseAuth.doc(firebaseAuth.db, "usernames", usernameKey),
+        { username: username, usernameKey: usernameKey, uid: user.uid, email: user.email || email, createdAt: new Date().toISOString() }
+      );
+    } catch (claimError) {
+      try { await firebaseAuth.deleteUser(user); } catch (cleanupError) {}
+      if (claimError && (claimError.code === "permission-denied" || /permission/i.test(claimError.message || ""))) {
+        throw new Error("Username registration needs the Firebase username permission rule. Please contact the site administrator.");
+      }
+      throw new Error("That username is already taken. Please choose a different username.");
+    }
 
     await firebaseAuth.setDoc(
       firebaseAuth.doc(firebaseAuth.db, "users", user.uid),
@@ -3794,11 +3817,40 @@ async function submitCreateAccountPopup(event) {
 
     hideLoginRamenLoader_();
     try {
+      const accountEmail = String(user.email || email || "").trim().toLowerCase();
+      const accountUsername = String(username || "").trim().toLowerCase();
+
+      // Save the username -> email mapping immediately when the account is
+      // created. Firebase Auth signs in with email, so this lets the customer
+      // use the username on the same browser without being asked for the
+      // registered email again. Password is NEVER stored here.
+      if (accountUsername && accountEmail && /@/.test(accountEmail)) {
+        const savedMap = JSON.parse(localStorage.getItem("mckenzieUsernameEmailMap") || "{}");
+        savedMap[accountUsername] = accountEmail;
+        localStorage.setItem("mckenzieUsernameEmailMap", JSON.stringify(savedMap));
+      }
+
+      // Keep the newly-created customer profile locally as well, so the
+      // username/email relationship is available immediately after account
+      // creation, even before email verification is completed.
+      localStorage.setItem("mckenzieUser", JSON.stringify({
+        userId: user.uid,
+        fullName: fullName,
+        username: username,
+        email: accountEmail,
+        mobile: mobile,
+        country: "Philippines",
+        status: "PENDING_EMAIL_VERIFICATION",
+        emailVerified: false
+      }));
+
       localStorage.setItem("mckenziePendingVerification", JSON.stringify({
         userId: user.uid,
-        email: user.email || email
+        email: accountEmail
       }));
-    } catch (error) {}
+    } catch (error) {
+      console.warn("Unable to save local username mapping:", error);
+    }
     document.getElementById("createPassword").value = "";
     document.getElementById("createConfirmPassword").value = "";
     button.disabled = false;
@@ -3860,9 +3912,11 @@ async function getMcKenzieCustomerAuthDirect_() {
       sendEmailVerification: authMod.sendEmailVerification,
       updateEmail: authMod.updateEmail,
       signOut: authMod.signOut,
+      deleteUser: authMod.deleteUser,
       onAuthStateChanged: authMod.onAuthStateChanged,
       setDoc: fsMod.setDoc,
       getDoc: fsMod.getDoc,
+      create: fsMod.create,
       getDocs: fsMod.getDocs,
       collection: fsMod.collection,
       query: fsMod.query,
@@ -6109,36 +6163,38 @@ async function submitLoginPopup(event) {
     let profile = {};
 
     // Firebase Authentication signs in with EMAIL, not username.
-    // Do NOT query the users collection here: unauthenticated customers may
-    // not have permission to read that collection. Instead, use the username
-    // -> email mapping already learned from this browser.
+    // Resolve a username through the global `usernames/{normalizedUsername}`
+    // registry. No email prompt is used. A local mapping remains as a fallback
+    // for accounts created before the global registry was added.
     if (!/@/.test(identifier)) {
+      const usernameKey = String(identifier).trim().toLowerCase();
       let usernameEmail = "";
       try {
-        const savedMap = JSON.parse(localStorage.getItem("mckenzieUsernameEmailMap") || "{}");
-        usernameEmail = String(savedMap[String(identifier).toLowerCase()] || "").trim().toLowerCase();
-
-        // Also recover the mapping from the currently saved customer profile.
-        if (!usernameEmail) {
-          const savedUser = JSON.parse(localStorage.getItem("mckenzieUser") || "null");
-          if (savedUser && String(savedUser.username || "").trim().toLowerCase() === String(identifier).toLowerCase()) {
-            usernameEmail = String(savedUser.email || "").trim().toLowerCase();
-          }
+        const snap = await firebaseAuth.getDoc(firebaseAuth.doc(firebaseAuth.db, "usernames", usernameKey));
+        if (snap.exists()) {
+          const data = snap.data() || {};
+          usernameEmail = String(data.email || "").trim().toLowerCase();
         }
-      } catch (e) {}
-
-      // First username login on a new browser: ask for the registered email
-      // once, authenticate directly with Firebase, then remember the mapping.
-      if (!usernameEmail) {
-        const linkedEmail = window.prompt(
-          "This is your username. For the first username login on this device, please enter the email address registered to this account:"
-        );
-        usernameEmail = String(linkedEmail || "").trim().toLowerCase();
-        if (!usernameEmail || !/@/.test(usernameEmail)) {
-          throw new Error("Please enter the registered email address to use your username on this device.");
-        }
+      } catch (e) {
+        console.warn("Unable to resolve global username registry:", e);
       }
 
+      if (!usernameEmail) {
+        try {
+          const savedMap = JSON.parse(localStorage.getItem("mckenzieUsernameEmailMap") || "{}");
+          usernameEmail = String(savedMap[usernameKey] || "").trim().toLowerCase();
+          if (!usernameEmail) {
+            const savedUser = JSON.parse(localStorage.getItem("mckenzieUser") || "null");
+            if (savedUser && String(savedUser.username || "").trim().toLowerCase() === usernameKey) {
+              usernameEmail = String(savedUser.email || "").trim().toLowerCase();
+            }
+          }
+        } catch (e) {}
+      }
+
+      if (!usernameEmail) {
+        throw new Error("Username not found. Please check your username and try again.");
+      }
       firebaseEmail = usernameEmail;
     }
 
@@ -6195,6 +6251,24 @@ async function submitLoginPopup(event) {
         const savedMap = JSON.parse(localStorage.getItem("mckenzieUsernameEmailMap") || "{}");
         savedMap[usernameForMap] = emailForMap;
         localStorage.setItem("mckenzieUsernameEmailMap", JSON.stringify(savedMap));
+
+        // Backfill the global username registry for older accounts. This is
+        // best-effort so a successful email login is never blocked by it.
+        try {
+          const usernameRef = firebaseAuth.doc(firebaseAuth.db, "usernames", usernameForMap);
+          const existingUsername = await firebaseAuth.getDoc(usernameRef);
+          if (!existingUsername.exists()) {
+            await firebaseAuth.setDoc(usernameRef, {
+              username: basicUser.username || usernameForMap,
+              usernameKey: usernameForMap,
+              uid: firebaseUser.uid,
+              email: emailForMap,
+              createdAt: new Date().toISOString()
+            });
+          }
+        } catch (registryError) {
+          console.warn("Unable to backfill username registry:", registryError);
+        }
       }
     } catch (e) {}
 
