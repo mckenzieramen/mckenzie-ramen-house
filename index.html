@@ -3778,16 +3778,30 @@ async function submitCreateAccountPopup(event) {
     // document only when its uid equals request.auth.uid, and READ username
     // documents for login resolution.
     try {
-      await firebaseAuth.create(
-        firebaseAuth.doc(firebaseAuth.db, "usernames", usernameKey),
-        { username: username, usernameKey: usernameKey, uid: user.uid, email: user.email || email, createdAt: new Date().toISOString() }
-      );
+      const usernameRef = firebaseAuth.doc(firebaseAuth.db, "usernames", usernameKey);
+      await firebaseAuth.runTransaction(firebaseAuth.db, async function(transaction) {
+        const existing = await transaction.get(usernameRef);
+        if (existing.exists()) {
+          throw new Error("__USERNAME_TAKEN__");
+        }
+        transaction.set(usernameRef, {
+          username: username,
+          usernameKey: usernameKey,
+          uid: user.uid,
+          email: user.email || email,
+          createdAt: new Date().toISOString()
+        });
+      });
     } catch (claimError) {
       try { await firebaseAuth.deleteUser(user); } catch (cleanupError) {}
+      if (claimError && claimError.message === "__USERNAME_TAKEN__") {
+        throw new Error("That username is already taken. Please choose a different username.");
+      }
       if (claimError && (claimError.code === "permission-denied" || /permission/i.test(claimError.message || ""))) {
         throw new Error("Username registration needs the Firebase username permission rule. Please contact the site administrator.");
       }
-      throw new Error("That username is already taken. Please choose a different username.");
+      console.error("Username reservation failed:", claimError);
+      throw new Error("We couldn't check that username right now. Please try again.");
     }
 
     await firebaseAuth.setDoc(
@@ -3916,7 +3930,7 @@ async function getMcKenzieCustomerAuthDirect_() {
       onAuthStateChanged: authMod.onAuthStateChanged,
       setDoc: fsMod.setDoc,
       getDoc: fsMod.getDoc,
-      create: fsMod.create,
+      runTransaction: fsMod.runTransaction,
       getDocs: fsMod.getDocs,
       collection: fsMod.collection,
       query: fsMod.query,
