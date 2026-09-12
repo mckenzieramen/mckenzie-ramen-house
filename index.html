@@ -3205,18 +3205,21 @@ body.quick-loading {
 
 <!-- =======================================================
      EMAIL VERIFICATION POPUP
+     Firebase sends the verification LINK directly to the email.
 ======================================================= -->
 <div id="emailVerificationModal" role="dialog" aria-modal="true" aria-labelledby="emailVerificationTitle" onclick="handleVerificationOverlayClick(event)">
   <div class="verification-card">
     <button type="button" class="verification-close" aria-label="Close email verification" onclick="closeEmailVerificationModal()">×</button>
     <div class="verification-kicker">MCKENZIE RAMEN HOUSE</div>
-    <h2 id="emailVerificationTitle">Verify Your Email</h2>
-    <p>We sent a 6-digit verification code to <span id="verificationEmail" class="verification-email"></span>. The code expires in 10 minutes.</p>
-    <input id="verificationCodeInput" class="verification-code-input" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000" aria-label="Verification code">
-    <div id="verificationMessage" class="verification-message" aria-live="polite"></div>
-    <button type="button" id="verificationSubmit" class="verification-submit" onclick="verifyEmailCode_()">Verify Email</button>
-    <button type="button" id="verificationResend" class="verification-resend" onclick="resendVerificationCode_()">Resend Code</button>
-    <div id="verificationTimer" class="verification-timer"></div>
+    <h2 id="emailVerificationTitle">Check Your Email</h2>
+    <p>
+      We sent a verification link to
+      <span id="verificationEmail" class="verification-email"></span>.
+    </p>
+    <p id="verificationMessage" class="verification-message" aria-live="polite">
+      Open your email and click the verification link to verify your account.
+    </p>
+    <button type="button" id="verificationSubmit" class="verification-submit" onclick="closeEmailVerificationModal()">Got It</button>
   </div>
 </div>
 
@@ -3671,187 +3674,129 @@ function switchCreateAccountToLogin() {
   openLoginModal();
 }
 
-const MCKENZIE_VERIFICATION_FUNCTION_BASE = "https://us-central1-mckenzie-ramen-house.cloudfunctions.net";
-
-async function mckenzieVerificationRequest_(endpoint, payload) {
-  const controller = new AbortController();
-  const timer = setTimeout(function(){ controller.abort(); }, 20000);
-  try {
-    const response = await fetch(MCKENZIE_VERIFICATION_FUNCTION_BASE + "/" + endpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload || {}),
-      signal: controller.signal
-    });
-    let result = {};
-    try { result = await response.json(); } catch (_) {}
-    if (!response.ok || !result.success) {
-      throw new Error(result.message || "Verification service could not process the request.");
-    }
-    return result;
-  } catch (error) {
-    if (error && error.name === "AbortError") {
-      throw new Error("The verification service timed out. Please try again.");
-    }
-    throw error;
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
 function submitCreateAccountPopup(event) {
   event.preventDefault();
   const fullName = String(document.getElementById("createFullName").value || "").trim();
-  const email = String(document.getElementById("createEmail").value || "").trim();
+  const email = String(document.getElementById("createEmail").value || "").trim().toLowerCase();
   const mobile = String(document.getElementById("createMobile").value || "").trim();
   const username = String(document.getElementById("createUsername").value || "").trim();
   const password = String(document.getElementById("createPassword").value || "");
   const confirmPassword = String(document.getElementById("createConfirmPassword").value || "");
   const button = document.getElementById("createAccountSubmit");
   const message = document.getElementById("createAccountMessage");
-  function msg(text, color) { if (message) { message.textContent = text; message.style.color = color || "#a51620"; } }
+  function msg(text, color) {
+    if (message) {
+      message.textContent = text;
+      message.style.color = color || "#a51620";
+    }
+  }
 
-  if (!fullName || !email || !mobile || !username || !password || !confirmPassword) { msg("Please complete all fields."); return; }
-  if (!/^[+()\d\s-]{7,20}$/.test(mobile)) { msg("Please enter a valid phone number."); return; }
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { msg("Please enter a valid email address."); return; }
-  if (username.length < 3) { msg("Username must be at least 3 characters."); return; }
-  if (password.length < 6) { msg("Password must be at least 6 characters."); return; }
-  if (password !== confirmPassword) { msg("Passwords do not match."); return; }
+  if (!fullName || !email || !mobile || !username || !password || !confirmPassword) {
+    msg("Please complete all fields.");
+    return;
+  }
+  if (!/^[+()\d\s-]{7,20}$/.test(mobile)) {
+    msg("Please enter a valid phone number.");
+    return;
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    msg("Please enter a valid email address.");
+    return;
+  }
+  if (username.length < 3) {
+    msg("Username must be at least 3 characters.");
+    return;
+  }
+  if (password.length < 6) {
+    msg("Password must be at least 6 characters.");
+    return;
+  }
+  if (password !== confirmPassword) {
+    msg("Passwords do not match.");
+    return;
+  }
 
   button.disabled = true;
-  button.textContent = "Sending Code...";
+  button.textContent = "Creating Account...";
   msg("");
-
   showLoginRamenLoader_();
 
-  mckenzieVerificationRequest_("requestEmailVerification", {
-    fullName: fullName,
-    email: email,
-    username: username,
-    password: password,
-    mobile: mobile
-  }).then(function(result) {
-    try { localStorage.setItem("mckenziePendingVerification", JSON.stringify({ token: result.verificationToken, email: email })); } catch (error) {}
-    document.getElementById("createPassword").value = "";
-    document.getElementById("createConfirmPassword").value = "";
+  /* GitHub + Firebase only. Firebase creates the account and sends the
+     standard verification LINK directly to the customer's email. */
+  if (!window.google || !google.script || typeof google.script.run !== "object") {
+    hideLoginRamenLoader_();
+    msg("Firebase is still loading. Please wait a moment and try again.");
     button.disabled = false;
     button.textContent = "Create Account";
-    hideLoginRamenLoader_();
-    closeCreateAccountModal();
-    openEmailVerificationModal_(result.verificationToken, email);
-  }).catch(function(error) {
-    console.error("Verification request error:", error);
-    hideLoginRamenLoader_();
-    msg(error && error.message ? error.message : "Unable to send verification code.");
-    button.disabled = false;
-    button.textContent = "Create Account";
-  });
+    return;
+  }
+
+  google.script.run
+    .withSuccessHandler(function(result) {
+      hideLoginRamenLoader_();
+
+      if (result && result.success) {
+        try {
+          localStorage.removeItem("mckenziePendingVerification");
+        } catch (error) {}
+
+        document.getElementById("createPassword").value = "";
+        document.getElementById("createConfirmPassword").value = "";
+        button.disabled = false;
+        button.textContent = "Create Account";
+        closeCreateAccountModal();
+        openEmailVerificationModal_(result.email || email);
+        return;
+      }
+
+      msg(result && result.message ? result.message : "Unable to create the account. Please try again.");
+      button.disabled = false;
+      button.textContent = "Create Account";
+    })
+    .withFailureHandler(function(error) {
+      console.error("Create account error:", error);
+      hideLoginRamenLoader_();
+      msg(error && error.message ? error.message : "Unable to create the account. Please try again.");
+      button.disabled = false;
+      button.textContent = "Create Account";
+    })
+    .requestEmailVerification(fullName, email, username, password, mobile);
 }
 
 /* =========================================================
-   EMAIL VERIFICATION
+   FIREBASE EMAIL-LINK VERIFICATION
 ========================================================= */
-let verificationToken_ = "";
-let verificationCountdownTimer_ = null;
-
-function openEmailVerificationModal_(token, email) {
-  verificationToken_ = String(token || "");
+function openEmailVerificationModal_(email) {
   const modal = document.getElementById("emailVerificationModal");
   const emailEl = document.getElementById("verificationEmail");
-  const input = document.getElementById("verificationCodeInput");
   const message = document.getElementById("verificationMessage");
-  if (!modal || !verificationToken_) return;
+  if (!modal) return;
+
   if (emailEl) emailEl.textContent = email || "your email";
-  if (input) { input.value = ""; }
-  if (message) { message.textContent = ""; message.style.color = "#a51620"; }
+  if (message) {
+    message.style.color = "#a51620";
+    message.textContent = "Open your email and click the verification link to verify your account.";
+  }
+
   modal.classList.add("show");
   document.body.style.overflow = "hidden";
-  startVerificationCountdown_(600);
-  setTimeout(function(){ if(input) input.focus(); },50);
 }
 
 function closeEmailVerificationModal() {
   const modal = document.getElementById("emailVerificationModal");
   if (modal) modal.classList.remove("show");
-  if (verificationCountdownTimer_) { clearInterval(verificationCountdownTimer_); verificationCountdownTimer_ = null; }
-  if (!document.getElementById("loginModal")?.classList.contains("show") && !document.getElementById("createAccountModal")?.classList.contains("show") && !document.getElementById("cartModal")?.classList.contains("show")) document.body.style.overflow = "";
+  if (!document.getElementById("loginModal")?.classList.contains("show") &&
+      !document.getElementById("createAccountModal")?.classList.contains("show") &&
+      !document.getElementById("cartModal")?.classList.contains("show")) {
+    document.body.style.overflow = "";
+  }
 }
 
 function handleVerificationOverlayClick(event) {
-  if (event.target && event.target.id === "emailVerificationModal") closeEmailVerificationModal();
-}
-
-function startVerificationCountdown_(seconds) {
-  const timer = document.getElementById("verificationTimer");
-  if (verificationCountdownTimer_) clearInterval(verificationCountdownTimer_);
-  let remaining = Number(seconds || 600);
-  function draw() {
-    if (!timer) return;
-    const mins = Math.floor(remaining / 60);
-    const secs = remaining % 60;
-    timer.textContent = remaining > 0 ? "Code expires in " + mins + ":" + String(secs).padStart(2, "0") : "Code expired. Please request a new one.";
-    if (remaining <= 0 && verificationCountdownTimer_) { clearInterval(verificationCountdownTimer_); verificationCountdownTimer_ = null; }
-    remaining--;
+  if (event.target && event.target.id === "emailVerificationModal") {
+    closeEmailVerificationModal();
   }
-  draw();
-  verificationCountdownTimer_ = setInterval(draw, 1000);
 }
-
-function verifyEmailCode_() {
-  const codeInput = document.getElementById("verificationCodeInput");
-  const button = document.getElementById("verificationSubmit");
-  const message = document.getElementById("verificationMessage");
-  const code = String(codeInput?.value || "").replace(/\D/g, "").slice(0, 6);
-  if (codeInput) codeInput.value = code;
-  if (!verificationToken_) { if (message) message.textContent = "Verification session expired. Please create the account again."; return; }
-  if (!/^\d{6}$/.test(code)) { if (message) message.textContent = "Please enter the 6-digit verification code."; return; }
-  if (button) { button.disabled = true; button.textContent = "Verifying..."; }
-  if (message) message.textContent = "";
-
-  showLoginRamenLoader_();
-
-  mckenzieVerificationRequest_("verifyEmailCode", {
-    token: verificationToken_,
-    code: code
-  }).then(function(result) {
-    hideLoginRamenLoader_();
-    if (message) { message.style.color = "#198754"; message.textContent = "Email verified! Your account has been created."; }
-    try { localStorage.removeItem("mckenziePendingVerification"); } catch (error) {}
-    setTimeout(function() {
-      closeEmailVerificationModal();
-      verificationToken_ = "";
-      openLoginModal();
-      const loginMessage = document.getElementById("popupLoginMessage");
-      if (loginMessage) { loginMessage.style.color = "#198754"; loginMessage.textContent = "Account created successfully. Please log in."; }
-      if (button) { button.disabled = false; button.textContent = "Verify Email"; }
-    }, 700);
-  }).catch(function(error) {
-    hideLoginRamenLoader_();
-    if (message) { message.style.color = "#a51620"; message.textContent = error && error.message ? error.message : "Verification failed. Please try again."; }
-    if (button) { button.disabled = false; button.textContent = "Verify Email"; }
-  });
-}
-
-function resendVerificationCode_() {
-  const button = document.getElementById("verificationResend");
-  const message = document.getElementById("verificationMessage");
-  if (!verificationToken_) { if (message) message.textContent = "Verification session expired. Please create the account again."; return; }
-  if (button) { button.disabled = true; button.textContent = "Sending..."; }
-  if (message) { message.style.color = "#a51620"; message.textContent = ""; }
-  mckenzieVerificationRequest_("resendVerificationCode", {
-    token: verificationToken_
-  }).then(function(result) {
-    if (message) { message.style.color = "#198754"; message.textContent = "A new verification code has been sent."; }
-    startVerificationCountdown_(600);
-    const input = document.getElementById("verificationCodeInput");
-    if (input) { input.value = ""; input.focus(); }
-    if (button) { button.disabled = false; button.textContent = "Resend Code"; }
-  }).catch(function(error) {
-    if (message) { message.style.color = "#a51620"; message.textContent = error && error.message ? error.message : "Unable to resend the code."; }
-    if (button) { button.disabled = false; button.textContent = "Resend Code"; }
-  });
-}
-
 
 /* =========================================================
    LOGIN / CART STATE
@@ -6710,7 +6655,7 @@ function createPetals() {
 
 /* =========================================================
    DO NOT AUTO-OPEN EMAIL VERIFICATION ON PAGE LOAD
-   OTP appears only after Create Account submits registration.
+   Firebase verification popup appears only after account creation.
 ========================================================= */
 try {
   /* Clear only the stale display trigger; verification data itself is not used here. */
