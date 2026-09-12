@@ -5109,7 +5109,20 @@ function confirmPlaceOrder_() {
       console.warn("Customer auth restoration check failed:", authReadyError);
     }
 
-    const u = f.auth && f.auth.currentUser;
+    let u = f.auth && f.auth.currentUser;
+    let sessionToken = "";
+    let sessionUid = "";
+    try {
+      sessionToken = String(window.__mckenzieCustomerIdToken || sessionStorage.getItem("mckenzieCustomerIdToken") || "").trim();
+      sessionUid = String(window.__mckenzieCustomerUid || sessionStorage.getItem("mckenzieCustomerUid") || "").trim();
+    } catch (e) {}
+
+    if (!u && sessionToken && sessionUid) {
+      // The UI login is already authenticated, but Firebase's modular Auth
+      // object may still be between persistence states. Use the same fresh
+      // ID token from the successful login as a direct Firestore REST fallback.
+      u = { uid: sessionUid, email: String(window.__mckenzieCustomerEmail || payload.email || "") };
+    }
 
     if (!u) throw new Error("Please log in again before placing your order.");
     if (String(payload.userId || "") !== String(u.uid)) {
@@ -5144,7 +5157,7 @@ function confirmPlaceOrder_() {
       payload.region
     ].filter(Boolean).join(", ");
 
-    await f.setDoc(ref, {
+    const orderData = {
       orderId: String(orderId),
       userId: String(u.uid),
       customerName: String(payload.fullName || ""),
@@ -5163,7 +5176,54 @@ function confirmPlaceOrder_() {
       confirmedAt: "",
       deliveredAt: "",
       closed: false
+    };
+
+    // Normal path: Firestore SDK uses the live Firebase Auth session.
+    if (f.auth && f.auth.currentUser) {
+      await f.setDoc(ref, orderData);
+      return { success:true, orderId:String(orderId), status:"Preparing" };
+    }
+
+    // Fallback path: use the exact ID token captured immediately after the
+    // customer's successful Firebase login. This avoids the false
+    // "Please log in again" failure while Auth persistence is settling.
+    if (!sessionToken) throw new Error("Please log in again before placing your order.");
+
+    function fsValue_(value) {
+      if (value === null || value === undefined) return { nullValue: null };
+      if (typeof value === "boolean") return { booleanValue: value };
+      if (typeof value === "number") return Number.isInteger(value) ? { integerValue: String(value) } : { doubleValue: value };
+      if (Array.isArray(value)) return { arrayValue: { values: value.map(fsValue_) } };
+      if (typeof value === "object") {
+        const fields = {};
+        Object.keys(value).forEach(function(k){ fields[k] = fsValue_(value[k]); });
+        return { mapValue: { fields: fields } };
+      }
+      return { stringValue: String(value) };
+    }
+
+    const restFields = {};
+    Object.keys(orderData).forEach(function(key){ restFields[key] = fsValue_(orderData[key]); });
+    const restUrl =
+      "https://firestore.googleapis.com/v1/projects/mckenzie-ramen-house/databases/(default)/documents/orders/" +
+      encodeURIComponent(String(orderId));
+    const restResponse = await fetch(restUrl, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + sessionToken
+      },
+      body: JSON.stringify({ fields: restFields })
     });
+
+    if (!restResponse.ok) {
+      let detail = "";
+      try {
+        const body = await restResponse.json();
+        detail = body && body.error && body.error.message ? String(body.error.message) : "";
+      } catch (e) {}
+      throw new Error(detail || "The restaurant system rejected the order. Please try again.");
+    }
 
     return { success:true, orderId:String(orderId), status:"Preparing" };
   }
@@ -6150,6 +6210,13 @@ function logoutUser_() {
   // Clear the login state first so the UI becomes guest state immediately.
   setLoggedInState_(false);
   try { localStorage.removeItem("mckenzieUser"); } catch(error) {}
+  try {
+    window.__mckenzieCustomerIdToken = "";
+    window.__mckenzieCustomerUid = "";
+    window.__mckenzieCustomerEmail = "";
+    sessionStorage.removeItem("mckenzieCustomerIdToken");
+    sessionStorage.removeItem("mckenzieCustomerUid");
+  } catch(error) {}
 
   // Clear only the in-memory cart when leaving the account.
   // The customer's saved cart remains stored under that customer's ID.
@@ -6519,6 +6586,20 @@ async function submitLoginPopup(event) {
     const cred = await firebaseAuth.signInWithEmailAndPassword(firebaseAuth.auth, firebaseEmail, password);
     const firebaseUser = cred.user;
     await firebaseUser.reload();
+
+    // Keep a short-lived in-page/session copy of the Firebase ID token.
+    // Checkout can use this exact authenticated token even if Firebase
+    // finishes restoring/refreshing auth state after the UI already says
+    // the customer is logged in.
+    try {
+      window.__mckenzieCustomerUid = String(firebaseUser.uid || "");
+      window.__mckenzieCustomerEmail = String(firebaseUser.email || firebaseEmail || "");
+      window.__mckenzieCustomerIdToken = await firebaseUser.getIdToken();
+      sessionStorage.setItem("mckenzieCustomerIdToken", window.__mckenzieCustomerIdToken);
+      sessionStorage.setItem("mckenzieCustomerUid", window.__mckenzieCustomerUid);
+    } catch (tokenCacheError) {
+      console.warn("Unable to cache checkout auth token:", tokenCacheError);
+    }
 
     if (!firebaseUser.emailVerified) {
       setLoggedInState_(false);
