@@ -6108,18 +6108,38 @@ async function submitLoginPopup(event) {
     let firebaseEmail = identifier.toLowerCase();
     let profile = {};
 
-    // Username login: find the customer's email from Firestore first.
+    // Firebase Authentication signs in with EMAIL, not username.
+    // Do NOT query the users collection here: unauthenticated customers may
+    // not have permission to read that collection. Instead, use the username
+    // -> email mapping already learned from this browser.
     if (!/@/.test(identifier)) {
-      const q = firebaseAuth.query(
-        firebaseAuth.collection(firebaseAuth.db, "users"),
-        firebaseAuth.where("username", "==", identifier)
-      );
-      const snaps = await firebaseAuth.getDocs(q);
-      if (snaps.empty) throw new Error("Username not found. Please check your username.");
-      const first = snaps.docs[0];
-      profile = first.data() || {};
-      firebaseEmail = String(profile.email || "").trim().toLowerCase();
-      if (!firebaseEmail) throw new Error("This account does not have a valid email address.");
+      let usernameEmail = "";
+      try {
+        const savedMap = JSON.parse(localStorage.getItem("mckenzieUsernameEmailMap") || "{}");
+        usernameEmail = String(savedMap[String(identifier).toLowerCase()] || "").trim().toLowerCase();
+
+        // Also recover the mapping from the currently saved customer profile.
+        if (!usernameEmail) {
+          const savedUser = JSON.parse(localStorage.getItem("mckenzieUser") || "null");
+          if (savedUser && String(savedUser.username || "").trim().toLowerCase() === String(identifier).toLowerCase()) {
+            usernameEmail = String(savedUser.email || "").trim().toLowerCase();
+          }
+        }
+      } catch (e) {}
+
+      // First username login on a new browser: ask for the registered email
+      // once, authenticate directly with Firebase, then remember the mapping.
+      if (!usernameEmail) {
+        const linkedEmail = window.prompt(
+          "This is your username. For the first username login on this device, please enter the email address registered to this account:"
+        );
+        usernameEmail = String(linkedEmail || "").trim().toLowerCase();
+        if (!usernameEmail || !/@/.test(usernameEmail)) {
+          throw new Error("Please enter the registered email address to use your username on this device.");
+        }
+      }
+
+      firebaseEmail = usernameEmail;
     }
 
     const cred = await firebaseAuth.signInWithEmailAndPassword(firebaseAuth.auth, firebaseEmail, password);
@@ -6168,6 +6188,14 @@ async function submitLoginPopup(event) {
     try {
       if (rememberBox && rememberBox.checked) localStorage.setItem("mckenzieRememberedLogin", identifier);
       else localStorage.removeItem("mckenzieRememberedLogin");
+
+      const usernameForMap = String(basicUser.username || (/@/.test(identifier) ? "" : identifier)).trim().toLowerCase();
+      const emailForMap = String(basicUser.email || firebaseEmail || "").trim().toLowerCase();
+      if (usernameForMap && emailForMap && /@/.test(emailForMap)) {
+        const savedMap = JSON.parse(localStorage.getItem("mckenzieUsernameEmailMap") || "{}");
+        savedMap[usernameForMap] = emailForMap;
+        localStorage.setItem("mckenzieUsernameEmailMap", JSON.stringify(savedMap));
+      }
     } catch (e) {}
 
     try { localStorage.setItem("mckenzieUser", JSON.stringify(basicUser)); } catch (e) {}
