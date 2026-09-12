@@ -3992,8 +3992,10 @@ async function requireVerifiedCustomer_(messageText) {
       const freshUser = firebaseAuth.auth.currentUser;
 
       if (freshUser && freshUser.emailVerified) {
-        const profile = await markCustomerEmailVerified_(firebaseAuth, freshUser);
-        showEmailVerifiedSuccess_(freshUser, profile);
+        // The customer is already verified. Do NOT show the email-verification
+        // congratulations popup during Add to Cart / Checkout / Place Order.
+        // That popup belongs only to the email-link verification flow.
+        await markCustomerEmailVerified_(firebaseAuth, freshUser);
         return true;
       }
 
@@ -5020,6 +5022,108 @@ function cancelOrderConfirmation_() {
   }
 }
 
+function firebaseRestValue_(value) {
+  if (value === null || value === undefined) return { nullValue: null };
+  if (typeof value === "boolean") return { booleanValue: value };
+  if (typeof value === "number") return Number.isInteger(value) ? { integerValue: String(value) } : { doubleValue: value };
+  if (Array.isArray(value)) return { arrayValue: { values: value.map(firebaseRestValue_) } };
+  if (typeof value === "object") {
+    const fields = {};
+    Object.keys(value).forEach(function(k){ fields[k] = firebaseRestValue_(value[k]); });
+    return { mapValue: { fields: fields } };
+  }
+  return { stringValue: String(value) };
+}
+
+async function saveOrderGitHubFirebaseOnly_(orderId, payload) {
+  const firebaseAuth = await mckenzieWithTimeout_(
+    getMcKenzieCustomerAuthDirect_(),
+    12000,
+    "Unable to connect to Firebase. Please refresh the page and try again."
+  );
+
+  let firebaseUser = await waitForFirebaseCustomerAuthReady_(firebaseAuth);
+  let idToken = "";
+
+  if (firebaseUser) {
+    try { await firebaseUser.reload(); } catch (e) {}
+    firebaseUser = firebaseAuth.auth.currentUser || firebaseUser;
+    if (firebaseUser) {
+      if (String(payload.userId || "") !== String(firebaseUser.uid)) {
+        throw new Error("The logged-in customer account does not match this order. Please log in again.");
+      }
+      idToken = await firebaseUser.getIdToken(true);
+    }
+  }
+
+  // If Firebase Auth has not restored currentUser yet, use the short-lived
+  // token captured immediately after login. This keeps checkout independent
+  // from the browser's delayed auth-state restoration.
+  if (!idToken) {
+    try { idToken = String(sessionStorage.getItem("mckenzieFirebaseIdToken") || "").trim(); } catch (e) {}
+  }
+  if (!idToken) throw new Error("Your Firebase login session is not ready. Please log in again and try once more.");
+
+  const items = (Array.isArray(payload.items) ? payload.items : []).map(function(item){
+    return {
+      productId: String(item.id || item.productId || ""),
+      productName: String(item.name || item.productName || "Ramen item"),
+      price: Number(item.price || 0),
+      quantity: Number(item.quantity || 0),
+      subtotal: Number(item.price || 0) * Number(item.quantity || 0),
+      itemStatus: "Preparing"
+    };
+  }).filter(function(item){ return item.quantity > 0; });
+
+  if (!items.length) throw new Error("The order contains no items.");
+
+  const total = items.reduce(function(sum,item){ return sum + item.subtotal; },0);
+  const now = new Date().toISOString();
+  const address = [payload.houseUnit,payload.street,payload.barangay,payload.city,payload.province,payload.region]
+    .map(function(v){return String(v||"").trim();}).filter(Boolean).join(", ");
+
+  const orderData = {
+    orderId: String(orderId),
+    userId: String(payload.userId || ""),
+    customerName: String(payload.fullName || ""),
+    fullName: String(payload.fullName || ""),
+    email: String(payload.email || (firebaseUser && firebaseUser.email) || ""),
+    mobile: String(payload.mobile || ""),
+    items: items,
+    total: total,
+    paymentMethod: String(payload.paymentMethod || ""),
+    paymentStatus: "Pending",
+    orderStatus: "Preparing",
+    address: address,
+    instruction: String(payload.additionalInstruction || ""),
+    orderedAt: now,
+    customerConfirmed: false,
+    confirmedAt: "",
+    deliveredAt: "",
+    closed: false
+  };
+
+  const fields = {};
+  Object.keys(orderData).forEach(function(key){ fields[key] = firebaseRestValue_(orderData[key]); });
+  const url = "https://firestore.googleapis.com/v1/projects/mckenzie-ramen-house/databases/(default)/documents/orders/" + encodeURIComponent(String(orderId));
+  const response = await fetch(url, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", "Authorization": "Bearer " + idToken },
+    body: JSON.stringify({ fields: fields }),
+    cache: "no-store"
+  });
+  const raw = await response.text();
+  if (!response.ok) {
+    let detail = "Firebase rejected the order.";
+    try {
+      const parsed = JSON.parse(raw);
+      detail = (parsed.error && parsed.error.message) || detail;
+    } catch (e) {}
+    throw new Error(detail);
+  }
+  return { success:true, orderId:String(orderId), status:"Preparing" };
+}
+
 function confirmPlaceOrder_() {
   const payload = window._pendingOrderPayload;
   const yes = document.getElementById("orderConfirmYes");
@@ -5031,7 +5135,7 @@ function confirmPlaceOrder_() {
 
   const orderId = "MRH-" + Date.now();
   if (yes) { yes.disabled = true; yes.textContent = "Placing Order..."; }
-  if (message) { message.textContent = "Saving your order..."; message.style.color = "#198754"; }
+  if (message) { message.textContent = "Placing your order..."; message.style.color = "#198754"; }
 
   const historyKey = getCustomerStorageKey_("mckenzieOrderHistory", payload.userId);
   let history = [];
@@ -5040,36 +5144,26 @@ function confirmPlaceOrder_() {
   const order = {
     id: orderId,
     date: new Date().toLocaleString(),
-    total: (payload.items || []).reduce(function(sum, item) {
-      return sum + Number(item.price || 0) * Number(item.quantity || 0);
-    }, 0),
+    total: (payload.items || []).reduce(function(sum, item) { return sum + Number(item.price || 0) * Number(item.quantity || 0); }, 0),
     customer: payload.fullName,
     phone: payload.mobile,
     paymentMethod: payload.paymentMethod,
     paymentStatus: "Pending",
-    orderStatus: "Pending",
+    orderStatus: "Preparing",
     address: [payload.houseUnit, payload.street, payload.barangay, payload.city, payload.province, payload.region].filter(Boolean).join(", "),
     additionalInstruction: payload.additionalInstruction,
-    items: (payload.items || []).map(function(item) {
-      return { id:item.id, name:item.name, price:Number(item.price||0), image:item.image||"", quantity:Number(item.quantity||0) };
-    })
+    items: (payload.items || []).map(function(item) { return { id:item.id, name:item.name, price:Number(item.price||0), image:item.image||"", quantity:Number(item.quantity||0) }; })
   };
 
   function finishSuccessfulOrderSave_(result) {
-    if (!result || !result.success) {
-      failOrderSave_(result || {message:"Firebase rejected the order."});
-      return;
-    }
-
+    if (!result || !result.success) { failOrderSave_(result || {message:"Firebase rejected the order."}); return; }
     history.unshift(order);
     try { localStorage.setItem(historyKey, JSON.stringify(history.slice(0, 50))); } catch (e) {}
-
     cartItems = [];
     saveCart_();
     renderCartModal_();
     renderAllCartControls_();
     renderCheckoutOrderSummary_();
-
     const confirmModal = document.getElementById("orderConfirmModal");
     if (confirmModal) confirmModal.classList.remove("show");
     closeAccountSubmodal_("checkoutModal");
@@ -5080,52 +5174,11 @@ function confirmPlaceOrder_() {
   function failOrderSave_(error) {
     console.error("Unable to create Firebase order record:", error);
     if (yes) { yes.disabled = false; yes.textContent = "Yes, Place Order"; }
-    if (message) {
-      message.textContent = "Unable to save your order.";
-      message.style.color = "#a51620";
-    }
-    alert(
-      "Your order was NOT saved.\n\n" +
-      (error && (error.message || error.error) ? (error.message || error.error) : "Please try again.")
-    );
+    if (message) { message.textContent = "Unable to save your order."; message.style.color = "#a51620"; }
+    alert("Your order was NOT saved.\n\n" + (error && (error.message || error.error) ? (error.message || error.error) : "Please try again."));
   }
 
-  // GITHUB + FIREBASE ONLY.
-  // Use the SAME Firebase bridge/auth instance that powers the GitHub site.
-  // The bridge now waits for Firebase auth restoration before saving.
-  Promise.resolve(window.MckenzieFirebaseReady)
-    .then(function() {
-      return new Promise(function(resolve, reject) {
-        var settled = false;
-        var timer = setTimeout(function(){
-          if (settled) return;
-          settled = true;
-          reject(new Error("Your Firebase login session is not ready. Please log in again and try once more."));
-        }, 10000);
-
-        try {
-          window.google.script.run
-            .withSuccessHandler(function(result){
-              if (settled) return;
-              settled = true;
-              clearTimeout(timer);
-              resolve(result);
-            })
-            .withFailureHandler(function(error){
-              if (settled) return;
-              settled = true;
-              clearTimeout(timer);
-              reject(error instanceof Error ? error : new Error(String(error && error.message || error || "Firebase rejected the order.")));
-            })
-            .recordOrder(orderId, payload);
-        } catch (e) {
-          clearTimeout(timer);
-          if (!settled) { settled = true; reject(e); }
-        }
-      });
-    })
-    .then(finishSuccessfulOrderSave_)
-    .catch(failOrderSave_);
+  saveOrderGitHubFirebaseOnly_(orderId, payload).then(finishSuccessfulOrderSave_).catch(failOrderSave_);
 }
 
 function renderAllCartControls_() {
