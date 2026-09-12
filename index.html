@@ -5717,10 +5717,21 @@ function openOrderHistory_() {
   const content=document.getElementById("orderHistoryContent"),modal=document.getElementById("orderHistoryModal");
   if(modal){modal.classList.add("show");document.body.style.overflow="hidden";}
   if(content)content.innerHTML='<div class="order-feature-loading">Loading your orders…</div>';
+
   customerGetOrdersDirect_().then(function(orders){
-    if(!Array.isArray(orders)||!orders.length){content.innerHTML='<div class="order-feature-empty"><strong>No orders yet.</strong><br>Your orders will appear here after checkout. 🍜</div>';return;}
-    content.innerHTML=orders.map(renderCustomerOrderCard_).join("");
-  }).catch(function(error){content.innerHTML='<div class="order-feature-error">'+escapeHtml(error&&error.message?error.message:"Unable to load order history. Please try again.")+'</div>';});
+    orders = Array.isArray(orders) ? orders : [];
+    // Keep the exact loaded orders in memory. Opening an order should not
+    // require another Firestore query, which makes navigation reliable even
+    // when a second read is briefly delayed or denied.
+    window._mckCustomerOrdersCache = orders.slice();
+    if(!orders.length){
+      if(content) content.innerHTML='<div class="order-feature-empty"><strong>No orders yet.</strong><br>Your orders will appear here after checkout. 🍜</div>';
+      return;
+    }
+    if(content) content.innerHTML=orders.map(renderCustomerOrderCard_).join("");
+  }).catch(function(error){
+    if(content)content.innerHTML='<div class="order-feature-error">'+escapeHtml(error&&error.message?error.message:"Unable to load order history. Please try again.")+ '</div>';
+  });
 }
 
 function orderStatusIndex_(status) {
@@ -5786,15 +5797,32 @@ function renderCustomerOrderCard_(order) {
   return '<div class="order-history-card" tabindex="0" role="button" data-order-key="' + orderKey + '" onclick="openOrderDetailByKey_(this.dataset.orderKey)" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();openOrderDetailByKey_(this.dataset.orderKey)}">' +
     '<div class="order-history-head"><div><div class="order-history-id">Order #' + escapeHtml(order.orderId || "") + '</div><div class="order-history-date">' + escapeHtml(order.orderedAt ? new Date(order.orderedAt).toLocaleString() : "") + '</div></div><div class="order-history-total">₱' + formatPrice(order.total || 0) + '</div></div>' +
     renderStatusTrack_(order.orderStatus) +
-    '<div class="order-history-items"><div class="order-history-item"><div><div class="order-history-item-name">' + (firstItems || "No items recorded") + '</div><div class="order-history-item-meta">' + itemCount + ' item' + (itemCount === 1 ? '' : 's') + ' • Tap to view full order breakdown</div></div><strong>›</strong></div></div>' +
+    '<div class="order-history-items"><div class="order-history-item"><div><div class="order-history-item-name">' + (firstItems || "No items recorded") + (more ? '<span class="order-history-more">' + escapeHtml(more) + '</span>' : '') + '</div><div class="order-history-item-meta">' + itemCount + ' item' + (itemCount === 1 ? '' : 's') + ' • Tap anywhere to view full order</div></div><strong class="order-history-arrow">›</strong></div></div>' +
     '<div class="order-detail-box"><b>Payment:</b> ' + escapeHtml(order.paymentMethod || "Not specified") + ' &nbsp; • &nbsp; <b>Delivery:</b> ' + escapeHtml(order.orderStatus || "Preparing") + '</div>' +
+    '<button type="button" class="order-feature-btn secondary order-view-btn" onclick="event.stopPropagation();openOrderDetailByKey_(this.closest(\'.order-history-card\').dataset.orderKey)">View Order Details →</button>' +
     '</div>';
 }
 
 function openOrderDetailByKey_(encodedOrderId){
-  const id=decodeURIComponent(String(encodedOrderId||""));if(!id)return;
-  const content=document.getElementById("orderHistoryContent");if(content)content.innerHTML='<div class="order-feature-loading">Loading order details…</div>';
-  customerGetOrdersDirect_().then(function(orders){const order=(orders||[]).find(function(item){return String(item.orderId||"")===id;});if(!order){if(content)content.innerHTML='<div class="order-feature-error">Order details could not be found.</div>';return;}openOrderDetail_(order);}).catch(function(error){if(content)content.innerHTML='<div class="order-feature-error">'+escapeHtml(error&&error.message?error.message:"Unable to load order details.")+'</div>';});
+  const id=decodeURIComponent(String(encodedOrderId||""));
+  if(!id)return;
+  const content=document.getElementById("orderHistoryContent");
+  if(content)content.innerHTML='<div class="order-feature-loading">Opening order details…</div>';
+
+  // First use the exact order already loaded into the history screen.
+  // This makes every order card immediately navigable without another
+  // Firestore request.
+  const cached=Array.isArray(window._mckCustomerOrdersCache)?window._mckCustomerOrdersCache:[];
+  const cachedOrder=cached.find(function(item){return String(item.orderId||"")===id;});
+  if(cachedOrder){ openOrderDetail_(cachedOrder); return; }
+
+  // Fallback for a deep/stale card: reload the customer's own orders only.
+  customerGetOrdersDirect_().then(function(orders){
+    window._mckCustomerOrdersCache=Array.isArray(orders)?orders.slice():[];
+    const order=(orders||[]).find(function(item){return String(item.orderId||"")===id;});
+    if(!order){if(content)content.innerHTML='<div class="order-feature-error">Order details could not be found.</div>';return;}
+    openOrderDetail_(order);
+  }).catch(function(error){if(content)content.innerHTML='<div class="order-feature-error">'+escapeHtml(error&&error.message?error.message:"Unable to load order details.")+'</div>';});
 }
 
 function renderCustomerOrderDetail_(order) {
