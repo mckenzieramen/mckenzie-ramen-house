@@ -57,8 +57,43 @@
   async function currentUser(required) {
     const f = await READY;
     if (f.auth.currentUser) return f.auth.currentUser;
+
+    // Firebase restores persisted auth asynchronously after a GitHub Pages
+    // reload. Wait for that restoration instead of treating a temporary
+    // null currentUser as a logged-out customer.
+    if (typeof f.auth.authStateReady === "function") {
+      try { await f.auth.authStateReady(); } catch (e) {}
+    }
+    if (f.auth.currentUser) return f.auth.currentUser;
+
+    if (typeof f.onAuthStateChanged === "function") {
+      const restored = await new Promise(function(resolve) {
+        let done = false;
+        let unsub = null;
+        const timer = setTimeout(function() {
+          if (done) return;
+          done = true;
+          try { if (unsub) unsub(); } catch (e) {}
+          resolve(null);
+        }, 6000);
+        try {
+          unsub = f.onAuthStateChanged(f.auth, function(user) {
+            if (done) return;
+            done = true;
+            clearTimeout(timer);
+            try { if (unsub) unsub(); } catch (e) {}
+            resolve(user || null);
+          });
+        } catch (e) {
+          clearTimeout(timer);
+          resolve(null);
+        }
+      });
+      if (restored) return restored;
+    }
+
     if (!required) return null;
-    throw makeError("Please log in again.");
+    throw makeError("Your Firebase login session is not ready. Please log in again and try once more.");
   }
 
   async function isAdmin() {
