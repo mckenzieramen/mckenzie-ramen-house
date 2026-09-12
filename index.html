@@ -1094,20 +1094,48 @@ button {
 
 .products {
   position: relative;
-
   z-index: 15;
-
   max-width: 1180px;
-
   margin: auto;
-
   display: grid;
-
-  grid-template-columns:
-    repeat(4, 1fr);
-
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 24px;
 }
+
+/* Category sections must occupy the full menu width.
+   Each category keeps a clean 4-card row and scrolls horizontally
+   when more items are available instead of squeezing cards. */
+#products > .menu-category-group {
+  grid-column: 1 / -1;
+  width: 100%;
+  min-width: 0;
+}
+
+#products > .menu-category-group > .products {
+  width: 100%;
+  max-width: 1180px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+#products > .menu-category-group > .products:has(.product-card:nth-child(5)) {
+  display: flex;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  padding: 4px 4px 14px;
+  gap: 18px;
+}
+
+#products > .menu-category-group > .products:has(.product-card:nth-child(5)) .product-card {
+  flex: 0 0 calc((100% - 54px) / 4);
+  min-width: 0;
+  scroll-snap-align: start;
+}
+
+#products > .menu-category-group > .products::-webkit-scrollbar { height: 7px; }
+#products > .menu-category-group > .products::-webkit-scrollbar-thumb { background: #d7aaa0; border-radius: 20px; }
 
 .product-card {
   position: relative;
@@ -1593,8 +1621,15 @@ button {
 @media (max-width: 1000px) {
 
   .products {
-    grid-template-columns:
-      repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  #products > .menu-category-group > .products {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  #products > .menu-category-group > .products:has(.product-card:nth-child(5)) .product-card {
+    flex-basis: calc((100% - 18px) / 2);
   }
 
   .sakura-decoration {
@@ -1611,6 +1646,26 @@ button {
 }
 
 @media (max-width: 700px) {
+
+  #products > .menu-category-group > .products {
+    display: flex;
+    overflow-x: auto;
+    overflow-y: hidden;
+    gap: 14px;
+    padding: 4px 4px 14px;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  #products > .menu-category-group > .products .product-card {
+    flex: 0 0 calc((100% - 14px) / 2);
+    min-width: 0;
+    scroll-snap-align: start;
+  }
+
+  #products > .menu-category-group > .products .menu-category-coming-soon {
+    flex: 0 0 100%;
+  }
 
   .hero {
     min-height: 700px;
