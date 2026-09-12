@@ -654,11 +654,15 @@ async function saveProduct(){
       bestSeller:document.getElementById('bestSeller').checked,
       newProduct:document.getElementById('newProduct').checked
     };
-    // On edit, do NOT send image unless the owner selected a new image or explicitly removed it.
+    // On edit, ALWAYS carry the existing image forward unless the owner
+    // explicitly selected a replacement or removed the image. This prevents
+    // the photo from disappearing when only text/price/category is edited.
     if(selectedImage){
       data.image=await fileData(selectedImage);
     }else if(removeProductImageFlag){
       data.image='';
+    }else if(id && editing){
+      data.image=String(editing.image || editing.imageUrl || '').trim();
     }
     await new Promise((resolve,reject)=>run('adminSaveProduct',[data],(v,e)=>e?reject(new Error(e)):(!v||!v.success)?reject(new Error('Unable to save product.')):resolve(v)));
     closeModal();
