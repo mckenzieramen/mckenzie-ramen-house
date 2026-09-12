@@ -5172,11 +5172,49 @@ async function customerGetOrdersDirect_() {
   return customerFirebaseWithTimeout_(async function(f){
     var u=f.auth.currentUser;
     if(!u || String(u.uid)!==uid) throw new Error("Please log in again.");
-    // Query ONLY this customer's orders. Do not read the entire orders collection:
-    // the Firestore rules intentionally block collection-wide customer reads.
-    var q=f.query(f.collection(f.db,"orders"),f.where("userId","==",uid));
+
+    // IMPORTANT: only query this customer's orders. The Firestore rules do not
+    // allow a customer to read the whole orders collection.
+    var ref=f.collection(f.db,"orders");
+    var q=f.query(ref,f.where("userId","==",uid));
     var snap=await f.getDocs(q);
-    return snap.docs.map(function(doc){var o=doc.data()||{};return {orderId:String(o.orderId||doc.id),userId:String(o.userId||""),customerName:o.customerName||o.fullName||"Customer",fullName:o.fullName||o.customerName||"Customer",email:o.email||u.email||"",mobile:o.mobile||"",items:Array.isArray(o.items)?o.items.map(function(it,idx){return {itemIndex:idx,productId:String(it.productId||it.id||""),productName:it.productName||it.name||"Ramen item",price:Number(it.price||0),quantity:Number(it.quantity||0),subtotal:Number(it.subtotal!=null?it.subtotal:Number(it.price||0)*Number(it.quantity||0)),itemStatus:String(it.itemStatus||"Preparing")};}):[],total:Number(o.total||0),paymentMethod:o.paymentMethod||"",paymentStatus:o.paymentStatus||"Pending",orderStatus:o.orderStatus==="Pending"?"Preparing":(o.orderStatus||"Preparing"),address:o.address||"",instruction:o.instruction||o.additionalInstruction||"",orderedAt:o.orderedAt&&o.orderedAt.toDate?o.orderedAt.toDate().toISOString():String(o.orderedAt||""),customerConfirmed:!!o.customerConfirmed,confirmedAt:o.confirmedAt&&o.confirmedAt.toDate?o.confirmedAt.toDate().toISOString():String(o.confirmedAt||""),deliveredAt:o.deliveredAt&&o.deliveredAt.toDate?o.deliveredAt.toDate().toISOString():String(o.deliveredAt||""),closed:!!o.closed,canRate:o.orderStatus==="Delivered"&&!!o.customerConfirmed};}).sort(function(a,b){return String(b.orderedAt).localeCompare(String(a.orderedAt));});
+
+    return snap.docs.map(function(doc){
+      var o=doc.data()||{};
+      return {
+        orderId:String(o.orderId||doc.id),
+        userId:String(o.userId||""),
+        customerName:o.customerName||o.fullName||"Customer",
+        fullName:o.fullName||o.customerName||"Customer",
+        email:o.email||u.email||"",
+        mobile:o.mobile||"",
+        items:Array.isArray(o.items)?o.items.map(function(it,idx){
+          return {
+            itemIndex:idx,
+            productId:String(it.productId||it.id||""),
+            productName:it.productName||it.name||"Ramen item",
+            price:Number(it.price||0),
+            quantity:Number(it.quantity||0),
+            subtotal:Number(it.subtotal!=null?it.subtotal:Number(it.price||0)*Number(it.quantity||0)),
+            itemStatus:String(it.itemStatus||"Preparing")
+          };
+        }):[],
+        total:Number(o.total||0),
+        paymentMethod:o.paymentMethod||"",
+        paymentStatus:o.paymentStatus||"Pending",
+        orderStatus:o.orderStatus==="Pending"?"Preparing":(o.orderStatus||"Preparing"),
+        address:o.address||"",
+        instruction:o.instruction||o.additionalInstruction||"",
+        orderedAt:o.orderedAt&&o.orderedAt.toDate?o.orderedAt.toDate().toISOString():String(o.orderedAt||""),
+        customerConfirmed:!!o.customerConfirmed,
+        confirmedAt:o.confirmedAt&&o.confirmedAt.toDate?o.confirmedAt.toDate().toISOString():String(o.confirmedAt||""),
+        deliveredAt:o.deliveredAt&&o.deliveredAt.toDate?o.deliveredAt.toDate().toISOString():String(o.deliveredAt||""),
+        closed:!!o.closed,
+        canRate:o.orderStatus==="Delivered"&&!!o.customerConfirmed
+      };
+    }).sort(function(a,b){
+      return String(b.orderedAt).localeCompare(String(a.orderedAt));
+    });
   },"Unable to load your orders right now.");
 }
 
@@ -5200,10 +5238,8 @@ async function customerSaveOrderDirect_(orderId,payload) {
     if(!cleanItems.length) throw new Error("The order contains no items.");
     var total=cleanItems.reduce(function(sum,it){return sum+it.subtotal;},0);
     var ref=f.doc(f.db,"orders",String(orderId));
-    // IMPORTANT: Do not read the new order document before creating it.
-    // Customer Firestore rules allow CREATE for the customer's own order,
-    // but a missing document has no resource.data for a customer READ check.
-    // That pre-read was causing "Missing or insufficient permissions."
+    var existing=await f.getDoc(ref);
+    if(existing.exists()) return {success:true,orderId:String(orderId),duplicate:true};
     var address=[payload.houseUnit,payload.street,payload.barangay,payload.city,payload.province,payload.region].filter(Boolean).join(", ");
     await f.setDoc(ref,{orderId:String(orderId),userId:uid,customerName:String(payload.fullName||""),fullName:String(payload.fullName||""),email:u.email||String(payload.email||""),mobile:String(payload.mobile||""),items:cleanItems,total:total,paymentMethod:String(payload.paymentMethod||""),paymentStatus:"Pending",orderStatus:"Preparing",address:address,instruction:String(payload.additionalInstruction||""),orderedAt:new Date().toISOString(),customerConfirmed:false,confirmedAt:"",deliveredAt:"",closed:false});
     return {success:true,orderId:String(orderId),status:"Preparing"};
@@ -5791,40 +5827,65 @@ function confirmOrderReceived_(orderId,button){
 function renderCustomerOrderCard_(order) {
   const orderKey = encodeURIComponent(String(order.orderId || ""));
   const items = Array.isArray(order.items) ? order.items : [];
-  const itemCount = items.reduce(function(total, item){ return total + Number(item.quantity || 0); }, 0);
-  const firstItems = items.slice(0, 2).map(function(item){
+  const itemCount = items.reduce(function(total,item){
+    return total + Number(item.quantity || 0);
+  },0);
+  const firstItems = items.slice(0,2).map(function(item){
     return escapeHtml(item.productName || "Ramen item");
   }).join(" • ");
-  const more = items.length > 2 ? " + " + (items.length - 2) + " more" : "";
-  return '<div class="order-history-card" tabindex="0" role="button" data-order-key="' + orderKey + '" onclick="openOrderDetailByKey_(this.dataset.orderKey)" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();openOrderDetailByKey_(this.dataset.orderKey)}">' +
-    '<div class="order-history-head"><div><div class="order-history-id">Order #' + escapeHtml(order.orderId || "") + '</div><div class="order-history-date">' + escapeHtml(order.orderedAt ? new Date(order.orderedAt).toLocaleString() : "") + '</div></div><div class="order-history-total">₱' + formatPrice(order.total || 0) + '</div></div>' +
-    renderStatusTrack_(order.orderStatus) +
-    '<div class="order-history-items"><div class="order-history-item"><div><div class="order-history-item-name">' + (firstItems || "No items recorded") + (more ? '<span class="order-history-more">' + escapeHtml(more) + '</span>' : '') + '</div><div class="order-history-item-meta">' + itemCount + ' item' + (itemCount === 1 ? '' : 's') + ' • Tap anywhere to view full order</div></div><strong class="order-history-arrow">›</strong></div></div>' +
-    '<div class="order-detail-box"><b>Payment:</b> ' + escapeHtml(order.paymentMethod || "Not specified") + ' &nbsp; • &nbsp; <b>Delivery:</b> ' + escapeHtml(order.orderStatus || "Preparing") + '</div>' +
-    '<button type="button" class="order-feature-btn secondary order-view-btn" onclick="event.stopPropagation();openOrderDetailByKey_(this.closest(\'.order-history-card\').dataset.orderKey)">View Order Details →</button>' +
+
+  return '<div class="order-history-card" tabindex="0" role="button" ' +
+    'data-order-key="' + orderKey + '" ' +
+    'onclick="openOrderDetailByKey_(this.getAttribute(\\'data-order-key\\'))" ' +
+    'onkeydown="if(event.key===\\'Enter\\'||event.key===\\' \\'){event.preventDefault();openOrderDetailByKey_(this.getAttribute(\\'data-order-key\\'))}">' +
+      '<div class="order-history-head">' +
+        '<div><div class="order-history-id">Order #' + escapeHtml(order.orderId || "") + '</div>' +
+        '<div class="order-history-date">' + escapeHtml(order.orderedAt ? new Date(order.orderedAt).toLocaleString() : "") + '</div></div>' +
+        '<div class="order-history-total">₱' + formatPrice(order.total || 0) + '</div>' +
+      '</div>' +
+      renderStatusTrack_(order.orderStatus) +
+      '<div class="order-history-items"><div class="order-history-item">' +
+        '<div><div class="order-history-item-name">' + (firstItems || "No items recorded") + '</div>' +
+        '<div class="order-history-item-meta">' + itemCount + ' item' + (itemCount===1?'':'s') + ' • Click to view full order</div></div>' +
+        '<strong>›</strong></div></div>' +
+      '<div class="order-detail-box"><b>Payment:</b> ' + escapeHtml(order.paymentMethod || "Not specified") +
+        ' &nbsp; • &nbsp; <b>Delivery:</b> ' + escapeHtml(order.orderStatus || "Preparing") + '</div>' +
     '</div>';
 }
 
 function openOrderDetailByKey_(encodedOrderId){
   const id=decodeURIComponent(String(encodedOrderId||""));
   if(!id)return;
+
   const content=document.getElementById("orderHistoryContent");
   if(content)content.innerHTML='<div class="order-feature-loading">Opening order details…</div>';
 
-  // First use the exact order already loaded into the history screen.
-  // This makes every order card immediately navigable without another
-  // Firestore request.
-  const cached=Array.isArray(window._mckCustomerOrdersCache)?window._mckCustomerOrdersCache:[];
-  const cachedOrder=cached.find(function(item){return String(item.orderId||"")===id;});
-  if(cachedOrder){ openOrderDetail_(cachedOrder); return; }
+  const cached=Array.isArray(window._mckCustomerOrdersCache)
+    ? window._mckCustomerOrdersCache : [];
+  const cachedOrder=cached.find(function(item){
+    return String(item.orderId||"")===id;
+  });
 
-  // Fallback for a deep/stale card: reload the customer's own orders only.
+  if(cachedOrder){
+    openOrderDetail_(cachedOrder);
+    return;
+  }
+
   customerGetOrdersDirect_().then(function(orders){
     window._mckCustomerOrdersCache=Array.isArray(orders)?orders.slice():[];
-    const order=(orders||[]).find(function(item){return String(item.orderId||"")===id;});
-    if(!order){if(content)content.innerHTML='<div class="order-feature-error">Order details could not be found.</div>';return;}
+    const order=(orders||[]).find(function(item){
+      return String(item.orderId||"")===id;
+    });
+    if(!order){
+      if(content)content.innerHTML='<div class="order-feature-error">Order details could not be found.</div>';
+      return;
+    }
     openOrderDetail_(order);
-  }).catch(function(error){if(content)content.innerHTML='<div class="order-feature-error">'+escapeHtml(error&&error.message?error.message:"Unable to load order details.")+'</div>';});
+  }).catch(function(error){
+    if(content)content.innerHTML='<div class="order-feature-error">'+
+      escapeHtml(error&&error.message?error.message:"Unable to load order details.")+
+      '</div>';
+  });
 }
 
 function renderCustomerOrderDetail_(order) {
