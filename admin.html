@@ -620,7 +620,39 @@ function removeProductImage(){
   setProductPreview('');
   document.getElementById('saveMsg').textContent='Product photo removed. Choose a new photo if you want to replace it, then save.';
 }
-function fileData(file){return new Promise((resolve,reject)=>{if(!file)return resolve(null);const r=new FileReader();r.onload=()=>resolve({name:file.name,type:file.type,base64:String(r.result).split(',')[1]});r.onerror=reject;r.readAsDataURL(file)})}
+function fileData(file){return new Promise((resolve,reject)=>{
+  if(!file)return resolve(null);
+  if(!/^image\/(png|jpe?g|webp)$/i.test(String(file.type||'')))return reject(new Error('Please choose a JPG, PNG, or WEBP image.'));
+  const r=new FileReader();
+  r.onerror=()=>reject(new Error('Unable to read the selected image.'));
+  r.onload=()=>{
+    const src=String(r.result||'');
+    const img=new Image();
+    img.onload=()=>{
+      try{
+        const maxSide=1400;
+        const scale=Math.min(1,maxSide/Math.max(img.width||1,img.height||1));
+        const canvas=document.createElement('canvas');
+        canvas.width=Math.max(1,Math.round((img.width||1)*scale));
+        canvas.height=Math.max(1,Math.round((img.height||1)*scale));
+        const ctx=canvas.getContext('2d');
+        if(!ctx)throw new Error('Image processing is unavailable.');
+        ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);
+        ctx.drawImage(img,0,0,canvas.width,canvas.height);
+        let quality=.82, out='';
+        do{
+          out=canvas.toDataURL('image/jpeg',quality);
+          quality-=.06;
+        }while(out.length>720000 && quality>=.40);
+        if(out.length>720000)throw new Error('This image is too large. Please choose a smaller photo.');
+        resolve({name:file.name,type:'image/jpeg',base64:out.split(',')[1]});
+      }catch(err){reject(err)}
+    };
+    img.onerror=()=>reject(new Error('Unable to process the selected image.'));
+    img.src=src;
+  };
+  r.readAsDataURL(file);
+})}
 async function clearProductImageInFirestore(id){
   const idToken=token||sessionStorage.getItem('mck_admin_token')||'';
   if(!idToken||!id)return;
