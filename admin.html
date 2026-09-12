@@ -656,7 +656,7 @@ function fileData(file){return new Promise((resolve,reject)=>{
 async function clearProductImageInFirestore(id){
   const idToken=token||sessionStorage.getItem('mck_admin_token')||'';
   if(!idToken||!id)return;
-  const url='https://firestore.googleapis.com/v1/projects/mckenzie-ramen-house/databases/(default)/documents/products/'+encodeURIComponent(String(id))+'?updateMask.fieldPaths=image';
+  const url='https://firestore.googleapis.com/v1/projects/mckenzie-ramen-house/databases/(default)/documents/products/'+encodeURIComponent(savedId)+'?updateMask.fieldPaths=image';
   const r=await fetch(url,{method:'PATCH',headers:{'Authorization':'Bearer '+idToken,'Content-Type':'application/json'},body:JSON.stringify({fields:{image:{stringValue:''}}})});
   if(!r.ok){let t=await r.text();let d={};try{d=JSON.parse(t)}catch(e){};throw new Error(d.error&&d.error.message?d.error.message:'Unable to remove the product photo.')}
 }
@@ -702,18 +702,19 @@ async function saveProduct(){
       data.image=undefined;
     }
     delete data.image;
-    await new Promise((resolve,reject)=>run('adminSaveProduct',[data],(v,e)=>e?reject(new Error(e)):(!v||!v.success)?reject(new Error('Unable to save product.')):resolve(v)));
+    const saved=await new Promise((resolve,reject)=>run('adminSaveProduct',[data],(v,e)=>e?reject(new Error(e)):(!v||!v.success)?reject(new Error('Unable to save product.')):resolve(v)));
 
     // Explicit photo replacement/removal is written directly to the same
     // Firestore product document so the selected replacement can never be
     // silently ignored by the metadata save/merge path.
-    if(id && (replacementImage || removeProductImageFlag)){
+    const savedId=String(id||saved.productId||'').trim();
+    if(savedId && (replacementImage || removeProductImageFlag)){
       const idToken=token||sessionStorage.getItem('mck_admin_token')||'';
       if(!idToken)throw new Error('Admin session expired. Please log in again.');
       const imageField=replacementImage
         ? {stringValue:'data:image/jpeg;base64,'+String(replacementImage.base64||'')}
         : {stringValue:''};
-      const url='https://firestore.googleapis.com/v1/projects/mckenzie-ramen-house/databases/(default)/documents/products/'+encodeURIComponent(String(id))+'?updateMask.fieldPaths=image';
+      const url='https://firestore.googleapis.com/v1/projects/mckenzie-ramen-house/databases/(default)/documents/products/'+encodeURIComponent(savedId)+'?updateMask.fieldPaths=image';
       const r=await fetch(url,{method:'PATCH',headers:{'Authorization':'Bearer '+idToken,'Content-Type':'application/json'},body:JSON.stringify({fields:{image:imageField}})});
       if(!r.ok){let t=await r.text(),d={};try{d=JSON.parse(t)}catch(e){};throw new Error(d.error&&d.error.message?d.error.message:'Unable to save the new product photo.');}
     }
