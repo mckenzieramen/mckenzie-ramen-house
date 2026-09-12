@@ -1,5 +1,4 @@
-// McKenzie Ramen House — Firebase Configuration
-
+// McKenzie Ramen House — Firebase Web App Configuration
 const firebaseConfig = {
   apiKey: "AIzaSyDnLMhAhkAw1JMlbTxN4u8vB6poip5dt94",
   authDomain: "mckenzie-ramen-house.firebaseapp.com",
