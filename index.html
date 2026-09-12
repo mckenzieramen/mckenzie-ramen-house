@@ -6051,11 +6051,21 @@ function openLoginModal() {
   const rememberBox = document.getElementById("popupRememberMe");
   const message = document.getElementById("popupLoginMessage");
 
-  // Never carry a previous/admin browser autofill into the customer login.
-  // Only restore the customer username/email when the customer explicitly
-  // selected Remember me. Password is intentionally never stored in the site.
+  // Customer accounts are remembered independently. Never use one global
+  // hard-coded username/email for every customer. Passwords are NEVER stored.
+  // The map is keyed by the customer's normalized identifier, so remembering
+  // one account does not overwrite another remembered account.
   let rememberedIdentifier = "";
-  try { rememberedIdentifier = localStorage.getItem("mckenzieRememberedLogin") || ""; } catch (e) {}
+  try {
+    const rememberedAccounts = JSON.parse(localStorage.getItem("mckenzieRememberedAccounts") || "{}");
+    const last = String(localStorage.getItem("mckenzieLastRememberedAccount") || "").trim().toLowerCase();
+    if (last && rememberedAccounts[last]) {
+      rememberedIdentifier = String(rememberedAccounts[last].identifier || last);
+    } else {
+      const keys = Object.keys(rememberedAccounts);
+      if (keys.length === 1) rememberedIdentifier = String(rememberedAccounts[keys[0]].identifier || keys[0]);
+    }
+  } catch (e) {}
   if (identifierField) identifierField.value = rememberedIdentifier;
   if (passwordField) { passwordField.value = ""; passwordField.type = "password"; }
   if (rememberBox) rememberBox.checked = !!rememberedIdentifier;
@@ -6242,8 +6252,36 @@ async function submitLoginPopup(event) {
     });
 
     try {
-      if (rememberBox && rememberBox.checked) localStorage.setItem("mckenzieRememberedLogin", identifier);
-      else localStorage.removeItem("mckenzieRememberedLogin");
+      // Remember this exact customer account only. Each username/email gets
+      // its own entry, so one customer's remembered login never becomes the
+      // remembered login for another customer.
+      const rememberKey = String(
+        basicUser.username || basicUser.email || identifier || ""
+      ).trim().toLowerCase();
+      const rememberedAccounts = JSON.parse(
+        localStorage.getItem("mckenzieRememberedAccounts") || "{}"
+      );
+      if (rememberBox && rememberBox.checked && rememberKey) {
+        rememberedAccounts[rememberKey] = {
+          identifier: identifier,
+          username: String(basicUser.username || ""),
+          email: String(basicUser.email || firebaseEmail || ""),
+          uid: String(basicUser.userId || firebaseUser.uid || "")
+        };
+        localStorage.setItem("mckenzieRememberedAccounts", JSON.stringify(rememberedAccounts));
+        localStorage.setItem("mckenzieLastRememberedAccount", rememberKey);
+      } else if (rememberKey) {
+        delete rememberedAccounts[rememberKey];
+        localStorage.setItem("mckenzieRememberedAccounts", JSON.stringify(rememberedAccounts));
+        if (String(localStorage.getItem("mckenzieLastRememberedAccount") || "").trim().toLowerCase() === rememberKey) {
+          const remainingKeys = Object.keys(rememberedAccounts);
+          if (remainingKeys.length) localStorage.setItem("mckenzieLastRememberedAccount", remainingKeys[0]);
+          else localStorage.removeItem("mckenzieLastRememberedAccount");
+        }
+      }
+
+      // Remove the old single-account key from previous versions.
+      localStorage.removeItem("mckenzieRememberedLogin");
 
       const usernameForMap = String(basicUser.username || (/@/.test(identifier) ? "" : identifier)).trim().toLowerCase();
       const emailForMap = String(basicUser.email || firebaseEmail || "").trim().toLowerCase();
