@@ -3848,6 +3848,7 @@ async function getMcKenzieCustomerAuthDirect_() {
       sendEmailVerification: authMod.sendEmailVerification,
       updateEmail: authMod.updateEmail,
       signOut: authMod.signOut,
+      onAuthStateChanged: authMod.onAuthStateChanged,
       setDoc: fsMod.setDoc,
       getDoc: fsMod.getDoc,
       doc: fsMod.doc
@@ -3893,23 +3894,81 @@ function handleVerificationOverlayClick(event) {
   if (event.target && event.target.id === "emailVerificationModal") closeEmailVerificationModal();
 }
 
+function mckenzieWithTimeout_(promise, ms, timeoutMessage) {
+  return new Promise(function(resolve, reject) {
+    var settled = false;
+    var timer = setTimeout(function() {
+      if (settled) return;
+      settled = true;
+      reject(new Error(timeoutMessage || "The verification check timed out. Please try again."));
+    }, Number(ms || 10000));
+    Promise.resolve(promise).then(function(value) {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve(value);
+    }).catch(function(error) {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      reject(error);
+    });
+  });
+}
+
+async function waitForFirebaseCustomerAuthReady_(firebaseAuth) {
+  const auth = firebaseAuth && firebaseAuth.auth;
+  if (!auth) throw new Error("Unable to load the verification service.");
+  /* Firebase restores LOCAL persistence asynchronously after a page reload.
+     Wait for that restoration before reading currentUser. */
+  if (typeof auth.authStateReady === "function") {
+    await mckenzieWithTimeout_(auth.authStateReady(), 8000, "Firebase is still restoring your verification session. Please wait a moment and try again.");
+  } else if (!auth.currentUser) {
+    await new Promise(function(resolve) {
+      var done = false;
+      var unsubscribe = null;
+      var timer = setTimeout(function() {
+        if (done) return;
+        done = true;
+        try { if (unsubscribe) unsubscribe(); } catch (e) {}
+        resolve();
+      }, 5000);
+      try {
+        unsubscribe = firebaseAuth.onAuthStateChanged(auth, function() {
+          if (done) return;
+          done = true;
+          clearTimeout(timer);
+          try { if (unsubscribe) unsubscribe(); } catch (e) {}
+          resolve();
+        });
+      } catch (e) {
+        clearTimeout(timer);
+        resolve();
+      }
+    });
+  }
+  return auth.currentUser;
+}
+
 async function checkEmailVerificationNow_() {
   const message = document.getElementById("verificationMessage");
   const button = document.getElementById("verificationSubmit");
   if (button) { button.disabled=true; button.textContent="Checking..."; }
   if (message) { message.style.color="#a51620"; message.textContent="Checking your email verification status..."; }
   try {
-    const firebaseAuth = await getMcKenzieCustomerAuthDirect_();
-    const user = firebaseAuth.auth.currentUser;
-    if (!user) throw new Error("Your verification session has expired. Please create the account again.");
-    await user.reload();
+    const firebaseAuth = await mckenzieWithTimeout_(getMcKenzieCustomerAuthDirect_(), 12000, "Unable to load the verification service. Please try again.");
+    const user = await waitForFirebaseCustomerAuthReady_(firebaseAuth);
+    if (!user) throw new Error("Your verification session is not ready yet. Please wait a moment and click “I’ve Verified My Email” again.");
+
+    await mckenzieWithTimeout_(user.reload(), 12000, "The verification check took too long. Please wait a moment and try again.");
     const freshUser = firebaseAuth.auth.currentUser;
     if (!freshUser || !freshUser.emailVerified) {
-      if (message) message.textContent="Your email is not verified yet. Please click the verification link in the email first.";
+      if (message) message.textContent="Your email is not verified yet. Please click the verification link in the email first, then click “I’ve Verified My Email” again.";
       return;
     }
-    await markCustomerEmailVerified_(firebaseAuth, freshUser);
-    showEmailVerifiedSuccess_(freshUser);
+
+    const profile = await markCustomerEmailVerified_(firebaseAuth, freshUser);
+    showEmailVerifiedSuccess_(freshUser, profile);
   } catch (error) {
     console.warn("Verification status check failed:", error);
     if (message) message.textContent=error && error.message ? error.message : "Verification check failed. Please try again.";
@@ -4023,10 +4082,10 @@ async function checkEmailVerificationReturn_(){
   try{pending=JSON.parse(localStorage.getItem("mckenziePendingVerification")||"null");}catch(e){}
   if(!pending||!pending.userId)return;
   try{
-    const firebaseAuth=await getMcKenzieCustomerAuthDirect_();
-    const user=firebaseAuth.auth.currentUser;
+    const firebaseAuth=await mckenzieWithTimeout_(getMcKenzieCustomerAuthDirect_(),12000,"Verification service is taking too long to load.");
+    const user=await waitForFirebaseCustomerAuthReady_(firebaseAuth);
     if(!user||user.uid!==String(pending.userId))return;
-    await user.reload();
+    await mckenzieWithTimeout_(user.reload(),12000,"Verification check took too long. Please try again.");
     if(!firebaseAuth.auth.currentUser.emailVerified)return;
     const profile=await markCustomerEmailVerified_(firebaseAuth,firebaseAuth.auth.currentUser);
     showEmailVerifiedSuccess_(firebaseAuth.auth.currentUser,profile);
