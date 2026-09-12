@@ -3916,11 +3916,20 @@ async function getMcKenzieCustomerAuthDirect_() {
     if (!app) app = appMod.initializeApp(cfg, "mckenzie-ramen-house");
 
     const auth = authMod.getAuth(app);
+    try {
+      if (typeof authMod.setPersistence === "function" && authMod.browserLocalPersistence) {
+        await authMod.setPersistence(auth, authMod.browserLocalPersistence);
+      }
+    } catch (persistenceError) {
+      console.warn("Unable to enable Firebase local auth persistence:", persistenceError);
+    }
     const db = fsMod.getFirestore(app);
     return {
       app: app,
       auth: auth,
       db: db,
+      setPersistence: authMod.setPersistence,
+      browserLocalPersistence: authMod.browserLocalPersistence,
       createUserWithEmailAndPassword: authMod.createUserWithEmailAndPassword,
       signInWithEmailAndPassword: authMod.signInWithEmailAndPassword,
       sendEmailVerification: authMod.sendEmailVerification,
@@ -5055,78 +5064,48 @@ function confirmPlaceOrder_() {
   // so an undefined bridge `auth` object cannot stop the order from reaching
   // Firestore / Admin Customer Orders.
   async function getReliableCustomerFirebaseForOrder_() {
-    try {
-      const ready = window.MckenzieFirebaseReady;
-      if (ready && typeof ready.then === "function") {
-        const f = await ready;
-        if (f && f.auth && f.db && f.doc && f.setDoc && f.getDoc) return f;
-      }
-    } catch (e) {
-      console.warn("Existing Firebase bridge was not ready; rebuilding order Firebase handle.", e);
-    }
-
-    const appMod = await import("https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js");
-    const authMod = await import("https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js");
-    const fsMod = await import("https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js");
-
-    const cfg = window.MCKENZIE_FIREBASE_CONFIG || {
-      apiKey: "AIzaSyDnLMhAhkAw1JMlbTxN4u8vB6poip5dt94",
-      authDomain: "mckenzie-ramen-house.firebaseapp.com",
-      projectId: "mckenzie-ramen-house",
-      storageBucket: "mckenzie-ramen-house.firebasestorage.app",
-      messagingSenderId: "1048288418639",
-      appId: "1:1048288418639:web:85e0148036179259c8033a",
-      measurementId: "G-C2KDRE88ZW"
-    };
-
-    const apps = typeof appMod.getApps === "function" ? appMod.getApps() : [];
-    let app = apps.find(function(a){ return a && a.name === "mckenzie-ramen-house"; });
-    if (!app) app = appMod.initializeApp(cfg, "mckenzie-ramen-house");
-
-    const auth = authMod.getAuth(app);
-    const db = fsMod.getFirestore(app);
-    return { app, auth, db, ...authMod, ...fsMod };
+    // IMPORTANT: use the exact Firebase Auth instance used by customer login.
+    // Do not rely on a second/legacy bridge instance for checkout.
+    const f = await getMcKenzieCustomerAuthDirect_();
+    return f;
   }
 
   async function saveCustomerOrderReliable_(orderId, payload) {
     const f = await getReliableCustomerFirebaseForOrder_();
 
-    // Firebase can restore LOCAL auth persistence a moment after the page/UI
-    // is already ready. Wait for that restoration before checking currentUser.
-    // This prevents a valid logged-in customer from being treated as logged out
-    // when clicking "Yes, Place Order".
+    // Wait for the SAME Auth instance used by the login form to finish
+    // restoring its browser session before reading currentUser.
     try {
-      if (typeof f.auth.authStateReady === "function") {
+      if (f.auth && typeof f.auth.authStateReady === "function") {
         await mckenzieWithTimeout_(
           f.auth.authStateReady(),
-          8000,
+          10000,
           "Firebase is still restoring your login session. Please wait a moment and try again."
         );
-      } else if (!f.auth.currentUser && typeof f.onAuthStateChanged === "function") {
+      } else if (f.auth && !f.auth.currentUser && typeof f.onAuthStateChanged === "function") {
         await new Promise(function(resolve) {
-          var done = false;
-          var unsubscribe = null;
-          var timer = setTimeout(function() {
-            if (done) return;
+          var done = false, unsubscribe = null;
+          var timer = setTimeout(function(){
+            if(done) return;
             done = true;
-            try { if (unsubscribe) unsubscribe(); } catch (e) {}
+            try { if(unsubscribe) unsubscribe(); } catch(e) {}
             resolve();
-          }, 5000);
+          }, 8000);
           try {
-            unsubscribe = f.onAuthStateChanged(f.auth, function() {
-              if (done) return;
+            unsubscribe = f.onAuthStateChanged(f.auth, function(){
+              if(done) return;
               done = true;
               clearTimeout(timer);
-              try { if (unsubscribe) unsubscribe(); } catch (e) {}
+              try { if(unsubscribe) unsubscribe(); } catch(e) {}
               resolve();
             });
-          } catch (e) {
+          } catch(e) {
             clearTimeout(timer);
             resolve();
           }
         });
       }
-    } catch (authReadyError) {
+    } catch(authReadyError) {
       console.warn("Customer auth restoration check failed:", authReadyError);
     }
 
@@ -6491,6 +6470,13 @@ async function submitLoginPopup(event) {
 
   try {
     const firebaseAuth = await getMcKenzieCustomerAuthDirect_();
+    try {
+      if (firebaseAuth.setPersistence && firebaseAuth.browserLocalPersistence) {
+        await firebaseAuth.setPersistence(firebaseAuth.auth, firebaseAuth.browserLocalPersistence);
+      }
+    } catch (persistenceError) {
+      console.warn("Firebase local persistence setup failed; continuing with active session:", persistenceError);
+    }
     let firebaseEmail = identifier.toLowerCase();
     let profile = {};
 
