@@ -1,6797 +1,814 @@
-<!DOCTYPE html>
-<html class="quick-loading">
-
-<head>
-
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <base target="_top">
-
-  <title>Mckenzie Ramen House</title>
-
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-
-  <link
-    href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@500;600;700;800&display=swap"
-    rel="stylesheet">
-
-
-<style>
-
-:root { --hero-image: none; }
-
-/* ===== PROFILE + CHECKOUT ===== */
-.profile-grid,
-.checkout-grid {
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:12px;
-}
-.profile-grid .full,
-.checkout-grid .full { grid-column:1 / -1; }
-.profile-field input,
-.profile-field select,
-.profile-field textarea,
-.checkout-field input,
-.checkout-field select,
-.checkout-field textarea {
-  width:100%;
-  box-sizing:border-box;
-  padding:11px 12px;
-  border:1px solid #e6c5b7;
-  border-radius:10px;
-  background:#fff;
-  color:#3a0709;
-  font:inherit;
-}
-.profile-field input[readonly] {
-  background:#f5eee9;
-  color:#6f5b55;
-}
-.profile-verified-field label {
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:8px;
-}
-.profile-verified-badge {
-  display:inline-flex;
-  align-items:center;
-  gap:4px;
-  padding:3px 8px;
-  border-radius:999px;
-  background:#e8f6ed;
-  color:#178342;
-  border:1px solid #b9dfc5;
-  font-size:9px;
-  font-weight:800;
-  white-space:nowrap;
-}
-.profile-verified-input,
-.profile-verified-input:disabled {
-  background:#f1eeeb !important;
-  color:#6f5b55 !important;
-  cursor:not-allowed;
-  opacity:1;
-}
-.profile-field label,
-.checkout-field label {
-  display:block;
-  margin-bottom:5px;
-  font-size:11px;
-  font-weight:800;
-  color:#5f080c;
-}
-.profile-save,
-.checkout-submit {
-  width:100%;
-  margin-top:14px;
-  padding:13px 16px;
-  border:0;
-  border-radius:11px;
-  background:linear-gradient(135deg,#a51620,#65090e);
-  color:#fff;
-  font-weight:800;
-  cursor:pointer;
-}
-.profile-note,
-.checkout-note {
-  margin-top:9px;
-  font-size:10px;
-  line-height:1.4;
-  color:#806c65;
-  text-align:center;
-}
-.checkout-summary {
-  background:#fff8f1;
-  border:1px solid #e9d4c7;
-  border-radius:12px;
-  padding:12px;
-  margin-bottom:13px;
-}
-.checkout-summary strong { color:#5f080c; }
-.checkout-summary div { margin:3px 0; }
-.checkout-identity-field { display:flex; flex-direction:column; gap:5px; margin:0 0 10px; }
-.checkout-identity-field label { font-size:12px; color:#5f080c; }
-.checkout-identity-field input { width:100%; box-sizing:border-box; padding:10px 12px; border:1px solid #d8b8b0; border-radius:10px; background:#fff; color:#3f1d18; font:inherit; outline:none; }
-.checkout-identity-field input:focus { border-color:#a51620; box-shadow:0 0 0 3px rgba(165,22,32,.08); }
-.checkout-identity-field input.checkout-saved-field,
-.checkout-identity-field input:disabled { background:#eeeeee; color:#777777; border-color:#d4d4d4; cursor:not-allowed; opacity:1; }
-.checkout-verified-identity label { display:flex; align-items:center; justify-content:space-between; gap:8px; }
-.checkout-verified-badge { display:inline-flex; align-items:center; gap:4px; padding:3px 8px; border-radius:999px; background:#e8f7ed; border:1px solid #b9e3c7; color:#18733a; font-size:9px; font-weight:900; letter-spacing:.02em; white-space:nowrap; }
-.checkout-verified-identity input.checkout-saved-field,
-.checkout-verified-identity input:disabled { background:#eeeeee; color:#777777; border-color:#d4d4d4; }
-
-.checkout-address-manager { margin:0 0 14px; padding:13px; border:1px solid #e9d4c7; border-radius:12px; background:#fffaf5; }
-.checkout-address-manager-head { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:9px; }
-.checkout-address-manager-title { font-size:12px; font-weight:900; letter-spacing:.06em; text-transform:uppercase; color:#7b1520; }
-.checkout-address-select-row { display:flex; gap:8px; align-items:center; }
-.checkout-address-select { flex:1; width:100%; box-sizing:border-box; padding:10px 12px; border:1px solid #d8b8b0; border-radius:10px; background:#fff; color:#3f1d18; font:inherit; outline:none; }
-.checkout-address-add, .address-save-button { border:0; border-radius:10px; background:#a51620; color:#fff; font-weight:900; cursor:pointer; padding:10px 13px; white-space:nowrap; }
-.checkout-address-add:hover, .address-save-button:hover { background:#7f0d14; }
-.checkout-address-default-note { margin-top:7px; font-size:10px; color:#806c65; }
-.checkout-field input.address-saved-field, .checkout-field textarea.address-saved-field, .checkout-field select.address-saved-field { background:#eeeeee !important; color:#777 !important; border-color:#d4d4d4 !important; cursor:not-allowed !important; opacity:1; }
-.address-modal { position:fixed; inset:0; z-index:1000002; display:none; align-items:center; justify-content:center; padding:14px; background:rgba(35,5,6,.72); backdrop-filter:blur(5px); -webkit-backdrop-filter:blur(5px); }
-.address-modal.show { display:flex; }
-.address-card { width:min(620px,96vw); max-height:min(90vh,780px); overflow-y:auto; overflow-x:hidden; box-sizing:border-box; background:#fffaf5; border:1px solid #d8a23a; border-radius:20px; padding:25px; box-shadow:0 25px 80px rgba(0,0,0,.35); }
-.address-card-head { display:flex; align-items:flex-start; justify-content:space-between; gap:15px; }
-.address-card h2 { margin:4px 0 14px; font-family:"Playfair Display",serif; color:#3a0709; font-size:30px; }
-.address-close { width:32px; height:32px; border:0; border-radius:50%; background:#f4ddd6; color:#8b1820; font-size:20px; font-weight:900; cursor:pointer; }
-.address-form-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
-.address-form-field { display:flex; flex-direction:column; gap:5px; }
-.address-form-field.full { grid-column:1/-1; }
-.address-form-field label { font-size:11px; font-weight:800; color:#5f080c; }
-.address-form-field input, .address-form-field select, .address-form-field textarea { width:100%; box-sizing:border-box; padding:10px 12px; border:1px solid #d8b8b0; border-radius:10px; background:#fff; color:#3f1d18; font:inherit; outline:none; }
-.address-form-field select:disabled { background:#eee; color:#777; }
-.address-save-row { display:flex; justify-content:flex-end; gap:9px; margin-top:14px; }
-.address-cancel-button { border:1px solid #d8b8b0; border-radius:10px; background:#fff; color:#5f080c; font-weight:900; cursor:pointer; padding:10px 13px; }
-@media (max-width:700px) { .checkout-address-select-row { flex-direction:column; align-items:stretch; } .checkout-address-add { width:100%; } .address-form-grid { grid-template-columns:1fr; } .address-form-field.full { grid-column:auto; } .address-card { max-height:calc(100vh - 20px); padding:20px 18px; } }
-.checkout-order-summary { margin:0 0 14px; padding:13px 14px; border:1px solid #e6c5b7; border-radius:12px; background:#fffaf5; }
-.checkout-order-title { font-size:12px; font-weight:900; letter-spacing:.08em; text-transform:uppercase; color:#7b1520; margin-bottom:9px; }
-.checkout-order-items { display:flex; flex-direction:column; gap:7px; max-height:220px; overflow-y:auto; overflow-x:hidden; padding-right:4px; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; scrollbar-width:thin; }
-.checkout-order-items::-webkit-scrollbar { width:6px; }
-.checkout-order-items::-webkit-scrollbar-thumb { background:#d7aaa0; border-radius:20px; }
-.checkout-order-items::-webkit-scrollbar-track { background:transparent; }
-.checkout-order-item { display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px dashed #ead4c9; font-size:12px; color:#3a0709; min-height:42px; }
-.checkout-order-item:last-child { border-bottom:0; }
-.checkout-order-item-image { width:42px; height:42px; flex:0 0 42px; border-radius:9px; object-fit:cover; background:#f3e6dd; border:1px solid #ead4c9; }
-.checkout-order-item-name { flex:1; min-width:0; font-weight:800; line-height:1.25; }
-.checkout-order-item-qty { white-space:nowrap; color:#7b1520; font-weight:800; }
-.checkout-order-item-price { white-space:nowrap; font-weight:900; color:#198754; }
-.checkout-order-total { display:flex; justify-content:space-between; align-items:center; margin-top:9px; padding-top:9px; border-top:1px solid #e6c5b7; font-size:14px; color:#5f080c; }
-.checkout-order-total strong { color:#198754; font-size:17px; }
-
-.checkout-payment { margin-top:14px; padding:13px; background:#fff8f1; border:1px solid #e9d4c7; border-radius:12px; }
-.checkout-payment-title { font-size:12px; font-weight:800; color:#5f080c; margin-bottom:9px; }
-.checkout-payment-options { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
-.checkout-payment-option { display:flex; align-items:center; gap:9px; padding:11px 12px; border:1px solid #e6c5b7; border-radius:10px; background:#fff; cursor:pointer; font-size:13px; font-weight:800; color:#3a0709; }
-.checkout-payment-option input { accent-color:#a51620; }
-.checkout-payment-option:has(input:checked) { border-color:#a51620; box-shadow:0 0 0 2px rgba(165,22,32,.08); }
-.checkout-loading {
-  padding:14px;
-  text-align:center;
-  color:#806c65;
-}
-@media (max-width:620px) {
-  .profile-grid,
-  .checkout-grid { grid-template-columns:1fr; }
-  .profile-grid .full,
-  .checkout-grid .full { grid-column:auto; }
-}
-
-
-/* ORDER CONFIRMATION: compact centered popup */
-.order-confirm-modal {
-  position: fixed;
-  inset: 0;
-  z-index: 12000;
-  display: none;
-  align-items: center;
-  justify-content: center;
-  padding: 18px;
-  background: rgba(40, 8, 7, .58);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-}
-.order-confirm-modal.show { display: flex; }
-.order-confirm-card {
-  position: relative;
-  width: min(470px, 94vw);
-  max-height: min(78vh, 620px);
-  overflow: hidden;
-  padding: 25px 24px 22px;
-  border: 2px solid #e9ad35;
-  border-radius: 22px;
-  background: #fffaf3;
-  box-shadow: 0 24px 70px rgba(0,0,0,.38);
-  animation: loginModalIn .22s ease both;
-}
-.order-confirm-card h2 {
-  margin: 0 0 7px;
-  color: #3a0709;
-  font-family: Georgia, serif;
-  font-size: 28px;
-  text-align: center;
-}
-.order-confirm-note {
-  margin: 0 0 14px;
-  color: #765f5a;
-  font-size: 12px;
-  line-height: 1.5;
-  text-align: center;
-}
-.order-confirm-items {
-  max-height: 34vh;
-  overflow-y: auto;
-  padding: 3px 4px 3px 0;
-  border-top: 1px solid #ead8cf;
-  border-bottom: 1px solid #ead8cf;
-  scrollbar-width: thin;
-}
-.order-confirm-items::-webkit-scrollbar { width: 6px; }
-.order-confirm-items::-webkit-scrollbar-thumb { background: #d7aaa0; border-radius: 20px; }
-.order-confirm-item {
-  display: grid;
-  grid-template-columns: 42px minmax(0,1fr) auto auto;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 4px;
-  border-bottom: 1px dashed #ead4c9;
-  font-size: 12px;
-  color: #3a0709;
-}
-.order-confirm-item:last-child { border-bottom: 0; }
-.order-confirm-item-image { width:42px; height:42px; flex:0 0 42px; border-radius:9px; object-fit:cover; background:#f3e6dd; border:1px solid #ead4c9; }
-.order-confirm-item-name { min-width: 0; font-weight: 800; }
-.order-confirm-item-qty { white-space: nowrap; color: #7b1520; font-weight: 800; }
-.order-confirm-item-price { white-space: nowrap; color: #198754; font-weight: 900; }
-.order-confirm-total {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 12px;
-  padding-top: 11px;
-  border-top: 1px solid #e6c5b7;
-  color: #5f080c;
-  font-size: 14px;
-  font-weight: 800;
-}
-.order-confirm-total strong { color: #198754; font-size: 18px; }
-.order-confirm-actions {
-  display: grid;
-  grid-template-columns: 1fr 1.25fr;
-  gap: 10px;
-  margin-top: 15px;
-}
-.order-confirm-actions button {
-  min-height: 44px;
-  border: 0;
-  border-radius: 11px;
-  font: inherit;
-  font-size: 13px;
-  font-weight: 900;
-  cursor: pointer;
-}
-.order-confirm-no { background: #f0ddd7; color: #6d1014; }
-.order-confirm-yes { background: linear-gradient(135deg,#9f1118,#5f080c); color: #fff; }
-.order-confirm-actions button:disabled { opacity: .6; cursor: not-allowed; }
-@media (max-width: 520px) {
-  .order-confirm-card { width: min(440px, 94vw); padding: 22px 18px 18px; }
-  .order-confirm-card h2 { font-size: 25px; }
-  .order-confirm-items { max-height: 38vh; }
-  .order-confirm-actions { grid-template-columns: 1fr 1fr; }
-}
-
-/* ORDER RESULT OVERLAYS: hidden until the order is actually confirmed. */
-#orderSuccessOverlay,
-#orderTunnelOverlay {
-  position: fixed;
-  inset: 0;
-  display: none;
-  align-items: center;
-  justify-content: center;
-  z-index: 130000;
-  overflow: hidden;
-  pointer-events: none;
-}
-#orderSuccessOverlay.show,
-#orderTunnelOverlay.show { display: flex; }
-#orderSuccessOverlay {
-  background: rgba(34, 5, 7, .88);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-}
-.order-success-inner {
-  width: min(430px, 90vw);
-  padding: 34px 28px 30px;
-  text-align: center;
-  border: 2px solid #e9ad35;
-  border-radius: 26px;
-  background: linear-gradient(145deg, #fffaf3, #fff2e6);
-  box-shadow: 0 30px 90px rgba(0,0,0,.5);
-  animation: orderSuccessPop .55s cubic-bezier(.2,.85,.25,1.15) both;
-}
-.order-success-check {
-  width: 76px;
-  height: 76px;
-  margin: 0 auto 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  background: #198754;
-  color: #fff;
-  font-size: 46px;
-  font-weight: 900;
-  box-shadow: 0 12px 28px rgba(25,135,84,.28);
-  animation: orderSuccessCheck .65s .1s ease both;
-}
-.order-success-title {
-  color: #3a0709;
-  font-family: Georgia, serif;
-  font-size: 30px;
-  font-weight: 900;
-}
-.order-success-subtitle {
-  margin-top: 8px;
-  color: #765f5a;
-  font-size: 13px;
-}
-#orderTunnelOverlay {
-  background: radial-gradient(circle at center, #5f080c 0%, #260205 45%, #090102 100%);
-}
-.order-tunnel {
-  position: relative;
-  width: min(520px, 94vw);
-  height: min(520px, 72vh);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  perspective: 700px;
-  animation: tunnelFadeIn .35s ease both;
-}
-.order-tunnel-ring {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 80px;
-  height: 80px;
-  border: 4px solid rgba(246,204,99,.9);
-  border-radius: 50%;
-  transform: translate(-50%,-50%) scale(.1);
-  box-shadow: 0 0 24px rgba(246,204,99,.22), inset 0 0 20px rgba(246,204,99,.08);
-  animation: tunnelZoom 2.4s linear infinite;
-}
-.order-tunnel-ring:nth-child(2){animation-delay:.45s}
-.order-tunnel-ring:nth-child(3){animation-delay:.9s}
-.order-tunnel-ring:nth-child(4){animation-delay:1.35s}
-.order-tunnel-ring:nth-child(5){animation-delay:1.8s}
-.order-tunnel-center {
-  position: relative;
-  z-index: 2;
-  padding: 14px 22px;
-  border: 1px solid rgba(246,204,99,.75);
-  border-radius: 18px;
-  background: rgba(30,3,5,.72);
-  color: #fff8e8;
-  font-size: 15px;
-  font-weight: 800;
-  letter-spacing: .4px;
-  text-align: center;
-  box-shadow: 0 12px 40px rgba(0,0,0,.35);
-}
-@keyframes orderSuccessPop {
-  0% { opacity: 0; transform: scale(.72) translateY(18px); }
-  70% { opacity: 1; transform: scale(1.03) translateY(0); }
-  100% { opacity: 1; transform: scale(1) translateY(0); }
-}
-@keyframes orderSuccessCheck {
-  0% { transform: scale(.35) rotate(-20deg); opacity: 0; }
-  70% { transform: scale(1.12) rotate(4deg); opacity: 1; }
-  100% { transform: scale(1) rotate(0); opacity: 1; }
-}
-@keyframes tunnelFadeIn {
-  from { opacity: 0; transform: scale(.96); }
-  to { opacity: 1; transform: scale(1); }
-}
-@keyframes tunnelZoom {
-  0% { transform: translate(-50%,-50%) scale(.08); opacity: 0; }
-  12% { opacity: 1; }
-  100% { transform: translate(-50%,-50%) scale(7); opacity: 0; }
-}
-@media (max-width: 520px) {
-  .order-success-inner { padding: 30px 20px 26px; }
-  .order-success-title { font-size: 26px; }
-  .order-tunnel { height: 62vh; }
-  .order-tunnel-center { font-size: 13px; }
-}
-
-/* Product images: never show a broken-image icon while loading. */
-.product-image {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  opacity: 0;
-  transition: opacity .2s ease;
-}
-.product-image.image-ready {
-  opacity: 1;
-}
-.product-image.image-failed {
-  display: none !important;
-}
-
-
-
-/* =========================================================
-   GLOBAL
-========================================================= */
-
-* {
-  box-sizing: border-box;
-}
-
-html {
-  scroll-behavior: smooth;
-}
-
-body {
-  margin: 0;
-  font-family: "DM Sans", sans-serif;
-  background: #fff7ed;
-  color: #28110c;
-  overflow-x: hidden;
-}
-
-img {
-  max-width: 100%;
-}
-
-a,
-button {
-  -webkit-tap-highlight-color: transparent;
-}
-
-
-/* =========================================================
-   JAPANESE LOGIN GREETING
-========================================================= */
-
-.japanese-greeting {
-  position: absolute;
-  top: 22px;
-  left: 50%;
-  transform: translateX(-50%) translateY(-14px);
-  z-index: 30;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  min-width: 390px;
-  padding: 14px 34px 16px;
-  border: 2px solid rgba(233,173,53,.9);
-  border-radius: 22px;
-  background:
-    linear-gradient(135deg, rgba(45,8,7,.94), rgba(20,4,5,.88));
-  box-shadow:
-    0 10px 30px rgba(0,0,0,.38),
-    0 0 0 1px rgba(255,255,255,.05) inset;
-  backdrop-filter: blur(8px);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity .35s ease, transform .35s ease;
-}
-
-.japanese-greeting.show {
-  opacity: 1;
-  transform: translateX(-50%) translateY(0);
-}
-
-.japanese-greeting-main {
-  color: #f6cc63;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 29px;
-  line-height: 1.05;
-  font-weight: 800;
-  letter-spacing: 3px;
-  text-shadow: 0 2px 8px rgba(0,0,0,.45);
-}
-
-.japanese-greeting-name {
-  color: #fff8e8;
-  font-size: 14px;
-  line-height: 1.2;
-  font-weight: 700;
-  letter-spacing: .8px;
-}
-
-.japanese-greeting-name::before {
-  content: "🍜  ";
-}
-
-@media (max-width: 600px) {
-  .japanese-greeting {
-    top: 14px;
-    min-width: 270px;
-    padding: 11px 20px 12px;
-    border-radius: 18px;
-  }
-  .japanese-greeting-main {
-    font-size: 22px;
-    letter-spacing: 2px;
-  }
-  .japanese-greeting-name {
-    font-size: 12px;
-  }
-}
-
-
-/* =========================================================
-   HERO
-========================================================= */
-
-.hero {
-  position: relative;
-  min-height: 720px;
-  height: 82vh;
-
-  display: flex;
-  justify-content: center;
-  align-items: center;
-
-  text-align: center;
-  overflow: hidden;
-
-  background-color: #270706;
-
-  background-image:
-    linear-gradient(
-      rgba(0,0,0,.38),
-      rgba(0,0,0,.62)
-    ),
-    var(--hero-image, none);
-
-  background-size: cover;
-  background-position: center;
-}
-
-.hero::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-
-  background:
-    radial-gradient(
-      circle at center,
-      transparent 5%,
-      rgba(0,0,0,.12) 45%,
-      rgba(0,0,0,.72) 100%
-    );
-
-  z-index: 1;
-  pointer-events: none;
-}
-
-.hero::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-
-  background:
-    linear-gradient(
-      180deg,
-      rgba(0,0,0,.18),
-      transparent 30%,
-      rgba(20,0,0,.25)
-    );
-
-  z-index: 2;
-  pointer-events: none;
-}
-
-
-/* =========================================================
-   SAKURA
-========================================================= */
-
-.sakura-decoration {
-  position: absolute;
-
-  width: 430px;
-  height: 330px;
-
-  background-image: var(--sakura-image);
-  background-repeat: no-repeat;
-  background-size: contain;
-
-  pointer-events: none;
-  z-index: 8;
-
-  opacity: .96;
-}
-
-.sakura-left {
-  top: -5px;
-  left: -25px;
-
-  background-position: left top;
-}
-
-.sakura-right {
-  top: -5px;
-  right: -25px;
-
-  background-position: right top;
-  transform: scaleX(-1);
-}
-
-
-/* =========================================================
-   MENU SAKURA
-========================================================= */
-
-.sakura-menu-left {
-  position: absolute;
-
-  top: 150px;
-  left: -100px;
-
-  width: 390px;
-  height: 310px;
-
-  background-image: var(--sakura-image);
-  background-repeat: no-repeat;
-  background-size: contain;
-  background-position: left center;
-
-  opacity: .78;
-
-  pointer-events: none;
-  z-index: 2;
-}
-
-.sakura-menu-right {
-  position: absolute;
-
-  top: 150px;
-  right: -100px;
-
-  width: 390px;
-  height: 310px;
-
-  background-image: var(--sakura-image);
-  background-repeat: no-repeat;
-  background-size: contain;
-  background-position: right center;
-
-  opacity: .78;
-
-  pointer-events: none;
-  z-index: 2;
-
-  transform: scaleX(-1);
-}
-
-
-/* =========================================================
-   HERO CONTENT
-========================================================= */
-
-.hero-content {
-  position: relative;
-  z-index: 15;
-
-  width: min(1100px, 92%);
-
-  margin-top: 20px;
-
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-
-/* =========================================================
-   LOGO
-========================================================= */
-
-.hero-logo {
-  width: min(390px, 48vw);
-  max-height: 280px;
-
-  object-fit: contain;
-  display: block;
-
-  margin: 0 auto 14px;
-
-  filter:
-    drop-shadow(0 7px 10px rgba(0,0,0,.7))
-    drop-shadow(0 18px 30px rgba(0,0,0,.35));
-
-  animation: logoFloat 5s ease-in-out infinite;
-}
-
-@keyframes logoFloat {
-
-  0%, 100% {
-    transform: translateY(0);
-  }
-
-  50% {
-    transform: translateY(-5px);
-  }
-}
-
-
-/* =========================================================
-   HERO TITLE
-========================================================= */
-
-.hero-title {
-  margin: 0;
-
-  font-family: "Playfair Display", serif;
-
-  font-size: clamp(52px, 7vw, 105px);
-
-  line-height: .91;
-  font-weight: 800;
-
-  color: white;
-
-  letter-spacing: -2px;
-
-  text-shadow:
-    0 5px 5px rgba(0,0,0,.75),
-    0 12px 30px rgba(0,0,0,.6);
-}
-
-.hero-title span {
-  color: #f5b62e;
-}
-
-
-/* =========================================================
-   TAGLINE
-========================================================= */
-
-.hero-tagline {
-  margin-top: 27px;
-
-  color: white;
-
-  font-size: 13px;
-  font-weight: 700;
-
-  letter-spacing: 4px;
-  text-transform: uppercase;
-
-  text-shadow: 0 3px 8px rgba(0,0,0,.6);
-}
-
-
-/* =========================================================
-   LOGIN BUTTON
-========================================================= */
-
-.hero-button {
-  display: inline-flex;
-
-  align-items: center;
-  justify-content: center;
-
-  margin-top: 30px;
-
-  padding: 15px 34px;
-
-  background: #d71935;
-  color: white;
-
-  border: none;
-  border-radius: 35px;
-
-  text-decoration: none;
-
-  font-family: "DM Sans", sans-serif;
-  font-size: 14px;
-  font-weight: 700;
-
-  cursor: pointer;
-
-  box-shadow:
-    0 10px 25px rgba(0,0,0,.4);
-
-  transition:
-    transform .3s ease,
-    background .3s ease,
-    box-shadow .3s ease;
-}
-
-.hero-button:hover {
-  transform: translateY(-4px);
-
-  background: #ef203c;
-
-  box-shadow:
-    0 15px 30px rgba(0,0,0,.5);
-}
-
-
-/* =========================================================
-   NAVIGATION
-========================================================= */
-
-.hero-navigation {
-  display: flex;
-
-  justify-content: center;
-  align-items: center;
-
-  gap: 30px;
-
-  margin-top: 8px;
-
-  position: relative;
-  z-index: 20;
-}
-
-.hero-navigation a {
-  position: relative;
-
-  color: white;
-
-  text-decoration: none;
-
-  font-size: 13px;
-  font-weight: 700;
-
-  letter-spacing: 1px;
-  text-transform: uppercase;
-
-  text-shadow:
-    0 2px 8px rgba(0,0,0,.7);
-
-  transition:
-    color .3s ease,
-    transform .3s ease;
-}
-
-.hero-navigation a::after {
-  content: "";
-
-  position: absolute;
-
-  left: 0;
-  bottom: -7px;
-
-  width: 0;
-  height: 2px;
-
-  background: #e9ad35;
-
-  transition: width .3s ease;
-}
-
-.hero-navigation a:hover {
-  color: #f6c34c;
-  transform: translateY(-2px);
-}
-
-.hero-navigation a:hover::after,
-.hero-navigation a.active::after {
-  width: 100%;
-}
-
-.hero-navigation a.active {
-  color: #f6c34c;
-}
-
-
-/* =========================================================
-   WAVE
-========================================================= */
-
-.wave {
-  position: absolute;
-
-  z-index: 25;
-
-  bottom: -1px;
-  left: 0;
-
-  width: 100%;
-  height: 90px;
-
-  overflow: hidden;
-}
-
-.wave svg {
-  width: 100%;
-  height: 100%;
-  display: block;
-}
-
-
-/* =========================================================
-   FALLING PETALS
-========================================================= */
-
-.petals {
-  position: fixed;
-
-  inset: 0;
-
-  pointer-events: none;
-
-  z-index: 100;
-
-  overflow: hidden;
-}
-
-.petal {
-  position: absolute;
-
-  top: -50px;
-
-  width: 13px;
-  height: 8px;
-
-  background: #f39aaa;
-
-  border-radius: 80% 20% 80% 20%;
-
-  opacity: .78;
-
-  filter: blur(.2px);
-
-  animation: fall linear infinite;
-}
-
-@keyframes fall {
-
-  0% {
-    transform:
-      translate3d(0,-60px,0)
-      rotate(0deg);
-  }
-
-  25% {
-    transform:
-      translate3d(40px,25vh,0)
-      rotate(90deg);
-  }
-
-  50% {
-    transform:
-      translate3d(-30px,50vh,0)
-      rotate(180deg);
-  }
-
-  75% {
-    transform:
-      translate3d(50px,75vh,0)
-      rotate(270deg);
-  }
-
-  100% {
-    transform:
-      translate3d(-20px,110vh,0)
-      rotate(360deg);
-  }
-}
-
-
-/* =========================================================
-   MENU
-========================================================= */
-
-.menu-section {
-  position: relative;
-
-  background-color: #fff7ed;
-
-  background-image:
-    radial-gradient(
-      rgba(164,31,48,.07) 1px,
-      transparent 1px
-    );
-
-  background-size: 18px 18px;
-
-  padding:
-    110px
-    5%
-    110px;
-
-  overflow: hidden;
-}
-
-.menu-header {
-  position: relative;
-
-  z-index: 10;
-
-  text-align: center;
-
-  margin-bottom: 55px;
-}
-
-.menu-kicker {
-  color: #b51d31;
-
-  font-size: 12px;
-
-  letter-spacing: 5px;
-
-  font-weight: 800;
-
-  text-transform: uppercase;
-}
-
-.menu-title {
-  margin: 12px 0;
-
-  font-family: "Playfair Display", serif;
-
-  font-size: clamp(42px, 5vw, 70px);
-
-  color: #a91931;
-
-  font-weight: 800;
-}
-
-.menu-description {
-  color: #5b4a43;
-
-  font-size: 15px;
-
-  margin: 0 auto;
-
-  max-width: 600px;
-}
-
-
-/* =========================================================
-   PRODUCTS
-========================================================= */
-
-.products {
-  position: relative;
-
-  z-index: 15;
-
-  max-width: 1180px;
-
-  margin: auto;
-
-  display: grid;
-
-  grid-template-columns:
-    repeat(4, 1fr);
-
-  gap: 24px;
-}
-
-.product-card {
-  position: relative;
-
-  overflow: hidden;
-
-  background: #fffdf8;
-
-  border-radius: 18px;
-
-  box-shadow:
-    0 12px 30px rgba(55,20,10,.13);
-
-  transition:
-    transform .35s ease,
-    box-shadow .35s ease;
-}
-
-.product-card:hover {
-  transform: translateY(-10px);
-
-  box-shadow:
-    0 22px 45px rgba(55,20,10,.23);
-}
-
-
-/* =========================================================
-   PRODUCT IMAGE
-========================================================= */
-
-.product-image-wrap {
-  position: relative;
-
-  height: 225px;
-
-  overflow: hidden;
-
-  background: #35140e;
-}
-
-.product-image {
-  width: 100%;
-  height: 100%;
-
-  object-fit: cover;
-
-  display: block;
-
-  transition:
-    transform .6s ease,
-    filter .5s ease;
-}
-
-.product-card:hover .product-image {
-  transform: scale(1.07);
-
-  filter: brightness(.88);
-}
-
-
-/* =========================================================
-   BADGE
-========================================================= */
-
-.product-badge {
-  position: absolute;
-  top: 15px;
-  left: -8px;
-  z-index: 30;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 145px;
-  height: 42px;
-  padding: 0 18px 0 20px;
-  color: white;
-  font-family: "DM Sans", sans-serif;
-  font-size: 11px;
-  font-weight: 800;
-  line-height: 1;
-  letter-spacing: 1.2px;
-  text-transform: uppercase;
-  box-shadow: 0 7px 15px rgba(50,10,5,.28);
-  animation: badgeSlideIn .5s cubic-bezier(.17,.67,.35,1.25);
-  transform-origin: left center;
-  transition: transform .3s ease, box-shadow .3s ease;
-}
-
-.product-badge.new-product {
-  background: linear-gradient(135deg,#2f9b62 0%,#187343 52%,#0e5a34 100%);
-  border-radius: 0 8px 8px 0;
-  border-left: 3px solid #78d99d;
-  box-shadow: 0 7px 16px rgba(15,85,48,.35), inset 0 1px 0 rgba(255,255,255,.22);
-}
-
-.product-badge.new-product::before {
-  content: "✦";
-  margin-right: 7px;
-  color: #d8ffe7;
-  font-size: 15px;
-}
-
-.product-badge.best-seller {
-  min-width: 158px;
-  height: 50px;
-  padding: 0 18px 0 15px;
-  background: linear-gradient(135deg,#ff7a18 0%,#e43a17 42%,#a90f1e 100%);
-  border-radius: 12px 18px 18px 12px;
-  border: 2px solid #ffd36a;
-  transform: rotate(-3deg);
-  box-shadow: 0 8px 18px rgba(110,20,10,.4), inset 0 0 0 2px rgba(255,255,255,.12);
-}
-
-.product-badge.best-seller::before {
-  content: "🔥";
-  margin-right: 7px;
-  font-size: 20px;
-  line-height: 1;
-  filter: drop-shadow(0 2px 2px rgba(0,0,0,.25));
-}
-
-.product-badge .badge-icon {
-  display: none;
-}
-
-.product-badge .badge-text {
-  display: block;
-  white-space: nowrap;
-}
-
-.product-card:hover .product-badge {
-  transform: rotate(-1deg) scale(1.04);
-}
-
-.product-card:hover .product-badge.best-seller {
-  transform: rotate(-3deg) scale(1.04);
-}
-
-@keyframes badgeSlideIn {
-  0% { opacity: 0; transform: translateX(-22px) scale(.9); }
-  70% { opacity: 1; transform: translateX(3px) scale(1.03); }
-  100% { opacity: 1; transform: translateX(0) scale(1); }
-}
-
-/* =========================================================
-   STEAM
-========================================================= */
-
-.steam {
-  position: absolute;
-
-  left: 50%;
-  bottom: 30px;
-
-  width: 130px;
-  height: 160px;
-
-  transform: translateX(-50%);
-
-  pointer-events: none;
-
-  z-index: 5;
-
-  opacity: .65;
-
-  transition:
-    opacity .4s ease,
-    transform .4s ease;
-}
-
-.steam i {
-  position: absolute;
-
-  bottom: 0;
-
-  width: 30px;
-  height: 120px;
-
-  display: block;
-
-  border-radius: 50%;
-
-  background:
-    radial-gradient(
-      ellipse,
-      rgba(255,255,255,.7) 0%,
-      rgba(255,255,255,.32) 25%,
-      rgba(255,255,255,.12) 48%,
-      transparent 72%
-    );
-
-  filter: blur(7px);
-
-  animation:
-    steamRise 2.8s ease-in-out infinite;
-}
-
-.steam i:nth-child(1) {
-  left: 12px;
-}
-
-.steam i:nth-child(2) {
-  left: 48px;
-  height: 135px;
-  animation-delay: .65s;
-}
-
-.steam i:nth-child(3) {
-  left: 83px;
-  height: 115px;
-  animation-delay: 1.25s;
-}
-
-.product-card:hover .steam {
-  opacity: 1;
-
-  transform:
-    translateX(-50%)
-    scale(1.12);
-}
-
-@keyframes steamRise {
-
-  0% {
-    transform:
-      translateY(28px)
-      scale(.65)
-      rotate(-8deg);
-
-    opacity: 0;
-  }
-
-  25% {
-    opacity: .75;
-  }
-
-  55% {
-    opacity: .55;
-  }
-
-  100% {
-    transform:
-      translateY(-70px)
-      scale(1.25)
-      rotate(9deg);
-
-    opacity: 0;
-  }
-}
-
-
-/* =========================================================
-   CARD CONTENT
-========================================================= */
-
-.product-content {
-  padding: 20px;
-}
-
-.product-category {
-  display: inline-block;
-
-  background: #f7d8d0;
-
-  color: #9e2430;
-
-  font-size: 10px;
-
-  font-weight: 800;
-
-  padding: 5px 10px;
-
-  border-radius: 20px;
-
-  text-transform: uppercase;
-}
-
-.product-name {
-  margin: 12px 0 7px;
-
-  font-family:
-    "Playfair Display",
-    serif;
-
-  font-size: 22px;
-
-  color: #24120e;
-}
-
-.product-description {
-  margin: 0;
-
-  min-height: 42px;
-
-  color: #66534b;
-
-  font-size: 13px;
-
-  line-height: 1.5;
-}
-
-.product-bottom {
-  display: flex;
-
-  justify-content: space-between;
-
-  align-items: center;
-
-  gap: 10px;
-
-  margin-top: 18px;
-}
-
-.price {
-  font-size: 21px;
-
-  font-weight: 800;
-
-  color: #198754 !important;
-}
-
-.available {
-  color: #208b45;
-
-  font-size: 12px;
-
-  font-weight: 700;
-}
-
-.available::before,
-.unavailable::before {
-  content: "";
-
-  display: inline-block;
-
-  width: 7px;
-  height: 7px;
-
-  margin-right: 5px;
-
-  border-radius: 50%;
-}
-
-.available::before {
-  background: #20a052;
-}
-
-.unavailable {
-  color: #a04444;
-}
-
-.unavailable::before {
-  background: #a04444;
-}
-
-
-/* =========================================================
-   FEATURES
-========================================================= */
-
-.features {
-  position: relative;
-
-  background:
-    linear-gradient(
-      135deg,
-      #3a0908,
-      #691015
-    );
-
-  color: white;
-
-  padding: 55px 6%;
-
-  display: grid;
-
-  grid-template-columns:
-    repeat(3, 1fr);
-
-  gap: 30px;
-
-  border-top:
-    4px solid #e9ad35;
-}
-
-.feature {
-  text-align: center;
-  padding: 15px;
-}
-
-.feature-icon {
-  font-size: 40px;
-  margin-bottom: 10px;
-}
-
-.feature h3 {
-  margin: 5px 0;
-
-  color: #f2c35c;
-
-  font-family:
-    "Playfair Display",
-    serif;
-
-  font-size: 24px;
-}
-
-.feature p {
-  max-width: 280px;
-
-  margin: auto;
-
-  line-height: 1.6;
-
-  color: #f5e5dc;
-
-  font-size: 14px;
-}
-
-
-/* =========================================================
-   FOOTER
-========================================================= */
-
-.footer {
-  background: #210604;
-
-  color: white;
-
-  text-align: center;
-
-  padding: 45px 20px;
-
-  border-top:
-    1px solid #c99836;
-}
-
-.footer-logo {
-  width: 200px;
-
-  max-height: 130px;
-
-  object-fit: contain;
-
-  margin-bottom: 12px;
-
-  filter:
-    drop-shadow(0 5px 10px rgba(0,0,0,.5));
-}
-
-.footer-title {
-  font-family:
-    "Playfair Display",
-    serif;
-
-  color: #f0c254;
-
-  font-size: 28px;
-}
-
-.footer p {
-  color: #d7c5bd;
-  font-size: 13px;
-}
-
-.loading {
-  grid-column: 1 / -1;
-
-  text-align: center;
-
-  padding: 70px 20px;
-
-  color: #8d5c4f;
-
-  font-weight: 600;
-}
-
-
-/* =========================================================
-   MOBILE
-========================================================= */
-
-@media (max-width: 1000px) {
-
-  .products {
-    grid-template-columns:
-      repeat(2, 1fr);
-  }
-
-  .sakura-decoration {
-    width: 350px;
-    height: 270px;
-  }
-
-  .sakura-menu-left,
-  .sakura-menu-right {
-    width: 300px;
-    height: 250px;
-  }
-
-}
-
-@media (max-width: 700px) {
-
-  .hero {
-    min-height: 700px;
-    height: 90vh;
-  }
-
-  .hero-content {
-    margin-top: 10px;
-  }
-
-  .hero-logo {
-    width: min(290px, 65vw);
-    max-height: 210px;
-  }
-
-  .hero-title {
-    font-size: 48px;
-    letter-spacing: -1px;
-  }
-
-  .hero-tagline {
-    font-size: 9px;
-    letter-spacing: 2px;
-    max-width: 320px;
-    line-height: 1.7;
-  }
-
-  .hero-button {
-    margin-top: 24px;
-    padding: 13px 24px;
-    font-size: 13px;
-  }
-
-  .hero-navigation {
-    gap: 18px;
-    margin-top: 8px;
-    flex-wrap: wrap;
-    max-width: 340px;
-  }
-
-  .hero-navigation a {
-    font-size: 10px;
-    letter-spacing: .8px;
-  }
-
-  .sakura-decoration {
-    width: 245px;
-    height: 185px;
-  }
-
-  .sakura-left {
-    top: -3px;
-    left: -35px;
-  }
-
-  .sakura-right {
-    top: -3px;
-    right: -35px;
-  }
-
-  .sakura-menu-left,
-  .sakura-menu-right {
-    width: 190px;
-    height: 150px;
-    top: 135px;
-  }
-
-  .sakura-menu-left {
-    left: -65px;
-  }
-
-  .sakura-menu-right {
-    right: -65px;
-  }
-
-  .menu-section {
-    padding:
-      80px 18px
-      80px;
-  }
-
-  .products {
-    grid-template-columns: 1fr;
-    max-width: 430px;
-  }
-
-  .product-image-wrap {
-    height: 255px;
-  }
-
-  .product-badge {
-    top: 13px;
-    left: -6px;
-    min-width: 132px;
-    height: 40px;
-    padding: 0 14px 0 16px;
-    font-size: 9px;
-  }
-
-  .product-badge.best-seller {
-    min-width: 142px;
-    height: 46px;
-  }
-
-  .product-badge .badge-text {
-    font-size: 8px;
-  }
-
-  .features {
-    grid-template-columns: 1fr;
-    padding: 45px 25px;
-  }
-
-  .wave {
-    height: 65px;
-  }
-
-}
-
-@media (max-width: 420px) {
-
-  .hero {
-    min-height: 690px;
-  }
-
-  .hero-logo {
-    width: 245px;
-  }
-
-  .hero-title {
-    font-size: 42px;
-  }
-
-  .hero-tagline {
-    font-size: 8px;
-    letter-spacing: 1.5px;
-  }
-
-  .hero-button {
-    padding:
-      12px 21px;
-
-    font-size: 12px;
-  }
-
-  .hero-navigation {
-    gap: 13px;
-    max-width: 300px;
-  }
-
-  .hero-navigation a {
-    font-size: 9px;
-    letter-spacing: .5px;
-  }
-
-  .sakura-decoration {
-    width: 205px;
-    height: 155px;
-  }
-
-  .sakura-left {
-    left: -40px;
-  }
-
-  .sakura-right {
-    right: -40px;
-  }
-
-  .sakura-menu-left,
-  .sakura-menu-right {
-    width: 155px;
-    height: 125px;
-  }
-
-  .product-badge {
-    top: 11px;
-    left: -5px;
-    min-width: 118px;
-    height: 36px;
-    padding: 0 11px 0 13px;
-    font-size: 8px;
-  }
-
-  .product-badge.best-seller {
-    min-width: 128px;
-    height: 42px;
-  }
-
-  .product-badge .badge-text {
-    font-size: 7px;
-    letter-spacing: 1px;
-  }
-
-  .product-badge.new-product::before {
-    font-size: 12px;
-    margin-right: 5px;
-  }
-
-  .product-badge.best-seller::before {
-    font-size: 16px;
-    margin-right: 5px;
-  }
-
-}
-
-
-/* =========================================================
-   QUICK RAMEN LOADER
-   ACTUAL IMAGE SOURCE: Products!I9
-   The animation starts ONLY after the I9 image is loaded.
-========================================================= */
-
-html.quick-loading,
-body.quick-loading {
-  overflow: hidden !important;
-}
-
-#pageLoader {
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  position: fixed;
-  inset: 0;
-  z-index: 999999;
-
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  background: #3a0709;
-
-  opacity: 1;
-  visibility: visible;
-  pointer-events: all;
-
-  transition:
-    opacity .18s ease,
-    visibility .18s ease;
-}
-
-#pageLoader.hide {
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-}
-
-/* Assets are already decoded before the loader is removed; this class does
-   not change their appearance, it only marks them as paint-ready. */
-.asset-ready { opacity: 1 !important; }
-
-.loader-box {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-#loaderRamenImage {
-  width: auto;
-  height: auto;
-  max-width: min(220px, 42vw);
-  max-height: min(170px, 30vh);
-
-  object-fit: contain;
-  display: none;
-  opacity: 0;
-
-  /* No blur, no filter, no zoom/stretch. */
-  filter: none !important;
-  -webkit-filter: none !important;
-  image-rendering: auto;
-  transform: none !important;
-  backface-visibility: hidden;
-}
-
-#loaderRamenImage.loader-ready {
-  display: block;
-  opacity: 1;
-  animation: ramenAppear .5s ease-out both;
-}
-
-/* Gentle sipping motion only after the clear I9 image is loaded. */
-#loaderRamenImage.sipping {
-  animation: ramenSipLoop 1.15s ease-in-out infinite;
-}
-
-@keyframes ramenAppear {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes ramenSipLoop {
-  0%, 100% { transform: translateY(2px) rotate(-.5deg); }
-  50% { transform: translateY(-3px) rotate(.5deg); }
-}
-
-@keyframes ramenQuickFill {
-
-  0% {
-    opacity: 0;
-    transform:
-      translateY(7px)
-      scale(.72);
-
-    clip-path:
-      inset(45% 45% 45% 45% round 20px);
-  }
-
-  45% {
-    opacity: 1;
-    transform:
-      translateY(-2px)
-      scale(1.04);
-
-    clip-path:
-      inset(8% 8% 8% 8% round 12px);
-  }
-
-  75% {
-    opacity: 1;
-    transform:
-      translateY(0)
-      scale(1.01);
-
-    clip-path:
-      inset(0 0 0 0 round 0);
-  }
-
-  100% {
-    opacity: 1;
-    transform:
-      translateY(0)
-      scale(1);
-
-    clip-path:
-      inset(0 0 0 0 round 0);
-  }
-}
-
-/* =========================================================
-   LOGIN POPUP
-========================================================= */
-#loginModal {
-  position: fixed;
-  inset: 0;
-  z-index: 1000000;
-  display: none;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-  background: rgba(36, 4, 6, .72);
-  backdrop-filter: blur(7px);
-}
-
-#loginModal.show {
-  display: flex;
-}
-
-.login-modal-card {
-  position: relative;
-  width: min(430px, 94vw);
-  padding: 34px 30px 30px;
-  background: #fffaf3;
-  border: 2px solid #e9ad35;
-  border-radius: 24px;
-  box-shadow: 0 25px 70px rgba(0,0,0,.35);
-  animation: loginModalIn .25s ease both;
-}
-
-@keyframes loginModalIn {
-  from { opacity: 0; transform: translateY(14px) scale(.97); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-.login-close {
-  position: absolute;
-  top: 12px;
-  right: 15px;
-  width: 36px;
-  height: 36px;
-  border: 0;
-  border-radius: 50%;
-  background: #f5ddd5;
-  color: #6d1014;
-  font-size: 22px;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.login-modal-kicker {
-  margin-bottom: 6px;
-  color: #a51620;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-}
-
-.login-modal-card h2 {
-  margin: 0 0 8px;
-  color: #3a0709;
-  font-family: Georgia, serif;
-  font-size: 32px;
-}
-
-.login-modal-card p {
-  margin: 0 0 22px;
-  color: #765f5a;
-  font-size: 14px;
-}
-
-.login-field {
-  margin-bottom: 15px;
-}
-
-.login-field label {
-  display: block;
-  margin-bottom: 7px;
-  color: #4d1517;
-  font-size: 12px;
-  font-weight: 800;
-}
-
-.login-field input {
-  width: 100%;
-  box-sizing: border-box;
-  padding: 13px 14px;
-  border: 1px solid #dfc9bd;
-  border-radius: 12px;
-  background: white;
-  color: #3a0709;
-  outline: none;
-  font-size: 14px;
-}
-
-.login-field input:focus {
-  border-color: #b51b25;
-  box-shadow: 0 0 0 3px rgba(181,27,37,.10);
-}
-
-.login-password-wrap {
-  position: relative;
-}
-
-.login-password-wrap input {
-  padding-right: 54px;
-}
-
-.login-show-password {
-  position: absolute;
-  top: 50%;
-  right: 8px;
-  transform: translateY(-50%);
-  border: 0;
-  background: transparent;
-  color: #8c2b2e;
-  font-size: 11px;
-  font-weight: 800;
-  cursor: pointer;
-}
-
-.login-submit {
-  width: 100%;
-  margin-top: 4px;
-  padding: 14px 18px;
-  border: 0;
-  border-radius: 12px;
-  background: linear-gradient(135deg, #9f1118, #5f080c);
-  color: white;
-  font-size: 14px;
-  font-weight: 800;
-  cursor: pointer;
-  box-shadow: 0 8px 18px rgba(95,8,12,.25);
-}
-
-.login-submit:disabled {
-  opacity: .65;
-  cursor: wait;
-}
-
-.login-message {
-  min-height: 18px;
-  margin-top: 12px;
-  color: #a51620;
-  font-size: 12px;
-  text-align: center;
-}
-
-.login-create {
-  margin-top: 14px !important;
-  margin-bottom: 0 !important;
-  text-align: center;
-  font-size: 12px !important;
-}
-
-.login-create a {
-  color: #a51620;
-  font-weight: 800;
-  text-decoration: none;
-}
-
-/* =========================================================
-   PASSWORD RESET / CHANGE PASSWORD
-========================================================= */
-.password-link { display:block; margin:12px 0 2px; text-align:center; color:#a51620; font-size:12px; font-weight:800; text-decoration:none; cursor:pointer; }
-.password-link:hover { text-decoration:underline; }
-.password-actions { display:flex; gap:10px; margin-top:14px; }
-.password-actions button { flex:1; }
-.password-modal { position:fixed; inset:0; z-index:1000015; display:none; align-items:center; justify-content:center; padding:20px; background:rgba(36,4,6,.72); backdrop-filter:blur(7px); }
-.password-modal.show { display:flex; }
-.password-card { position:relative; width:min(430px,94vw); max-height:88vh; overflow-y:auto; padding:30px; background:#fffaf3; border:2px solid #e9ad35; border-radius:24px; box-shadow:0 25px 70px rgba(0,0,0,.4); animation:loginModalIn .25s ease both; }
-.password-close { position:absolute; top:12px; right:15px; width:36px; height:36px; border:0; border-radius:50%; background:#f5ddd5; color:#6d1014; font-size:22px; cursor:pointer; }
-.password-card h2 { margin:0 0 8px; color:#3a0709; font-family:Georgia,serif; font-size:30px; }
-.password-card p { margin:0 0 18px; color:#765f5a; font-size:13px; line-height:1.5; }
-.password-field { margin-bottom:14px; }
-.password-field label { display:block; margin-bottom:7px; color:#4d1517; font-size:12px; font-weight:800; }
-.password-field input { width:100%; box-sizing:border-box; padding:13px 14px; border:1px solid #dfc9bd; border-radius:12px; background:#fff; color:#3a0709; outline:none; font-size:14px; }
-.password-submit { width:100%; margin-top:4px; padding:14px 18px; border:0; border-radius:12px; background:linear-gradient(135deg,#9f1118,#5f080c); color:#fff; font-size:14px; font-weight:800; cursor:pointer; }
-.password-submit:disabled { opacity:.65; cursor:wait; }
-.password-message { min-height:18px; margin-top:12px; color:#a51620; font-size:12px; text-align:center; }
-.password-secondary { background:#f5ddd5; color:#6d1014; }
-.password-otp { text-align:center; letter-spacing:6px; font-size:22px !important; font-weight:900; }
-
-/* Keep footer ramen logo centered */
-.footer-logo {
-  display: block !important;
-  margin-left: auto !important;
-  margin-right: auto !important;
-  object-fit: contain !important;
-}
-
-
-/* =========================================================
-   CART + ADD TO CART
-========================================================= */
-.cart-button { min-width: 120px; }
-.cart-count { display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;margin-left:7px;padding:0 6px;border-radius:999px;background:#fff;color:#a51620;font-size:11px;font-weight:900; }
-.add-cart-control { display:inline-flex;align-items:center;justify-content:center;gap:8px; }
-.add-cart-plus,.qty-minus,.qty-plus { width:34px;height:34px;border:0;border-radius:50%;background:#d71935;color:#fff;font-size:22px;font-weight:800;line-height:1;cursor:pointer;box-shadow:0 5px 12px rgba(125,10,20,.22);transition:transform .2s ease,background .2s ease; }
-.add-cart-plus:hover,.qty-minus:hover,.qty-plus:hover { transform:scale(1.08);background:#ef203c; }
-.qty-number { min-width:20px;text-align:center;color:#8d111a;font-size:15px;font-weight:900; }
-.cart-modal { position:fixed;inset:0;z-index:1000002;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(36,4,6,.72);backdrop-filter:blur(7px); }
-.cart-modal.show { display:flex; }
-.cart-card { position:relative;width:min(520px,94vw);max-height:88vh;overflow-y:auto;padding:30px;background:#fffaf3;border:2px solid #e9ad35;border-radius:24px;box-shadow:0 25px 70px rgba(0,0,0,.4);animation:loginModalIn .25s ease both; }
-.cart-card #cartItemsContainer { max-height:48vh; overflow-y:auto; overflow-x:hidden; padding-right:6px; }
-.cart-card #cartItemsContainer::-webkit-scrollbar { width:7px; }
-.cart-card #cartItemsContainer::-webkit-scrollbar-thumb { background:#d71935; border-radius:999px; }
-.cart-card #cartItemsContainer::-webkit-scrollbar-track { background:#f3e4dc; border-radius:999px; }
-.cart-close { position:absolute;top:12px;right:15px;width:36px;height:36px;border:0;border-radius:50%;background:#f5ddd5;color:#6d1014;font-size:22px;cursor:pointer; }
-.cart-kicker { margin-bottom:6px;color:#a51620;font-size:11px;font-weight:800;letter-spacing:2px;text-transform:uppercase; }
-.cart-card h2 { margin:0 0 20px;color:#3a0709;font-family:Georgia,serif;font-size:32px; }
-.cart-empty { padding:35px 15px;text-align:center;color:#765f5a;font-size:14px; }
-.cart-item { display:flex;align-items:center;gap:13px;padding:13px 0;border-bottom:1px solid #ead8cf; }
-.cart-item-image { width:62px;height:62px;flex:0 0 62px;border-radius:12px;object-fit:cover;background:#35140e; }
-.cart-item-info { flex:1;min-width:0; }
-.cart-item-name { margin:0 0 4px;color:#3a0709;font-size:14px;font-weight:800; }
-.cart-item-price { color:#198754;font-size:12px;font-weight:800; }
-.cart-item-controls { display:inline-flex;align-items:center;gap:7px; }
-.cart-item-controls button { width:28px;height:28px;border:0;border-radius:50%;background:#d71935;color:#fff;font-size:17px;font-weight:900;cursor:pointer; }
-.cart-item-controls span { min-width:18px;text-align:center;color:#3a0709;font-weight:900; }
-.cart-total-row { display:flex;justify-content:space-between;align-items:center;gap:15px;margin-top:20px;padding-top:15px;border-top:2px solid #e9ad35; }
-.cart-total-label { color:#3a0709;font-weight:800; }
-.cart-total-value { color:#198754;font-size:21px;font-weight:900; }
-.cart-checkout { width:100%;margin-top:16px;padding:14px 18px;border:0;border-radius:12px;background:linear-gradient(135deg,#9f1118,#5f080c);color:#fff;font-size:14px;font-weight:800;cursor:pointer; }
-@media (max-width:520px) { .cart-card{padding:25px 18px}.cart-item{gap:9px}.cart-item-image{width:54px;height:54px;flex-basis:54px}.add-cart-plus,.qty-minus,.qty-plus{width:31px;height:31px} }
-
-/* =========================================================
-   CREATE ACCOUNT POPUP - SAME PAGE
-   No ?page=create navigation
-========================================================= */
-#createAccountModal {
-  position: fixed;
-  inset: 0;
-  z-index: 1000001;
-  display: none;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-  background: rgba(36, 4, 6, .78);
-  backdrop-filter: blur(7px);
-  overflow-y: auto;
-}
-#createAccountModal.show { display: flex; }
-.create-account-card {
-  position: relative;
-  width: min(480px, 94vw);
-  max-height: 92vh;
-  overflow-y: auto;
-  padding: 34px 30px 30px;
-  background: #fffaf3;
-  border: 2px solid #e9ad35;
-  border-radius: 24px;
-  box-shadow: 0 25px 70px rgba(0,0,0,.4);
-  animation: loginModalIn .25s ease both;
-}
-.create-account-close {
-  position: absolute; top: 12px; right: 15px; width: 36px; height: 36px;
-  border: 0; border-radius: 50%; background: #f5ddd5; color: #6d1014;
-  font-size: 22px; line-height: 1; cursor: pointer;
-}
-.create-account-kicker { margin-bottom: 6px; color: #a51620; font-size: 11px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; }
-.create-account-card h2 { margin: 0 0 8px; color: #3a0709; font-family: Georgia, serif; font-size: 32px; }
-.create-account-card > p { margin: 0 0 22px; color: #765f5a; font-size: 14px; }
-.create-field { margin-bottom: 14px; }
-.create-field label { display: block; margin-bottom: 7px; color: #4d1517; font-size: 12px; font-weight: 800; }
-.create-field input { width: 100%; box-sizing: border-box; padding: 13px 14px; border: 1px solid #dfc9bd; border-radius: 12px; background: white; color: #3a0709; outline: none; font-size: 14px; }
-.create-field input:focus { border-color: #b51b25; box-shadow: 0 0 0 3px rgba(181,27,37,.10); }
-.create-password-wrap { position: relative; }
-.create-password-wrap input { padding-right: 55px; }
-.create-show-password { position: absolute; top: 50%; right: 8px; transform: translateY(-50%); border: 0; background: transparent; color: #8c2b2e; font-size: 11px; font-weight: 800; cursor: pointer; }
-.create-submit { width: 100%; margin-top: 5px; padding: 14px 18px; border: 0; border-radius: 12px; background: linear-gradient(135deg,#9f1118,#5f080c); color: white; font-size: 14px; font-weight: 800; cursor: pointer; box-shadow: 0 8px 18px rgba(95,8,12,.25); }
-.create-submit:disabled { opacity: .65; cursor: wait; }
-.create-message { min-height: 18px; margin-top: 12px; color: #a51620; font-size: 12px; text-align: center; }
-.create-back-login { width: 100%; margin-top: 12px; padding: 12px; border: 1px solid #b51b25; border-radius: 12px; background: transparent; color: #a51620; font-size: 13px; font-weight: 800; cursor: pointer; }
-@media (max-width: 520px) { .create-account-card { padding: 30px 20px 24px; } .create-account-card h2 { font-size: 28px; } }
-
-
-/* =========================================================
-   STICKY TOP NAVIGATION
-========================================================= */
-.site-sticky-nav {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 999980;
-  height: 66px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 8px 78px 8px 88px;
-  background: rgba(39,7,6,.94);
-  border-bottom: 1px solid rgba(233,173,53,.72);
-  box-shadow: 0 8px 28px rgba(0,0,0,.20);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  transform: translateY(-100%);
-  opacity: 0;
-  pointer-events: none;
-  transition: transform .28s ease, opacity .28s ease;
-}
-.site-sticky-nav.show {
-  transform: translateY(0);
-  opacity: 1;
-  pointer-events: auto;
-}
-.site-sticky-nav-inner {
-  width: min(1120px,100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 26px;
-}
-.site-sticky-logo {
-  position: absolute;
-  left: 20px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 56px;
-  height: 50px;
-  object-fit: contain;
-  display: none;
-  cursor: pointer;
-  filter: drop-shadow(0 3px 7px rgba(0,0,0,.5));
-}
-.site-sticky-logo.ready { display:block; }
-.site-sticky-nav a {
-  position: relative;
-  color: #fff;
-  text-decoration: none;
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 1.2px;
-  text-transform: uppercase;
-  padding: 9px 2px;
-  text-shadow: 0 2px 8px rgba(0,0,0,.5);
-  transition: color .2s ease, transform .2s ease;
-}
-.site-sticky-nav a::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  bottom: 1px;
-  width: 0;
-  height: 2px;
-  background: #f6c34c;
-  transition: width .2s ease;
-}
-.site-sticky-nav a:hover,
-.site-sticky-nav a.active { color:#f6c34c; transform:translateY(-1px); }
-.site-sticky-nav a:hover::after,
-.site-sticky-nav a.active::after { width:100%; }
-
-@media (max-width:700px) {
-  .site-sticky-nav { height:58px; padding:7px 62px 7px 70px; }
-  .site-sticky-nav-inner { gap:16px; }
-  .site-sticky-logo { left:12px; width:48px; height:43px; }
-  .site-sticky-nav a { font-size:9px; letter-spacing:.7px; }
-}
-@media (max-width:430px) {
-  .site-sticky-nav { padding-left:60px; padding-right:54px; }
-  .site-sticky-nav-inner { gap:10px; }
-  .site-sticky-logo { left:8px; width:44px; height:40px; }
-  .site-sticky-nav a { font-size:8px; letter-spacing:.35px; }
-}
-
-/* Account control: hamburger only, aligned with sticky navigation. */
-.account-menu-wrap { top:9px !important; right:16px !important; }
-.account-icon-person { display:none !important; }
-.account-icon-lines { gap:4px !important; }
-.account-icon-lines i { width:18px !important; height:2px !important; }
-
-/* Sticky cart control: stays beside the 3-line account button. */
-.sticky-cart-button {
-  position: fixed;
-  top: 9px;
-  right: 72px;
-  z-index: 999991;
-  width: 48px;
-  height: 48px;
-  border: 2px solid rgba(233,173,53,.95);
-  border-radius: 50%;
-  background: rgba(58,7,9,.88);
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  cursor: pointer;
-  box-shadow: 0 8px 22px rgba(0,0,0,.35);
-  backdrop-filter: blur(5px);
-  -webkit-backdrop-filter: blur(5px);
-  transition: transform .2s ease, background .2s ease;
-}
-.sticky-cart-button:hover { transform: scale(1.07); background:#6f0c12; }
-.sticky-cart-icon { font-size: 17px; line-height: 1; }
-.sticky-cart-count {
-  position: absolute;
-  top: -4px;
-  right: -4px;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 4px;
-  border-radius: 999px;
-  background: #f6c34c;
-  color: #5f080c;
-  border: 1px solid #fff3c9;
-  font-size: 9px;
-  font-weight: 900;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-@media (max-width:700px) {
-  .sticky-cart-button { top:7px; right:62px; width:44px; height:44px; }
-}
-@media (max-width:430px) {
-  .sticky-cart-button { top:7px; right:58px; width:42px; height:42px; }
-}
-
-/* =========================================================
-   ACCOUNT MENU - PERSON + 3 LINE ICON
-========================================================= */
-.account-menu-wrap {
-  position: fixed;
-  top: 145px;
-  right: 24px;
-  z-index: 999990;
-}
-.account-menu-button {
-  width: 48px;
-  height: 48px;
-  border: 2px solid rgba(233,173,53,.95);
-  border-radius: 50%;
-  background: rgba(58,7,9,.88);
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
-  cursor: pointer;
-  box-shadow: 0 8px 22px rgba(0,0,0,.35);
-  backdrop-filter: blur(5px);
-  transition: transform .2s ease, background .2s ease;
-}
-.account-menu-button:hover { transform: scale(1.07); background: #6f0c12; }
-.account-icon-person { font-size: 19px; line-height: 1; }
-.account-icon-lines { display:flex; flex-direction:column; gap:3px; }
-.account-icon-lines i { width:9px; height:2px; border-radius:3px; background:#f6c34c; display:block; }
-.account-dropdown {
-  position: absolute;
-  top: 56px;
-  right: 0;
-  width: 235px;
-  padding: 10px;
-  background: #fffaf3;
-  border: 2px solid #e9ad35;
-  border-radius: 18px;
-  box-shadow: 0 20px 45px rgba(0,0,0,.3);
-  display: none;
-  animation: accountDropIn .18s ease both;
-}
-.account-dropdown.show { display:block; }
-@keyframes accountDropIn { from{opacity:0;transform:translateY(-7px) scale(.97)} to{opacity:1;transform:translateY(0) scale(1)} }
-.account-user-label { padding: 9px 10px 10px; border-bottom:1px solid #ead8cf; margin-bottom:6px; }
-.account-user-label strong { display:block; color:#3a0709; font-size:14px; }
-.account-user-label span { display:block; margin-top:3px; color:#8a6d65; font-size:11px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.account-menu-item {
-  width:100%;
-  display:flex;
-  align-items:center;
-  gap:10px;
-  padding:11px 12px;
-  border:0;
-  border-radius:11px;
-  background:transparent;
-  color:#3a0709;
-  font-size:13px;
-  font-weight:800;
-  text-align:left;
-  cursor:pointer;
-}
-.account-menu-item:hover { background:#f8e5dc; }
-.account-menu-item.logout { color:#b51b25; }
-.account-menu-item .menu-symbol { width:22px; text-align:center; font-size:16px; }
-.account-menu-guest { padding:14px 12px; color:#765f5a; font-size:12px; line-height:1.5; text-align:center; }
-.account-menu-login { margin-top:9px; width:100%; padding:10px 12px; border:0; border-radius:10px; background:#d71935; color:#fff; font-weight:800; cursor:pointer; }
-
-/* Account sub-modals */
-.account-submodal { position:fixed; inset:0; z-index:1000004; display:none; align-items:center; justify-content:center; padding:20px; background:rgba(36,4,6,.72); backdrop-filter:blur(7px); }
-.account-submodal.show { display:flex; }
-.account-subcard { position:relative; width:min(500px,94vw); max-height:88vh; overflow-y:auto; padding:30px; background:#fffaf3; border:2px solid #e9ad35; border-radius:24px; box-shadow:0 25px 70px rgba(0,0,0,.4); animation:loginModalIn .25s ease both; }
-/* CHECKOUT: compact floating popup with internal scrolling, especially on mobile. */
-#checkoutModal { align-items:center; justify-content:center; padding:14px; overflow:hidden; overscroll-behavior:contain; }
-#checkoutModal .checkout-card { width:min(620px,96vw); max-height:min(88vh,760px); overflow-y:auto; overflow-x:hidden; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; scrollbar-width:thin; padding:26px; }
-#checkoutModal .checkout-card::-webkit-scrollbar { width:7px; }
-#checkoutModal .checkout-card::-webkit-scrollbar-thumb { background:#d7aaa0; border-radius:20px; }
-#checkoutModal .checkout-card::-webkit-scrollbar-track { background:transparent; }
-@media (max-width:700px) { #checkoutModal { align-items:flex-start; padding:10px; } #checkoutModal .checkout-card { width:min(620px,96vw); max-height:calc(100vh - 20px); padding:22px 18px 20px; border-radius:20px; } #checkoutModal .checkout-payment-options { grid-template-columns:1fr 1fr; } }
-@media (max-width:430px) { #checkoutModal .checkout-card { max-height:calc(100vh - 16px); padding:20px 15px 18px; } #checkoutModal .checkout-payment-options { grid-template-columns:1fr; } }
-
-.account-subclose { position:absolute; top:12px; right:15px; width:36px; height:36px; border:0; border-radius:50%; background:#f5ddd5; color:#6d1014; font-size:22px; cursor:pointer; }
-.account-subkicker { margin-bottom:6px; color:#a51620; font-size:11px; font-weight:800; letter-spacing:2px; text-transform:uppercase; }
-.account-subcard h2 { margin:0 0 18px; color:#3a0709; font-family:Georgia,serif; font-size:30px; }
-.profile-field { margin-bottom:13px; }
-.profile-field label { display:block; margin-bottom:6px; color:#4d1517; font-size:12px; font-weight:800; }
-.profile-field input { width:100%; padding:12px 13px; border:1px solid #dfc9bd; border-radius:11px; background:#fff; color:#3a0709; font-size:14px; outline:none; }
-.profile-save { width:100%; margin-top:5px; padding:13px; border:0; border-radius:11px; background:linear-gradient(135deg,#9f1118,#5f080c); color:#fff; font-weight:800; cursor:pointer; }
-.profile-note { margin-top:10px; color:#8a6d65; font-size:11px; text-align:center; line-height:1.5; }
-.history-empty,.coupon-empty { padding:30px 12px; text-align:center; color:#765f5a; font-size:13px; line-height:1.6; }
-.coupon-card { padding:14px; margin-bottom:10px; border:1px dashed #d69a35; border-radius:14px; background:#fff5df; }
-.coupon-card strong { color:#9f1118; font-size:15px; }
-.coupon-card span { display:block; margin-top:4px; color:#765f5a; font-size:12px; }
-@media (max-width:700px) { .account-menu-wrap{top:135px;right:14px}.account-menu-button{width:44px;height:44px}.account-dropdown{width:215px} }
-
-/* =========================================================
-   EMAIL VERIFICATION POPUP
-========================================================= */
-#emailVerificationModal { position:fixed; inset:0; z-index:1000006; display:none; align-items:center; justify-content:center; padding:20px; background:rgba(36,4,6,.78); backdrop-filter:blur(7px); }
-#emailVerificationModal.show { display:flex; }
-.verification-card { position:relative; width:min(430px,94vw); padding:34px 30px 30px; background:#fffaf3; border:2px solid #e9ad35; border-radius:24px; box-shadow:0 25px 70px rgba(0,0,0,.4); animation:loginModalIn .25s ease both; text-align:center; }
-.verification-close { position:absolute; top:12px; right:15px; width:36px; height:36px; border:0; border-radius:50%; background:#f5ddd5; color:#6d1014; font-size:22px; line-height:1; cursor:pointer; }
-.verification-kicker { margin-bottom:6px; color:#a51620; font-size:11px; font-weight:800; letter-spacing:2px; text-transform:uppercase; }
-.verification-card h2 { margin:0 0 8px; color:#3a0709; font-family:Georgia,serif; font-size:30px; }
-.verification-card > p { margin:0 auto 18px; color:#765f5a; font-size:13px; line-height:1.55; max-width:350px; }
-.verification-email { color:#a51620; font-weight:800; word-break:break-word; }
-.verification-code-input { width:100%; box-sizing:border-box; padding:15px 14px; border:2px solid #dfc9bd; border-radius:12px; background:#fff; color:#3a0709; outline:none; font-size:24px; font-weight:900; letter-spacing:8px; text-align:center; }
-.verification-code-input:focus { border-color:#b51b25; box-shadow:0 0 0 3px rgba(181,27,37,.10); }
-.verification-submit { width:100%; margin-top:14px; padding:14px 18px; border:0; border-radius:12px; background:linear-gradient(135deg,#9f1118,#5f080c); color:#fff; font-size:14px; font-weight:800; cursor:pointer; }
-.verification-submit:disabled { opacity:.65; cursor:wait; }
-.verification-resend { width:100%; margin-top:10px; padding:11px 14px; border:1px solid #b51b25; border-radius:12px; background:transparent; color:#a51620; font-size:13px; font-weight:800; cursor:pointer; }
-.verification-resend:disabled { opacity:.55; cursor:wait; }
-.verification-message { min-height:20px; margin-top:12px; color:#a51620; font-size:12px; text-align:center; line-height:1.45; }
-.verification-timer { margin-top:8px; color:#8a6d65; font-size:11px; }
-@media(max-width:520px){ .verification-card{padding:30px 20px 24px}.verification-card h2{font-size:27px}.verification-code-input{font-size:21px;letter-spacing:6px} }
-
-
-/* =========================================================
-   MERGED CUSTOMER REVIEWS SECTION
-========================================================= */
-.customer-reviews-section{
-  position:relative;
-  overflow:hidden;
-  padding:90px 5%;
-  background:#fff7ed;
-  border-top:1px solid rgba(169,25,49,.08);
-}
-.customer-reviews-section::before{
-  content:"";
-  position:absolute;inset:0;
-  background:radial-gradient(rgba(164,31,48,.055) 1px,transparent 1px);
-  background-size:18px 18px;
-  pointer-events:none;
-}
-.customer-reviews-inner{position:relative;z-index:5;max-width:1180px;margin:auto}
-.customer-reviews-kicker{text-align:center;color:#b51d31;font-size:12px;letter-spacing:5px;font-weight:800;text-transform:uppercase}
-.customer-reviews-title{text-align:center;margin:12px 0 10px;font-family:"Playfair Display",serif;font-size:clamp(40px,5vw,62px);color:#a91931}
-.customer-reviews-note{text-align:center;max-width:620px;margin:0 auto 42px;color:#66534b;font-size:14px;line-height:1.6}
-.customer-review-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px}
-.customer-review-card{background:#fffdf8;border:1px solid #ead8cf;border-radius:18px;padding:27px;box-shadow:0 12px 30px rgba(55,20,10,.10);transition:transform .3s ease,box-shadow .3s ease}
-.customer-review-card:hover{transform:translateY(-7px);box-shadow:0 20px 40px rgba(55,20,10,.16)}
-.customer-review-stars{color:#e9ad35;font-size:20px;letter-spacing:3px;margin-bottom:13px}
-.customer-review-text{color:#5b4a43;font-size:14px;line-height:1.75;font-style:italic}
-.customer-review-name{margin-top:17px;color:#5f080c;font-size:12px;font-weight:900}
-.customer-review-cta{text-align:center;margin-top:30px}
-.customer-review-button{display:inline-flex;align-items:center;justify-content:center;padding:12px 22px;border:1px solid #a51620;border-radius:30px;background:#fff;color:#8b1118;text-decoration:none;font-size:12px;font-weight:900}
-@media(max-width:800px){.customer-review-grid{grid-template-columns:1fr;max-width:520px;margin:auto}.customer-reviews-section{padding:75px 18px}}
-
-</style>
-
-
-<style id="mckenzieOrderFeatureStyle">
-.order-feature-loading{padding:18px;text-align:center;color:#806c65;font-size:12px}.order-history-card{border:1px solid #e8cfc3;border-radius:15px;background:#fffaf5;margin:0 0 12px;overflow:hidden}.order-history-head{padding:13px 14px;display:flex;justify-content:space-between;gap:10px;align-items:center;background:#fff1e5;border-bottom:1px solid #ead4c9}.order-history-id{font-weight:900;color:#a51620}.order-history-date{font-size:10px;color:#806c65;margin-top:3px}.order-history-total{font-weight:900;color:#5f080c}.order-status-track{display:flex;gap:4px;padding:12px 14px 5px}.order-status-step{flex:1;text-align:center;font-size:8px;color:#a08b83;font-weight:800}.order-status-dot{width:12px;height:12px;border-radius:50%;border:2px solid #d8c7b0;margin:0 auto 4px;background:#fff}.order-status-step.active{color:#8b1825}.order-status-step.active .order-status-dot{background:#e9ad35;border-color:#a51620}.order-status-step.done .order-status-dot{background:#a51620;border-color:#a51620}.order-history-items{padding:8px 14px}.order-history-item{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid #f0e1d9;font-size:11px}.order-history-item:last-child{border-bottom:0}.order-history-item-name{font-weight:800;color:#4f201c}.order-history-item-meta{color:#806c65}.order-history-actions{display:flex;gap:7px;flex-wrap:wrap;padding:11px 14px 14px}.order-feature-btn{border:0;border-radius:9px;padding:9px 12px;background:#8b1825;color:#fff;font-weight:900;cursor:pointer;font-size:11px}.order-feature-btn.secondary{background:#f5e7dc;color:#6f1b22;border:1px solid #e0c5b6}.payment-history-card{border:1px solid #e8cfc3;border-radius:14px;padding:13px;margin:0 0 10px;background:#fffaf5}.payment-history-row{display:flex;justify-content:space-between;gap:10px;font-size:11px;margin:4px 0}.payment-history-method{font-weight:900;color:#5f080c}.payment-status{font-weight:900}.payment-status.paid{color:#198754}.payment-status.pending{color:#9a6b00}.payment-status.refunded{color:#6f42c1}.order-detail-box{margin-top:10px;padding:11px;border-radius:10px;background:#fff;border:1px solid #ead4c9;font-size:11px}.order-detail-box b{color:#5f080c}.order-received-note{padding:10px 12px;background:#eaf7ea;color:#176b17;border-radius:9px;font-size:11px;font-weight:800;margin:0 14px 10px}.order-feature-error{padding:10px 12px;background:#ffe8e8;color:#9b1010;border-radius:9px;font-size:11px;margin:8px 0}.order-feature-empty{padding:22px 10px;text-align:center;color:#806c65;font-size:12px}.order-history-card{cursor:pointer;transition:transform .15s,box-shadow .15s}.order-history-card:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(95,8,12,.08)}.order-history-card:focus{outline:2px solid #e9ad35;outline-offset:2px}.order-detail-top{display:flex;align-items:center;gap:8px;margin-bottom:12px}.order-detail-back{border:1px solid #e0c5b6;background:#fff;color:#6f1b22;border-radius:9px;padding:8px 11px;font-weight:900;cursor:pointer}.order-detail-title{font-weight:900;color:#5f080c;font-size:14px}.order-detail-section{margin:10px 0;padding:12px;border:1px solid #ead4c9;border-radius:11px;background:#fffaf5}.order-detail-section-title{font-size:11px;font-weight:900;color:#8b1825;margin-bottom:8px;text-transform:uppercase;letter-spacing:.4px}.order-detail-item{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid #f0e1d9;font-size:11px}.order-detail-item:last-child{border-bottom:0}.order-detail-item-name{font-weight:800;color:#4f201c}.order-detail-item-meta{font-size:9px;color:#806c65;margin-top:2px}.order-detail-total{display:flex;justify-content:space-between;font-weight:900;color:#5f080c;padding-top:9px;font-size:12px}.order-detail-survey{margin-top:12px;padding:13px;border-radius:11px;background:#fff1e5;border:1px solid #e8c5b4}.order-detail-survey-title{font-weight:900;color:#5f080c;font-size:12px}.order-detail-survey-text{font-size:10px;color:#806c65;margin:4px 0 9px;line-height:1.4}
-</style>
-</head>
-
-
-<body>
-
-<!-- =======================================================
-     QUICK FULL-SCREEN RAMEN LOADER
-======================================================= -->
-
-<div id="pageLoader">
-  <div class="loader-box">
-
-    <img
-      id="loaderRamenImage"
-      src=""
-      alt="Preparing ramen"
-      class="animate"
-      decoding="async"
-    >
-
-
-  </div>
-</div>
-
-
-
-
-<!-- =======================================================
-     LOGIN POPUP
-======================================================= -->
-<div
-  id="loginModal"
-  role="dialog"
-  aria-modal="true"
-  aria-labelledby="loginModalTitle"
-  >
-
-  <div class="login-modal-card">
-
-    <button
-      type="button"
-      class="login-close"
-      aria-label="Close login"
-      onclick="closeLoginModal()">
-      ×
-    </button>
-
-    <div class="login-modal-kicker">
-      MCKENZIE RAMEN HOUSE
-    </div>
-
-    <h2 id="loginModalTitle">Welcome Back</h2>
-
-    <p>Log in to continue to your account.</p>
-
-    <form onsubmit="submitLoginPopup(event)">
-
-      <div class="login-field">
-        <label for="popupLoginIdentifier">Username or Email</label>
-        <input
-          id="popupLoginIdentifier"
-          type="text"
-          autocomplete="username"
-          placeholder="Enter your username or email"
-          required>
-      </div>
-
-      <div class="login-field">
-        <label for="popupLoginPassword">Password</label>
-        <div class="login-password-wrap">
-          <input
-            id="popupLoginPassword"
-            type="password"
-            autocomplete="current-password"
-            placeholder="Enter your password"
-            required>
-          <button
-            type="button"
-            class="login-show-password"
-            onclick="togglePopupPassword()">
-            SHOW
-          </button>
-        </div>
-      </div>
-
-      <button
-        id="popupLoginSubmit"
-        type="submit"
-        class="login-submit">
-        Log In
-      </button>
-
-      <div
-        id="popupLoginMessage"
-        class="login-message"
-        aria-live="polite"></div>
-
-      <a href="#" class="password-link" onclick="openForgotPassword_(event)">Forgot Password?</a>
-
-    </form>
-
-    <p class="login-create">
-      Don't have an account?
-      <a href="#" onclick="openCreateAccountFromLogin(event)">Create one</a>
-    </p>
-
-  </div>
-</div>
-
-
-<!-- =======================================================
-     CREATE ACCOUNT POPUP - SAME PAGE
-======================================================= -->
-<div id="createAccountModal" role="dialog" aria-modal="true" aria-labelledby="createAccountModalTitle" >
-  <div class="create-account-card">
-    <button type="button" class="create-account-close" aria-label="Close create account" onclick="closeCreateAccountModal()">×</button>
-    <div class="create-account-kicker">MCKENZIE RAMEN HOUSE</div>
-    <h2 id="createAccountModalTitle">Create Account</h2>
-    <p>Join Mckenzie Ramen House and create your account.</p>
-
-    <form onsubmit="submitCreateAccountPopup(event)">
-      <div class="create-field">
-        <label for="createFullName">Full Name</label>
-        <input id="createFullName" type="text" autocomplete="name" placeholder="Enter your full name" required>
-      </div>
-      <div class="create-field">
-        <label for="createEmail">Email Address</label>
-        <input id="createEmail" type="email" autocomplete="email" placeholder="Enter your email" required>
-      </div>
-      <div class="create-field">
-        <label for="createMobile">Phone Number</label>
-        <input id="createMobile" type="tel" autocomplete="tel" inputmode="tel" placeholder="Enter your phone number" required>
-      </div>
-      <div class="create-field">
-        <label for="createUsername">Username</label>
-        <input id="createUsername" type="text" autocomplete="username" placeholder="Choose a username" required>
-      </div>
-      <div class="create-field">
-        <label for="createPassword">Password</label>
-        <div class="create-password-wrap">
-          <input id="createPassword" type="password" autocomplete="new-password" placeholder="Create a password" required>
-          <button type="button" class="create-show-password" onclick="toggleCreatePassword('createPassword',this)">SHOW</button>
-        </div>
-      </div>
-      <div class="create-field">
-        <label for="createConfirmPassword">Confirm Password</label>
-        <div class="create-password-wrap">
-          <input id="createConfirmPassword" type="password" autocomplete="new-password" placeholder="Confirm your password" required>
-          <button type="button" class="create-show-password" onclick="toggleCreatePassword('createConfirmPassword',this)">SHOW</button>
-        </div>
-      </div>
-      <div id="createAccountMessage" class="create-message" aria-live="polite"></div>
-      <button type="submit" class="create-submit" id="createAccountSubmit">Create Account</button>
-      <button type="button" class="create-back-login" onclick="switchCreateAccountToLogin()">Already have an account? Sign In</button>
-    </form>
-  </div>
-</div>
-
-<!-- =======================================================
-     CART POPUP
-======================================================= -->
-<div id="cartModal" class="cart-modal" role="dialog" aria-modal="true" aria-labelledby="cartModalTitle" >
-  <div class="cart-card">
-    <button type="button" class="cart-close" aria-label="Close cart" onclick="closeCartModal_()">×</button>
-    <div class="cart-kicker">MCKENZIE RAMEN HOUSE</div>
-    <h2 id="cartModalTitle">Your Cart</h2>
-    <div id="cartItemsContainer"></div>
-    <div class="cart-total-row"><span class="cart-total-label">Total</span><span id="cartTotalValue" class="cart-total-value">₱0.00</span></div>
-    <button type="button" class="cart-checkout" onclick="handleCheckout_()">Checkout</button>
-  </div>
-</div>
-
-
-<!-- STICKY / FIXED CART BUTTON: beside the 3-line account menu -->
-<button type="button" id="stickyCartButton" class="sticky-cart-button" aria-label="Open cart" onclick="handleStickyCartClick_()">
-  <span class="sticky-cart-icon">🛒</span>
-  <span id="stickyCartCount" class="sticky-cart-count">0</span>
-</button>
-
-<!-- =======================================================
-     ACCOUNT MENU
-======================================================= -->
-<div class="account-menu-wrap">
-  <button type="button" class="account-menu-button" aria-label="Account menu" onclick="toggleAccountMenu_(event)">
-    <span class="account-icon-person">♙</span>
-    <span class="account-icon-lines"><i></i><i></i><i></i></span>
-  </button>
-  <div id="accountDropdown" class="account-dropdown">
-    <div id="accountUserLabel" class="account-user-label" style="display:none;">
-      <strong id="accountUserName">My Account</strong>
-      <span id="accountUserEmail"></span>
-    </div>
-    <div id="accountGuestMessage" class="account-menu-guest">
-      Please log in to access your account features.
-      <button type="button" class="account-menu-login" onclick="accountMenuLogin_()">Log In</button>
-    </div>
-    <div id="accountLoggedInItems" style="display:none;">
-      <button type="button" class="account-menu-item" onclick="openEditProfile_()"><span class="menu-symbol">👤</span> Edit Profile</button>
-      <button type="button" class="account-menu-item" onclick="openOrderHistory_()"><span class="menu-symbol">📋</span> Order History</button>
-      <button type="button" class="account-menu-item" onclick="openPaymentHistory_()"><span class="menu-symbol">💳</span> Payment History</button>
-      <button type="button" class="account-menu-item" onclick="openCoupons_()"><span class="menu-symbol">🎟️</span> Coupons</button>
-      <button type="button" class="account-menu-item logout" onclick="logoutUser_()"><span class="menu-symbol">↪</span> Log Out</button>
-    </div>
-  </div>
-</div>
-
-<!-- EDIT PROFILE -->
-<div id="editProfileModal" class="account-submodal" onclick="handleProfileOverlayClick_(event)">
-  <div class="account-subcard">
-    <button type="button" class="account-subclose" onclick="closeAccountSubmodal_('editProfileModal')">×</button>
-    <div class="account-subkicker">MCKENZIE RAMEN HOUSE</div>
-    <h2>Edit Profile</h2>
-
-    <div id="profileLoading" class="checkout-loading">Loading your profile...</div>
-
-    <div id="profileForm" style="display:none;">
-      <div class="profile-grid">
-        <div class="profile-field full profile-verified-field">
-          <label for="profileFullName"><span>Full Name</span><span class="profile-verified-badge" aria-label="Verified using email">✓ Verified</span></label>
-          <input id="profileFullName" type="text" autocomplete="name" readonly disabled class="profile-verified-input">
-        </div>
-
-        <div class="profile-field profile-verified-field">
-          <label for="profileEmail"><span>Email Address</span><span class="profile-verified-badge" aria-label="Verified using email">✓ Email Verified</span></label>
-          <input id="profileEmail" type="email" autocomplete="email" readonly disabled class="profile-verified-input">
-        </div>
-
-        <div class="profile-field">
-          <label for="profileMobile">Phone Number</label>
-          <input id="profileMobile" type="tel" autocomplete="tel">
-        </div>
-
-        <div class="profile-field">
-          <label for="profileUsername">Username</label>
-          <input id="profileUsername" type="text" readonly>
-        </div>
-
-        <div class="profile-field">
-          <label for="profilePostalCode">Postal Code</label>
-          <input id="profilePostalCode" type="text" inputmode="numeric">
-        </div>
-
-        <div class="profile-field">
-          <label for="profileRegion">Region</label>
-          <select id="profileRegion"></select>
-        </div>
-
-        <div class="profile-field">
-          <label for="profileProvince">Province</label>
-          <select id="profileProvince" disabled></select>
-        </div>
-
-        <div class="profile-field">
-          <label for="profileCity">City / Municipality</label>
-          <select id="profileCity" disabled></select>
-        </div>
-
-        <div class="profile-field">
-          <label for="profileBarangay">Barangay</label>
-          <select id="profileBarangay" disabled></select>
-        </div>
-
-        <div class="profile-field">
-          <label for="profileHouseUnit">Lot / House / Unit No.</label>
-          <input id="profileHouseUnit" type="text">
-        </div>
-
-        <div class="profile-field">
-          <label for="profileStreet">Street</label>
-          <input id="profileStreet" type="text">
-        </div>
-
-        <div class="profile-field full">
-          <label for="profileAdditionalInstruction">Additional Delivery Instruction</label>
-          <textarea id="profileAdditionalInstruction" rows="3" placeholder="Landmark, gate instructions, etc."></textarea>
-        </div>
-      </div>
-
-      <div id="profileMessage" class="profile-note" aria-live="polite"></div>
-
-      <div class="profile-field full" style="margin-top:18px;">
-        <label>Account Password</label>
-        <button type="button" class="password-submit" onclick="openChangePassword_()">Change Password</button>
-      </div>
-
-      <button type="button" id="profileSaveButton" class="profile-save" onclick="saveProfile_()">Save Changes</button>
-      <div class="profile-note">Your saved details are used automatically during checkout.</div>
-    </div>
-  </div>
-</div>
-
-<!-- CHECKOUT -->
-<div id="checkoutModal" class="account-submodal checkout-modal" onclick="handleCheckoutOverlayClick_(event)">
-  <div class="account-subcard checkout-card">
-    <button type="button" class="account-subclose" onclick="closeAccountSubmodal_('checkoutModal')">×</button>
-    <div class="account-subkicker">MCKENZIE RAMEN HOUSE</div>
-    <h2>Checkout</h2>
-    <div class="checkout-note" style="margin-bottom:12px;">Your account information is automatically filled in below from your logged-in profile.</div>
-
-    <div id="checkoutLoading" class="checkout-loading">Loading your saved details...</div>
-
-    <div id="checkoutForm" style="display:none;">
-      <div class="checkout-order-summary">
-        <div class="checkout-order-title">Your Order</div>
-        <div id="checkoutOrderItems" class="checkout-order-items"></div>
-        <div class="checkout-order-total"><span>Total</span><strong id="checkoutOrderTotal">₱0.00</strong></div>
-      </div>
-
-      <div class="checkout-summary">
-        <div class="checkout-identity-field checkout-verified-identity"><label for="checkoutCustomerName"><strong>Customer Name</strong><span class="checkout-verified-badge" aria-label="Verified using email">✓ Verified</span></label><input id="checkoutCustomerName" type="text" placeholder="Enter your full name" autocomplete="name"></div>
-        <div class="checkout-identity-field checkout-verified-identity"><label for="checkoutCustomerEmail"><strong>Email</strong><span class="checkout-verified-badge" aria-label="Verified email">✓ Email Verified</span></label><input id="checkoutCustomerEmail" type="email" placeholder="Enter your email address" autocomplete="email"></div>
-        <div class="checkout-identity-field"><label for="checkoutCustomerMobile"><strong>Phone Number</strong></label><input id="checkoutCustomerMobile" type="tel" placeholder="Enter your phone number" autocomplete="tel"></div>
-      </div>
-
-      <div id="checkoutAddressManager" class="checkout-address-manager" style="display:none;">
-        <div class="checkout-address-manager-head">
-          <div class="checkout-address-manager-title">Delivery Address</div>
-        </div>
-        <div class="checkout-address-select-row">
-          <select id="checkoutAddressSelect" class="checkout-address-select" aria-label="Select saved address" onchange="checkoutAddressChanged_()"></select>
-          <button type="button" class="checkout-address-add" onclick="openAddAddressModal_()">＋ Add Address</button>
-        </div>
-        <div class="checkout-address-default-note">The selected address is your default delivery address for this account.</div>
-      </div>
-
-      <div class="checkout-grid">
-        <div class="checkout-field">
-          <label for="checkoutRegion">Region</label>
-          <select id="checkoutRegion"></select>
-        </div>
-        <div class="checkout-field">
-          <label for="checkoutProvince">Province</label>
-          <select id="checkoutProvince" disabled></select>
-        </div>
-        <div class="checkout-field">
-          <label for="checkoutCity">City / Municipality</label>
-          <select id="checkoutCity" disabled></select>
-        </div>
-        <div class="checkout-field">
-          <label for="checkoutBarangay">Barangay</label>
-          <select id="checkoutBarangay" disabled></select>
-        </div>
-        <div class="checkout-field">
-          <label for="checkoutHouseUnit">Lot / House / Unit No.</label>
-          <input id="checkoutHouseUnit" type="text" placeholder="e.g. Lot 12, Blk 3">
-        </div>
-        <div class="checkout-field">
-          <label for="checkoutStreet">Street</label>
-          <input id="checkoutStreet" type="text" placeholder="Street name">
-        </div>
-        <div class="checkout-field full">
-          <label for="checkoutAdditionalInstruction">Additional Delivery Instruction</label>
-          <textarea id="checkoutAdditionalInstruction" rows="3" placeholder="Landmark, gate instructions, etc."></textarea>
-        </div>
-      </div>
-
-      <div class="checkout-payment">
-        <div class="checkout-payment-title">Payment Method</div>
-        <div class="checkout-payment-options">
-          <label class="checkout-payment-option"><input type="radio" name="checkoutPaymentMethod" value="GCash"><span>GCash</span></label>
-          <label class="checkout-payment-option"><input type="radio" name="checkoutPaymentMethod" value="Maya"><span>Maya</span></label>
-          <label class="checkout-payment-option"><input type="radio" name="checkoutPaymentMethod" value="Cash on Delivery"><span>Cash on Delivery</span></label>
-          <label class="checkout-payment-option"><input type="radio" name="checkoutPaymentMethod" value="QR BANK"><span>QR BANK</span></label>
-        </div>
-      </div>
-
-      <div id="checkoutMessage" class="profile-note" aria-live="polite"></div>
-      <button type="button" class="checkout-submit" onclick="placeOrder_()">Place Order</button>
-      <div class="checkout-note">The address above is taken from your saved profile and can be updated from Edit Profile.</div>
-    </div>
-  </div>
-</div>
-
-<!-- ADD ADDRESS -->
-<div id="addAddressModal" class="address-modal" role="dialog" aria-modal="true" aria-labelledby="addAddressTitle">
-  <div class="address-card">
-    <div class="address-card-head">
-      <div>
-        <div class="account-subkicker">MCKENZIE RAMEN HOUSE</div>
-        <h2 id="addAddressTitle">Add Address</h2>
-      </div>
-      <button type="button" class="address-close" onclick="closeAddAddressModal_()">×</button>
-    </div>
-    <div class="address-form-grid">
-      <div class="address-form-field full"><label for="newAddressLabel">Address Name</label><input id="newAddressLabel" type="text" placeholder="e.g. Home, Work, Office"></div>
-      <div class="address-form-field"><label for="newAddressRegion">Region</label><select id="newAddressRegion"></select></div>
-      <div class="address-form-field"><label for="newAddressProvince">Province</label><select id="newAddressProvince" disabled></select></div>
-      <div class="address-form-field"><label for="newAddressCity">City / Municipality</label><select id="newAddressCity" disabled></select></div>
-      <div class="address-form-field"><label for="newAddressBarangay">Barangay</label><select id="newAddressBarangay" disabled></select></div>
-      <div class="address-form-field"><label for="newAddressHouseUnit">Lot / House / Unit No.</label><input id="newAddressHouseUnit" type="text" placeholder="e.g. Lot 12, Blk 3"></div>
-      <div class="address-form-field"><label for="newAddressStreet">Street</label><input id="newAddressStreet" type="text" placeholder="Street name"></div>
-      <div class="address-form-field full"><label for="newAddressAdditionalInstruction">Additional Delivery Instruction</label><textarea id="newAddressAdditionalInstruction" rows="3" placeholder="Landmark, gate instructions, etc."></textarea></div>
-    </div>
-    <div id="newAddressMessage" class="profile-note" aria-live="polite"></div>
-    <div class="address-save-row">
-      <button type="button" class="address-cancel-button" onclick="closeAddAddressModal_()">Cancel</button>
-      <button type="button" id="addressSaveButton" class="address-save-button" onclick="saveNewAddress_()">Save &amp; Set as Default</button>
-    </div>
-  </div>
-</div>
-
-<!-- ORDER CONFIRMATION -->
-<div id="orderConfirmModal" class="order-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="orderConfirmTitle">
-  <div class="order-confirm-card">
-    <div class="account-subkicker">MCKENZIE RAMEN HOUSE</div>
-    <h2 id="orderConfirmTitle">Are you sure?</h2>
-    <p class="order-confirm-note">Please review the menu you selected before placing your order.</p>
-    <div id="orderConfirmItems" class="order-confirm-items"></div>
-    <div class="order-confirm-total"><span>Total</span><strong id="orderConfirmTotal">₱0.00</strong></div>
-    <div id="orderConfirmMessage" class="profile-note" aria-live="polite"></div>
-    <div class="order-confirm-actions">
-      <button type="button" class="order-confirm-no" onclick="cancelOrderConfirmation_()">No</button>
-      <button type="button" id="orderConfirmYes" class="order-confirm-yes" onclick="confirmPlaceOrder_()">Yes, Place Order</button>
-    </div>
-  </div>
-</div>
-
-<!-- ORDER SUCCESS -->
-<div id="orderSuccessOverlay" aria-live="polite">
-  <div class="order-success-inner">
-    <div class="order-success-check">✓</div>
-    <div class="order-success-title">Successfully Ordered!</div>
-    <div class="order-success-subtitle">Thank you for your order. 🍜</div>
-  </div>
-</div>
-
-<!-- ORDER TUNNEL -->
-<div id="orderTunnelOverlay" aria-hidden="true">
-  <div class="order-tunnel">
-    <div class="order-tunnel-ring"></div><div class="order-tunnel-ring"></div><div class="order-tunnel-ring"></div><div class="order-tunnel-ring"></div><div class="order-tunnel-ring"></div>
-    <div class="order-tunnel-center">Preparing your ramen journey… 🍜</div>
-  </div>
-</div>
-
-<!-- ORDER HISTORY -->
-<div id="orderHistoryModal" class="account-submodal" >
-  <div class="account-subcard">
-    <button type="button" class="account-subclose" onclick="closeAccountSubmodal_('orderHistoryModal')">×</button>
-    <div class="account-subkicker">MCKENZIE RAMEN HOUSE</div>
-    <h2>Order History</h2>
-    <div id="orderHistoryContent" class="history-empty">No completed orders yet.</div>
-  </div>
-</div>
-
-<!-- PAYMENT HISTORY -->
-<div id="paymentHistoryModal" class="account-submodal">
-  <div class="account-subcard">
-    <button type="button" class="account-subclose" onclick="closeAccountSubmodal_('paymentHistoryModal')">×</button>
-    <div class="account-subkicker">MCKENZIE RAMEN HOUSE</div>
-    <h2>Payment History</h2>
-    <div id="paymentHistoryContent" class="history-empty">No payment records yet.</div>
-  </div>
-</div>
-
-<!-- COUPONS -->
-<div id="couponsModal" class="account-submodal" >
-  <div class="account-subcard">
-    <button type="button" class="account-subclose" onclick="closeAccountSubmodal_('couponsModal')">×</button>
-    <div class="account-subkicker">MCKENZIE RAMEN HOUSE</div>
-    <h2>My Coupons</h2>
-    <div id="couponContent">
-      <div class="coupon-empty">No coupons available yet.<br>New promotions can be added here anytime. 🍜</div>
-    </div>
-  </div>
-</div>
-
-<!-- =======================================================
-     FORGOT / CHANGE PASSWORD POPUPS
-======================================================= -->
-<div id="forgotPasswordModal" class="password-modal" role="dialog" aria-modal="true" aria-labelledby="forgotPasswordTitle">
-  <div class="password-card">
-    <button type="button" class="password-close" onclick="closeForgotPassword_()">×</button>
-    <div class="account-subkicker">MCKENZIE RAMEN HOUSE</div>
-    <h2 id="forgotPasswordTitle">Forgot Password?</h2>
-    <p>Enter your username or email. We will send an OTP to the email registered to your account.</p>
-    <div class="password-field">
-      <label for="forgotPasswordIdentifier">Username or Email</label>
-      <input id="forgotPasswordIdentifier" type="text" autocomplete="username" placeholder="Enter your username or email">
-    </div>
-    <button type="button" id="forgotPasswordSendButton" class="password-submit" onclick="sendForgotPasswordOtp_()">Send OTP</button>
-    <div id="forgotPasswordMessage" class="password-message" aria-live="polite"></div>
-  </div>
-</div>
-
-<div id="passwordOtpModal" class="password-modal" role="dialog" aria-modal="true" aria-labelledby="passwordOtpTitle">
-  <div class="password-card">
-    <button type="button" class="password-close" onclick="closePasswordOtp_()">×</button>
-    <div class="account-subkicker">MCKENZIE RAMEN HOUSE</div>
-    <h2 id="passwordOtpTitle">Verify OTP</h2>
-    <p>Enter the 6-digit code sent to <strong id="passwordOtpEmail"></strong>. The code expires in 10 minutes.</p>
-    <div class="password-field">
-      <label for="passwordOtpCode">OTP Code</label>
-      <input id="passwordOtpCode" class="password-otp" type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="000000">
-    </div>
-    <div class="password-field">
-      <label for="passwordOtpNewPassword">New Password</label>
-      <input id="passwordOtpNewPassword" type="password" autocomplete="new-password" placeholder="At least 6 characters">
-    </div>
-    <div class="password-field">
-      <label for="passwordOtpConfirmPassword">Confirm New Password</label>
-      <input id="passwordOtpConfirmPassword" type="password" autocomplete="new-password" placeholder="Re-enter new password">
-    </div>
-    <button type="button" id="passwordOtpSubmit" class="password-submit" onclick="submitPasswordOtp_()">Verify &amp; Change Password</button>
-    <div id="passwordOtpMessage" class="password-message" aria-live="polite"></div>
-  </div>
-</div>
-
-<div id="changePasswordModal" class="password-modal" role="dialog" aria-modal="true" aria-labelledby="changePasswordTitle">
-  <div class="password-card">
-    <button type="button" class="password-close" onclick="closeChangePassword_()">×</button>
-    <div class="account-subkicker">MCKENZIE RAMEN HOUSE</div>
-    <h2 id="changePasswordTitle">Change Password</h2>
-    <p>Enter your current password. If you forgot it, use the email OTP option below.</p>
-    <div class="password-field">
-      <label for="oldPassword">Old Password</label>
-      <input id="oldPassword" type="password" autocomplete="current-password" placeholder="Enter your old password">
-    </div>
-    <div class="password-field">
-      <label for="newPassword">New Password</label>
-      <input id="newPassword" type="password" autocomplete="new-password" placeholder="At least 6 characters">
-    </div>
-    <div class="password-field">
-      <label for="confirmNewPassword">Confirm New Password</label>
-      <input id="confirmNewPassword" type="password" autocomplete="new-password" placeholder="Re-enter new password">
-    </div>
-    <button type="button" id="changePasswordSubmit" class="password-submit" onclick="submitChangePassword_()">Change Password</button>
-    <a href="#" class="password-link" onclick="useForgotPasswordFromChange_(event)">I forgot my old password — Send OTP to my email</a>
-    <div id="changePasswordMessage" class="password-message" aria-live="polite"></div>
-  </div>
-</div>
-
-<!-- =======================================================
-     EMAIL VERIFICATION POPUP
-======================================================= -->
-<div id="emailVerificationModal" role="dialog" aria-modal="true" aria-labelledby="emailVerificationTitle" onclick="handleVerificationOverlayClick(event)">
-  <div class="verification-card">
-    <button type="button" class="verification-close" aria-label="Close email verification" onclick="closeEmailVerificationModal()">×</button>
-    <div class="verification-kicker">MCKENZIE RAMEN HOUSE</div>
-    <h2 id="emailVerificationTitle">Verify Your Email</h2>
-    <p>We sent a 6-digit verification code to <span id="verificationEmail" class="verification-email"></span>. The code expires in 10 minutes.</p>
-    <input id="verificationCodeInput" class="verification-code-input" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000" aria-label="Verification code">
-    <div id="verificationMessage" class="verification-message" aria-live="polite"></div>
-    <button type="button" id="verificationSubmit" class="verification-submit" onclick="verifyEmailCode_()">Verify Email</button>
-    <button type="button" id="verificationResend" class="verification-resend" onclick="resendVerificationCode_()">Resend Code</button>
-    <div id="verificationTimer" class="verification-timer"></div>
-  </div>
-</div>
-
-<div
-  class="petals"
-  id="petals">
-</div>
-
-
-<!-- =======================================================
-     HERO
-======================================================= -->
-
-<!-- STICKY TOP NAVIGATION: appears after scrolling -->
-<div id="siteStickyNav" class="site-sticky-nav" aria-label="Site navigation">
-  <img id="siteStickyLogo"
-       class="site-sticky-logo"
-       alt="Mckenzie Ramen House Logo"
-       title="Go to Home"
-       onclick="goToHomeFromLogo_();">
-  <nav class="site-sticky-nav-inner">
-    <a href="#home" data-section="home">Home</a>
-    <a href="#menu" data-section="menu">Menu</a>
-    <a href="#about" data-section="about">About</a>
-    <a href="#contact" data-section="contact">Contact</a>
-  </nav>
-</div>
-
-<section
-  id="home"
-  class="hero">
-
-  <div id="japaneseGreeting" class="japanese-greeting" aria-live="polite">
-    <span class="japanese-greeting-main">いらっしゃいませ</span>
-    <span id="japaneseGreetingName" class="japanese-greeting-name"></span>
-  </div>
-
-
-  <div
-    class="sakura-decoration sakura-left">
-  </div>
-
-
-  <div
-    class="sakura-decoration sakura-right">
-  </div>
-
-
-  <div class="hero-content">
-
-
-    <img
-      id="brandLogo"
-      class="hero-logo"
-      alt="Mckenzie Ramen House Logo"
-      style="display:none;">
-
-
-    <h1 class="hero-title">
-
-      Mckenzie
-      <span>Ramen</span>
-
-      <br>
-
-      House
-
-    </h1>
-
-
-    <div class="hero-tagline">
-
-      AUTHENTIC RAMEN
-      •
-      JAPANESE COMFORT
-      •
-      MADE WITH LOVE 🍜
-
-    </div>
-
-
-    <button
-      type="button"
-      id="heroAccountButton"
-      class="hero-button"
-      onclick="handleHeroAccountButton()">
-
-      Log In
-
-    </button>
-
-
-    <div class="hero-navigation">
-
-      <a
-        href="#home"
-        class="active">
-
-        Home
-
-      </a>
-
-      <a href="#menu">
-
-        Menu
-
-      </a>
-
-      <a href="#about">
-
-        About
-
-      </a>
-
-      <a href="#reviews">
-
-        Reviews
-
-      </a>
-
-      <a href="#contact">
-
-        Contact
-
-      </a>
-
-    </div>
-
-
-  </div>
-
-
-  <div class="wave">
-
-    <svg
-      viewBox="0 0 1440 100"
-      preserveAspectRatio="none">
-
-      <path
-        d="
-          M0,58
-          C180,95 300,25 480,58
-          C650,88 780,25 960,58
-          C1130,90 1260,28 1440,58
-          L1440,100
-          L0,100
-          Z
-        "
-        fill="#fff7ed">
-      </path>
-
-      <path
-        d="
-          M0,58
-          C180,95 300,25 480,58
-          C650,88 780,25 960,58
-          C1130,90 1260,28 1440,58
-        "
-        fill="none"
-        stroke="#e9ad35"
-        stroke-width="5">
-      </path>
-
-    </svg>
-
-  </div>
-
-</section>
-
-
-<!-- =======================================================
-     MENU
-======================================================= -->
-
-<section
-  id="menu"
-  class="menu-section">
-
-
-  <div
-    class="sakura-menu-left">
-  </div>
-
-
-  <div
-    class="sakura-menu-right">
-  </div>
-
-
-  <div class="menu-header">
-
-    <div class="menu-kicker">
-
-      ✦ JAPANESE FAVORITES ✦
-
-    </div>
-
-
-    <h2 class="menu-title">
-
-      Best Seller &amp; New Menu
-
-    </h2>
-
-
-    <p class="menu-description">
-
-      Discover our best-selling favorites
-      and our newest Japanese creations.
-
-    </p>
-
-  </div>
-
-
-  <div
-    id="products"
-    class="products">
-
-    <div class="loading">
-
-      Loading our menu...
-
-    </div>
-
-  </div>
-
-</section>
-
-
-<!-- =======================================================
-     ABOUT
-======================================================= -->
-
-<section
-  id="about"
-  class="features">
-
-
-  <div class="feature">
-
-    <div class="feature-icon">
-      🍜
-    </div>
-
-    <h3>
-      Authentic Taste
-    </h3>
-
-    <p>
-      Made with traditional
-      Japanese recipes and
-      carefully selected ingredients.
-    </p>
-
-  </div>
-
-
-  <div class="feature">
-
-    <div class="feature-icon">
-      🥢
-    </div>
-
-    <h3>
-      Made with Love
-    </h3>
-
-    <p>
-      Every bowl is crafted
-      with passion and dedication.
-    </p>
-
-  </div>
-
-
-  <div class="feature">
-
-    <div class="feature-icon">
-      ⛩
-    </div>
-
-    <h3>
-      Warm Experience
-    </h3>
-
-    <p>
-      A cozy place to enjoy
-      comforting food and good company.
-    </p>
-
-  </div>
-
-
-</section>
-
-
-
-<!-- =======================================================
-     CUSTOMER REVIEWS
-     Added from the upgraded customer-facing version.
-======================================================= -->
-<section id="reviews" class="customer-reviews-section">
-  <div class="customer-reviews-inner">
-    <div class="customer-reviews-kicker">✦ CUSTOMER LOVE ✦</div>
-    <h2 class="customer-reviews-title">What Our Customers Say</h2>
-    <p class="customer-reviews-note">
-      A few words from ramen lovers who have enjoyed the McKenzie Ramen House experience.
-      Customer reviews will appear here after real customers submit their ratings and feedback.
-    </p>
-
-    <div class="customer-review-grid">
-      <article class="customer-review-card" style="grid-column:1/-1;text-align:center;">
-        <div class="customer-review-stars">☆ ☆ ☆ ☆ ☆</div>
-        <p class="customer-review-text" style="font-style:normal;">No customer reviews yet.</p>
-        <div class="customer-review-name" style="margin-top:10px;">Be the first to share your McKenzie Ramen House experience.</div>
-      </article>
-    </div>
-
-    <div class="customer-review-cta">
-      <a class="customer-review-button" href="#menu">🍜 ORDER FROM THE MENU</a>
-    </div>
-  </div>
-</section>
-
-
-<!-- =======================================================
-     FOOTER
-======================================================= -->
-
-<footer
-  id="contact"
-  class="footer">
-
-
-  <img
-    id="footerLogo"
-    class="footer-logo"
-    alt="Mckenzie Ramen House"
-    style="display:none;">
-
-
-  <div class="footer-title">
-
-    Mckenzie Ramen House
-
-  </div>
-
-
-  <p>
-
-    Good food.
-    Warm bowls.
-    Happy hearts. ❤️
-
-  </p>
-
-
-  <p>
-
-    © 2019 Mckenzie Ramen House.
-    All rights reserved.
-
-  </p>
-
-
-</footer>
-
-
-<script>
-// Apps Script backend used by the customer site when this page is hosted on GitHub Pages.
-const MCKENZIE_ORDER_API_URL = "https://script.google.com/macros/s/AKfycbxHuXpTYPCSQ_Uj1-LqC7jAjGEcbQ8uKvwX3tmy_ZqOb_bvdFgvQ-IwTjumY713SuF8Hw/exec";
-
-
-
-/* =========================================================
-   SAME-PAGE CREATE ACCOUNT
-   Uses the existing ramen loader and existing createUser()
-========================================================= */
-function openCreateAccountFromLogin(event) {
-  if (event) event.preventDefault();
-  closeLoginModal();
-  openCreateAccountModal();
-}
-
-function openCreateAccountModal() {
-  const modal = document.getElementById("createAccountModal");
-  if (!modal) return;
-
-  const loader = document.getElementById("pageLoader");
-  const loaderImage = document.getElementById("loaderRamenImage");
-
-  document.body.style.overflow = "hidden";
-
-  if (loader && loaderImage && window._pageLoaderState && window._pageLoaderState.closed) {
-    loader.classList.remove("hide");
-    loaderImage.style.opacity = "1";
-    loaderImage.classList.remove("animate");
-    void loaderImage.offsetWidth;
-    loaderImage.classList.add("animate");
-    setTimeout(function() {
-      loader.classList.add("hide");
-      modal.classList.add("show");
-      focusCreateAccount_();
-    }, 560);
-  } else {
-    modal.classList.add("show");
-    focusCreateAccount_();
-  }
-  const message = document.getElementById("createAccountMessage");
-  if (message) { message.textContent = ""; message.style.color = "#a51620"; }
-}
-
-function focusCreateAccount_() {
-  setTimeout(function() {
-    const field = document.getElementById("createFullName");
-    if (field) field.focus();
-  }, 50);
-}
-
-function closeCreateAccountModal() {
-  const modal = document.getElementById("createAccountModal");
-  if (!modal) return;
-  modal.classList.remove("show");
-  document.body.style.overflow = "";
-}
-
-function handleCreateAccountOverlayClick(event) {
-  // Outside click does not close the create-account popup.
-}
-
-function toggleCreatePassword(id, button) {
-  const input = document.getElementById(id);
-  if (!input) return;
-  if (input.type === "password") { input.type = "text"; button.textContent = "HIDE"; }
-  else { input.type = "password"; button.textContent = "SHOW"; }
-}
-
-function switchCreateAccountToLogin() {
-  closeCreateAccountModal();
-  openLoginModal();
-}
-
-function submitCreateAccountPopup(event) {
-  event.preventDefault();
-  const fullName = String(document.getElementById("createFullName").value || "").trim();
-  const email = String(document.getElementById("createEmail").value || "").trim();
-  const mobile = String(document.getElementById("createMobile").value || "").trim();
-  const username = String(document.getElementById("createUsername").value || "").trim();
-  const password = String(document.getElementById("createPassword").value || "");
-  const confirmPassword = String(document.getElementById("createConfirmPassword").value || "");
-  const button = document.getElementById("createAccountSubmit");
-  const message = document.getElementById("createAccountMessage");
-  function msg(text, color) { if (message) { message.textContent = text; message.style.color = color || "#a51620"; } }
-
-  if (!fullName || !email || !mobile || !username || !password || !confirmPassword) { msg("Please complete all fields."); return; }
-  if (!/^[+()\d\s-]{7,20}$/.test(mobile)) { msg("Please enter a valid phone number."); return; }
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { msg("Please enter a valid email address."); return; }
-  if (username.length < 3) { msg("Username must be at least 3 characters."); return; }
-  if (password.length < 6) { msg("Password must be at least 6 characters."); return; }
-  if (password !== confirmPassword) { msg("Passwords do not match."); return; }
-
-  button.disabled = true;
-  button.textContent = "Sending Code...";
-  msg("");
-
-  showLoginRamenLoader_();
-
-  google.script.run
-    .withSuccessHandler(function(result) {
-      if (result && result.success && result.verificationToken) {
-        try { localStorage.setItem("mckenziePendingVerification", JSON.stringify({ token: result.verificationToken, email: email })); } catch (error) {}
-        document.getElementById("createPassword").value = "";
-        document.getElementById("createConfirmPassword").value = "";
-        button.disabled = false;
-        button.textContent = "Create Account";
-        hideLoginRamenLoader_();
-        closeCreateAccountModal();
-        openEmailVerificationModal_(result.verificationToken, email);
-      } else {
-        hideLoginRamenLoader_();
-        msg(result && result.message ? result.message : "Unable to send verification code.");
-        button.disabled = false;
-        button.textContent = "Create Account";
-      }
-    })
-    .withFailureHandler(function(error) {
-      console.error("Verification request error:", error);
-      hideLoginRamenLoader_();
-      msg(error && error.message ? error.message : "Something went wrong. Please try again.");
-      button.disabled = false;
-      button.textContent = "Create Account";
-    })
-    .requestEmailVerification(fullName, email, username, password, mobile);
-}
-
-/* =========================================================
-   EMAIL VERIFICATION
-========================================================= */
-let verificationToken_ = "";
-let verificationCountdownTimer_ = null;
-
-function openEmailVerificationModal_(token, email) {
-  verificationToken_ = String(token || "");
-  const modal = document.getElementById("emailVerificationModal");
-  const emailEl = document.getElementById("verificationEmail");
-  const input = document.getElementById("verificationCodeInput");
-  const message = document.getElementById("verificationMessage");
-  if (!modal || !verificationToken_) return;
-  if (emailEl) emailEl.textContent = email || "your email";
-  if (input) { input.value = ""; }
-  if (message) { message.textContent = ""; message.style.color = "#a51620"; }
-  modal.classList.add("show");
-  document.body.style.overflow = "hidden";
-  startVerificationCountdown_(600);
-  setTimeout(function(){ if(input) input.focus(); },50);
-}
-
-function closeEmailVerificationModal() {
-  const modal = document.getElementById("emailVerificationModal");
-  if (modal) modal.classList.remove("show");
-  if (verificationCountdownTimer_) { clearInterval(verificationCountdownTimer_); verificationCountdownTimer_ = null; }
-  if (!document.getElementById("loginModal")?.classList.contains("show") && !document.getElementById("createAccountModal")?.classList.contains("show") && !document.getElementById("cartModal")?.classList.contains("show")) document.body.style.overflow = "";
-}
-
-function handleVerificationOverlayClick(event) {
-  if (event.target && event.target.id === "emailVerificationModal") closeEmailVerificationModal();
-}
-
-function startVerificationCountdown_(seconds) {
-  const timer = document.getElementById("verificationTimer");
-  if (verificationCountdownTimer_) clearInterval(verificationCountdownTimer_);
-  let remaining = Number(seconds || 600);
-  function draw() {
-    if (!timer) return;
-    const mins = Math.floor(remaining / 60);
-    const secs = remaining % 60;
-    timer.textContent = remaining > 0 ? "Code expires in " + mins + ":" + String(secs).padStart(2, "0") : "Code expired. Please request a new one.";
-    if (remaining <= 0 && verificationCountdownTimer_) { clearInterval(verificationCountdownTimer_); verificationCountdownTimer_ = null; }
-    remaining--;
-  }
-  draw();
-  verificationCountdownTimer_ = setInterval(draw, 1000);
-}
-
-function verifyEmailCode_() {
-  const codeInput = document.getElementById("verificationCodeInput");
-  const button = document.getElementById("verificationSubmit");
-  const message = document.getElementById("verificationMessage");
-  const code = String(codeInput?.value || "").replace(/\D/g, "").slice(0, 6);
-  if (codeInput) codeInput.value = code;
-  if (!verificationToken_) { if (message) message.textContent = "Verification session expired. Please create the account again."; return; }
-  if (!/^\d{6}$/.test(code)) { if (message) message.textContent = "Please enter the 6-digit verification code."; return; }
-  if (button) { button.disabled = true; button.textContent = "Verifying..."; }
-  if (message) message.textContent = "";
-
-  showLoginRamenLoader_();
-
-  google.script.run
-    .withSuccessHandler(function(result) {
-      if (result && result.success) {
-        hideLoginRamenLoader_();
-        if (message) { message.style.color = "#198754"; message.textContent = "Email verified! Your account has been created."; }
-        try { localStorage.removeItem("mckenziePendingVerification"); } catch (error) {}
-        setTimeout(function() {
-          closeEmailVerificationModal();
-          verificationToken_ = "";
-          openLoginModal();
-          const loginMessage = document.getElementById("popupLoginMessage");
-          if (loginMessage) { loginMessage.style.color = "#198754"; loginMessage.textContent = "Account created successfully. Please log in."; }
-          if (button) { button.disabled = false; button.textContent = "Verify Email"; }
-        }, 700);
-      } else {
-        hideLoginRamenLoader_();
-        if (message) { message.style.color = "#a51620"; message.textContent = result && result.message ? result.message : "Invalid verification code."; }
-        if (button) { button.disabled = false; button.textContent = "Verify Email"; }
-      }
-    })
-    .withFailureHandler(function(error) {
-      hideLoginRamenLoader_();
-      if (message) { message.style.color = "#a51620"; message.textContent = error && error.message ? error.message : "Verification failed. Please try again."; }
-      if (button) { button.disabled = false; button.textContent = "Verify Email"; }
-    })
-    .verifyEmailCode(verificationToken_, code);
-}
-
-function resendVerificationCode_() {
-  const button = document.getElementById("verificationResend");
-  const message = document.getElementById("verificationMessage");
-  if (!verificationToken_) { if (message) message.textContent = "Verification session expired. Please create the account again."; return; }
-  if (button) { button.disabled = true; button.textContent = "Sending..."; }
-  if (message) { message.style.color = "#a51620"; message.textContent = ""; }
-  google.script.run
-    .withSuccessHandler(function(result) {
-      if (result && result.success) {
-        hideLoginRamenLoader_();
-        if (message) { message.style.color = "#198754"; message.textContent = "A new verification code has been sent."; }
-        startVerificationCountdown_(600);
-        const input = document.getElementById("verificationCodeInput");
-        if (input) { input.value = ""; input.focus(); }
-      } else if (message) message.textContent = result && result.message ? result.message : "Unable to resend the code.";
-      if (button) { button.disabled = false; button.textContent = "Resend Code"; }
-    })
-    .withFailureHandler(function(error) {
-      if (message) message.textContent = error && error.message ? error.message : "Unable to resend the code.";
-      if (button) { button.disabled = false; button.textContent = "Resend Code"; }
-    })
-    .resendVerificationCode(verificationToken_);
-}
-
-
-/* =========================================================
-   LOGIN / CART STATE
-   Logged-in users see Cart instead of Log In.
-   The state is kept in localStorage so it survives refresh.
-========================================================= */
-
-function getCurrentCustomerId_() {
-  try {
-    const raw = localStorage.getItem("mckenzieUser");
-    const user = raw ? JSON.parse(raw) : null;
-    return user && user.userId ? String(user.userId).trim() : "";
-  } catch (error) {
-    return "";
-  }
-}
-
-function getCustomerStorageKey_(baseKey, userId) {
-  const id = String(userId || getCurrentCustomerId_()).trim();
-  return id ? baseKey + "_" + encodeURIComponent(id) : baseKey + "_guest";
-}
-
-function setLoggedInState_(loggedIn) {
-  try {
-    if (loggedIn) {
-      localStorage.setItem("mckenzieLoggedIn", "true");
-    } else {
-      localStorage.removeItem("mckenzieLoggedIn");
+/*
+  McKenzie Ramen House — STANDALONE Firebase bridge
+  --------------------------------------------------
+  This file intentionally exposes a compatibility layer named
+  google.script.run so the existing customer/admin UI can keep its
+  current function calls while the backend is now Firebase.
+
+  No Google Apps Script / Google Sheets calls are made.
+*/
+(function () {
+  "use strict";
+
+  // The Firebase config is embedded as a fallback so the admin page still
+  // works even if GitHub Pages serves js/firebase-config.js from cache or
+  // fails to load that helper file.
+  const EMBEDDED_CONFIG = {
+    apiKey: "AIzaSyDnLMhAhkAw1JMlbTxN4u8vB6poip5dt94",
+    authDomain: "mckenzie-ramen-house.firebaseapp.com",
+    projectId: "mckenzie-ramen-house",
+    storageBucket: "mckenzie-ramen-house.firebasestorage.app",
+    messagingSenderId: "1048288418639",
+    appId: "1:1048288418639:web:85e0148036179259c8033a",
+    measurementId: "G-C2KDRE88ZW"
+  };
+
+  // Use this verified Firebase Console configuration directly.
+  // This prevents a stale cached config file from overriding the valid key.
+  const cfg = EMBEDDED_CONFIG;
+  window.MCKENZIE_FIREBASE_CONFIG = EMBEDDED_CONFIG;
+  window.MCKENZIE_ADMIN_UID = window.MCKENZIE_ADMIN_UID || "OHDs2DV4jyO3eBrww8d0gUQkNli2";
+
+  const READY = (async function () {
+    try {
+      const appMod = await import("https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js");
+      const authMod = await import("https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js");
+      const fsMod = await import("https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js");
+      const app = appMod.initializeApp(cfg, "mckenzie-ramen-house");
+      const auth = authMod.getAuth(app);
+      const db = fsMod.getFirestore(app);
+      console.log("McKenzie Ramen House Firebase initialized successfully.");
+      return { app, auth, db, ...authMod, ...fsMod };
+    } catch (error) {
+      console.error("McKenzie Firebase initialization failed:", error);
+      throw error;
     }
-  } catch (error) {
-    console.warn("Unable to save login state:", error);
+  })();
+
+  window.MckenzieFirebaseReady = READY;
+
+  function makeError(message) {
+    const e = new Error(String(message || "Firebase request failed."));
+    return e;
   }
 
-  updateHeroAccountButton_();
-}
+  function isoNow() { return new Date().toISOString(); }
 
-function isLoggedIn_() {
-  try {
-    return localStorage.getItem("mckenzieLoggedIn") === "true";
-  } catch (error) {
+  async function currentUser(required) {
+    const f = await READY;
+    if (f.auth.currentUser) return f.auth.currentUser;
+    if (!required) return null;
+    throw makeError("Please log in again.");
+  }
+
+  async function isAdmin() {
+    const f = await READY;
+    const u = f.auth.currentUser;
+    if (!u) return false;
+    const configuredUid = String(window.MCKENZIE_ADMIN_UID || "").trim();
+    if (configuredUid && configuredUid !== "PASTE_ADMIN_USER_UID_HERE") {
+      return u.uid === configuredUid;
+    }
+    // Safety fallback: no UID configured means admin operations are disabled.
     return false;
   }
-}
 
-function getCart_() {
-  try {
-    const key = getCustomerStorageKey_("mckenzieCart");
-    const raw = localStorage.getItem(key);
-    const cart = raw ? JSON.parse(raw) : [];
-    return Array.isArray(cart) ? cart : [];
-  } catch (error) {
-    return [];
-  }
-}
-
-let cartItems = getCart_();
-
-function loadCartForCurrentCustomer_() {
-  cartItems = getCart_();
-  renderCartModal_();
-  updateHeroAccountButton_();
-}
-
-function saveCart_() {
-  try {
-    const key = getCustomerStorageKey_("mckenzieCart");
-    localStorage.setItem(key, JSON.stringify(cartItems));
-  } catch(error) {
-    console.warn("Unable to save cart:",error);
-  }
-  updateHeroAccountButton_();
-}
-function getCartCount_() { return cartItems.reduce(function(total,item){return total+Number(item.quantity||0);},0); }
-function updateStickyCartButton_() {
-  const button = document.getElementById("stickyCartButton");
-  const count = document.getElementById("stickyCartCount");
-  if (!button || !count) return;
-
-  const loggedIn = isLoggedIn_();
-  const total = loggedIn ? getCartCount_() : 0;
-  count.textContent = String(total);
-  button.setAttribute("aria-label", loggedIn ? "Open cart" : "Log in to use cart");
-}
-
-function handleStickyCartClick_() {
-  if (isLoggedIn_()) {
-    openCartSection_();
-  } else {
-    openLoginModal();
-  }
-}
-
-function updateHeroAccountButton_() {
-  const button = document.getElementById("heroAccountButton");
-  const greeting = document.getElementById("japaneseGreeting");
-  const greetingName = document.getElementById("japaneseGreetingName");
-
-  if (!button) return;
-
-  if (isLoggedIn_()) {
-    button.innerHTML = '🛒 Cart <span class="cart-count">' + getCartCount_() + '</span>';
-    button.classList.add("cart-button");
-    button.setAttribute("aria-label", "Open cart");
-
-    const user = getSavedUser_() || {};
-    const fullName = String(user.fullName || user.name || "").trim();
-    const firstName = fullName
-      ? fullName.split(/\s+/)[0]
-      : String(user.username || "").trim();
-
-    if (greeting) greeting.classList.add("show");
-    if (greetingName) {
-      greetingName.textContent = firstName
-        ? "Welcome, " + firstName + " 🍜"
-        : "Welcome back 🍜";
-    }
-  } else {
-    button.innerHTML = "Log In";
-    button.classList.remove("cart-button");
-    button.setAttribute("aria-label", "Log in");
-
-    if (greeting) greeting.classList.remove("show");
-    if (greetingName) greetingName.textContent = "";
-  }
-
-  updateStickyCartButton_();
-}
-function handleHeroAccountButton() { if(isLoggedIn_()) openCartSection_(); else openLoginModal(); }
-function getProductCartKey_(product) {
-  if (!product) return "";
-  // _cartKey is assigned from Product ID + product row index, so every
-  // menu card has its own cart identity even when sheet IDs are duplicated.
-  return String(product._cartKey || product.id || "").trim();
-}
-
-function normalizeCartItemsForCurrentProducts_() {
-  if (!Array.isArray(cartItems) || !cartItems.length) return;
-
-  // Migrate older cart records that only stored the Product ID. If the
-  // current product list contains an exact legacy ID match, attach the
-  // current cart key. Existing cart quantities are preserved.
-  const products = window.mckenzieProducts || {};
-  const productKeys = Object.keys(products);
-
-  cartItems.forEach(function(item) {
-    if (!item) return;
-    if (item.cartKey) return;
-
-    const legacyId = String(item.id == null ? "" : item.id).trim();
-    if (!legacyId) return;
-
-    const matchKey = productKeys.find(function(key) {
-      const product = products[key];
-      return product && String(product.id == null ? "" : product.id).trim() === legacyId;
-    });
-
-    if (matchKey) item.cartKey = matchKey;
-  });
-}
-
-function findCartItem_(productKey) {
-  const key = String(productKey || "").trim();
-  return cartItems.find(function(item) {
-    return String(item.cartKey || item.id || "").trim() === key;
-  });
-}
-function getCartQuantity_(productKey) {
-  const item = findCartItem_(productKey);
-  return item ? Number(item.quantity || 0) : 0;
-}
-function addToCart_(product) {
-  if(!isLoggedIn_()){openLoginModal();return;}
-  if (!product) return;
-
-  const cartKey = getProductCartKey_(product);
-  if (!cartKey) return;
-
-  normalizeCartItemsForCurrentProducts_();
-
-  let item = findCartItem_(cartKey);
-  if(item) {
-    item.quantity = Number(item.quantity || 0) + 1;
-  } else {
-    cartItems.push({
-      id: product.id,
-      cartKey: cartKey,
-      name: product.name,
-      price: Number(product.price || 0),
-      image: product.image || "",
-      quantity: 1
-    });
-  }
-
-  // Save the complete cart after EVERY click. This guarantees that adding
-  // several different menu items never drops the previously selected ones.
-  saveCart_();
-  renderCartControls_(cartKey);
-  renderCartModal_();
-}
-function changeCartQuantity_(productKey,delta) {
-  const key = String(productKey || "").trim();
-  const item = findCartItem_(key);
-  if(!item)return;
-  item.quantity = Number(item.quantity || 0) + delta;
-  if(item.quantity<=0) {
-    cartItems = cartItems.filter(function(x) {
-      return String(x.cartKey || x.id || "").trim() !== key;
-    });
-  }
-  saveCart_();
-  renderCartControls_(key);
-  renderCartModal_();
-}
-function renderCartControls_(productKey) {
-  const key = String(productKey || "").trim();
-  const controls = document.querySelector('[data-cart-control="'+key.replace(/"/g,'\\"')+'"]');
-  if(!controls)return;
-  const qty=getCartQuantity_(key);
-  const p=window.mckenzieProducts&&window.mckenzieProducts[key];
-  if(qty<=0){
-    controls.innerHTML='<button type="button" class="add-cart-plus" aria-label="Add to cart">+</button>';
-    if(p) controls.querySelector("button").onclick=function(){addToCart_(p);};
-    return;
-  }
-  controls.innerHTML='<button type="button" class="qty-minus" aria-label="Decrease quantity">−</button><span class="qty-number">'+qty+'</span><button type="button" class="qty-plus" aria-label="Increase quantity">+</button>';
-  controls.querySelector(".qty-minus").onclick=function(){changeCartQuantity_(key,-1);};
-  controls.querySelector(".qty-plus").onclick=function(){if(p)addToCart_(p);};
-}
-function openCartSection_(){
-  // IMPORTANT: Use the current in-memory cart when opening the Cart.
-  // The menu quantity controls and cartItems are the live source of truth.
-  // Reloading localStorage here can restore an older snapshot and make the
-  // Cart disagree with the quantities currently shown on the menu.
-  renderCartModal_();
-
-  const modal=document.getElementById("cartModal");
-  if(modal){modal.classList.add("show");document.body.style.overflow="hidden";}
-}
-function closeCartModal_(){ const modal=document.getElementById("cartModal");if(modal)modal.classList.remove("show");if(!document.getElementById("loginModal")?.classList.contains("show")&&!document.getElementById("createAccountModal")?.classList.contains("show"))document.body.style.overflow=""; }
-function renderCartModal_(){
-  const container=document.getElementById("cartItemsContainer"),totalEl=document.getElementById("cartTotalValue");if(!container||!totalEl)return;
-  if(!cartItems.length){container.innerHTML='<div class="cart-empty">Your cart is empty.<br>Add your favorite ramen from the menu.</div>';totalEl.textContent="₱0.00";return;}
-  let total=0;
-  container.innerHTML=cartItems.map(function(item){const qty=Number(item.quantity||0),price=Number(item.price||0);total+=price*qty;const image=item.image?'<img class="cart-item-image" src="'+escapeHtml(item.image)+'" alt="'+escapeHtml(item.name)+'">':'<div class="cart-item-image"></div>';return '<div class="cart-item">'+image+'<div class="cart-item-info"><p class="cart-item-name">'+escapeHtml(item.name)+'</p><div class="cart-item-price">₱'+formatPrice(price)+' each</div></div><div class="cart-item-controls"><button type="button" data-cart-minus="'+escapeHtml(item.cartKey || item.id)+'">−</button><span>'+qty+'</span><button type="button" data-cart-plus="'+escapeHtml(item.cartKey || item.id)+'">+</button></div></div>';}).join("");
-  container.querySelectorAll("[data-cart-minus]").forEach(function(btn){btn.onclick=function(){changeCartQuantity_(btn.getAttribute("data-cart-minus"),-1);};});
-  container.querySelectorAll("[data-cart-plus]").forEach(function(btn){btn.onclick=function(){const p=window.mckenzieProducts&&window.mckenzieProducts[String(btn.getAttribute("data-cart-plus"))];if(p)addToCart_(p);};});
-  totalEl.textContent="₱"+formatPrice(total);
-}
-
-function getCartTotal_() {
-  return cartItems.reduce(function(sum, item) {
-    const p = Number(item.price || 0);
-    return sum + (p * Number(item.quantity || 0));
-  }, 0);
-}
-
-function renderCheckoutOrderSummary_() {
-  const container = document.getElementById("checkoutOrderItems");
-  const totalEl = document.getElementById("checkoutOrderTotal");
-  if (!container || !totalEl) return;
-
-  let total = 0;
-  if (!Array.isArray(cartItems) || !cartItems.length) {
-    container.innerHTML = '<div class="checkout-order-item"><span class="checkout-order-item-name">No items in your cart.</span></div>';
-    totalEl.textContent = "₱0.00";
-    return;
-  }
-
-  // The Checkout list is built directly from the exact same cartItems
-  // currently selected by the customer, including each menu quantity.
-  container.innerHTML = cartItems.map(function(item) {
-    const qty = Number(item.quantity || 0);
-    const price = Number(item.price || 0);
-    const lineTotal = price * qty;
-    total += lineTotal;
-
-    const image = item.image
-      ? '<img class="checkout-order-item-image" src="' + escapeHtml(item.image) + '" alt="' + escapeHtml(item.name || "Ramen item") + '">'
-      : '<div class="checkout-order-item-image" aria-hidden="true"></div>';
-
-    return '<div class="checkout-order-item">' +
-      image +
-      '<span class="checkout-order-item-name">' + escapeHtml(item.name || "Ramen item") + '</span>' +
-      '<span class="checkout-order-item-qty">× ' + qty + '</span>' +
-      '<span class="checkout-order-item-price">₱' + formatPrice(lineTotal) + '</span>' +
-      '</div>';
-  }).join("");
-
-  totalEl.textContent = "₱" + formatPrice(total);
-}
-
-function handleCheckout_() {
-  // Always sync the cart with the exact logged-in Customer ID.
-  // Keep the current in-memory cart for this logged-in customer.
-  // Re-reading localStorage here can replace newly selected items with an older
-  // saved snapshot while the menu controls are already showing the latest quantities.
-  if (isLoggedIn_()) {
-    normalizeCartItemsForCurrentProducts_();
-  }
-
-  if (!cartItems.length) {
-    alert("Your cart is empty.");
-    return;
-  }
-
-  if (!isLoggedIn_()) {
-    accountMenuLogin_();
-    return;
-  }
-
-  closeCartModal_();
-
-  const modal = document.getElementById("checkoutModal");
-  const loading = document.getElementById("checkoutLoading");
-  const form = document.getElementById("checkoutForm");
-
-  if (!modal) return;
-
-  modal.classList.add("show");
-  document.body.style.overflow = "hidden";
-
-  // Show the order immediately.
-  renderCheckoutOrderSummary_();
-
-  const cachedUser = getSavedUser_() || {};
-  const userId = String(cachedUser.userId || "").trim();
-
-  /*
-   * IMPORTANT:
-   * Do NOT make the customer wait for the server before showing Checkout.
-   * If this is the customer's first checkout and there is no saved address,
-   * the address fields must remain editable.
-   */
-  if (loading) loading.style.display = "none";
-  if (form) form.style.display = "block";
-
-  // Clear previous checkout message.
-  showCheckoutMessage_("", false);
-
-  // Immediately populate whatever verified profile information
-  // is already available locally.
-  if (userId && cachedUser) {
-    populateCheckoutProfile_(cachedUser);
-  } else {
-    showCheckoutMessage_(
-      "Please log in again so we can load your customer details.",
-      true
-    );
-    return;
-  }
-
-  /*
-   * Refresh the customer information directly from Users sheet
-   * in the background using the exact Customer ID.
-   *
-   * The checkout form is already visible, so the customer does not
-   * get stuck on "Loading your saved details...".
-   */
-  google.script.run
-    .withSuccessHandler(function(customer) {
-      if (!customer || !customer.success) {
-        console.warn("Customer information could not be refreshed.");
-        return;
-      }
-
-      // Refresh fields from the exact Customer ID.
-      populateCheckoutProfile_(customer);
-
-      try {
-        localStorage.setItem(
-          "mckenzieUser",
-          JSON.stringify(customer)
-        );
-      } catch (storageError) {
-        console.warn(
-          "Unable to refresh saved user details:",
-          storageError
-        );
-      }
-    })
-    .withFailureHandler(function(error) {
-      console.error(
-        "Unable to refresh checkout customer from Users sheet:",
-        error
-      );
-
-      // Do NOT hide the checkout form.
-      // The customer can still complete the first checkout
-      // using the information already loaded.
-    })
-    .getCheckoutCustomerById(userId);
-}
-
-function handleCheckoutOverlayClick_(event) {
-  if (event.target && event.target.id === "checkoutModal") {
-    closeAccountSubmodal_("checkoutModal");
-  }
-}
-
-function showCheckoutMessage_(text, error) {
-  const el = document.getElementById("checkoutMessage");
-  if (el) {
-    el.textContent = String(text || "");
-    el.style.color = error ? "#a51620" : "#198754";
-  }
-}
-
-function placeOrder_() {
-  // For address SELECT fields, validate the visible selected option as well as
-  // the value. This prevents a valid saved/default address from being rejected
-  // while the dependent address chain is finishing its background refresh.
-  const selectRequired = [
-    ["checkoutRegion", "Please select your region."],
-    ["checkoutProvince", "Please select your province."],
-    ["checkoutCity", "Please select your city/municipality."],
-    ["checkoutBarangay", "Please select your barangay."]
-  ];
-
-  for (let i = 0; i < selectRequired.length; i++) {
-    const el = document.getElementById(selectRequired[i][0]);
-    const selected = el && el.selectedOptions && el.selectedOptions[0];
-    const value = String(el && el.value || "").trim();
-    const text = String(selected && selected.textContent || "").trim();
-    const invalidText = !text || /^select\b|^loading\b|^unable to load\b/i.test(text);
-
-    if (!el || !value || invalidText) {
-      showCheckoutMessage_(selectRequired[i][1], true);
-      if (el && !el.disabled) el.focus();
-      return;
-    }
-  }
-
-  const textRequired = [
-    ["checkoutHouseUnit", "Please enter your lot/house/unit number."],
-    ["checkoutStreet", "Please enter your street."]
-  ];
-
-  for (let i = 0; i < textRequired.length; i++) {
-    const el = document.getElementById(textRequired[i][0]);
-    if (!el || !String(el.value || "").trim()) {
-      showCheckoutMessage_(textRequired[i][1], true);
-      if (el) el.focus();
-      return;
-    }
-  }
-
-  const user = getSavedUser_() || {};
-  const nameEl = document.getElementById("checkoutCustomerName");
-  const emailEl = document.getElementById("checkoutCustomerEmail");
-  const mobileEl = document.getElementById("checkoutCustomerMobile");
-  const fullName = String(nameEl ? nameEl.value : (user.fullName || user.username || "")).trim();
-  const email = String(emailEl ? emailEl.value : (user.email || "")).trim();
-  const mobile = String(mobileEl ? mobileEl.value : (user.mobile || "")).trim();
-
-  if (!fullName || !email || !mobile) {
-    showCheckoutMessage_("Please complete your Customer Name, Email, and Phone Number before placing the order.", true);
-    if (!fullName && nameEl) nameEl.focus();
-    else if (!email && emailEl) emailEl.focus();
-    else if (!mobile && mobileEl) mobileEl.focus();
-    return;
-  }
-
-  const paymentEl = document.querySelector('input[name="checkoutPaymentMethod"]:checked');
-  if (!paymentEl) {
-    showCheckoutMessage_("Please select a payment method.", true);
-    return;
-  }
-
-  if (!Array.isArray(cartItems) || !cartItems.length) {
-    showCheckoutMessage_("Your cart is empty. Please select a menu item first.", true);
-    return;
-  }
-
-  // Store the exact checkout values temporarily. Nothing is submitted until
-  // the customer confirms the menu review with YES.
-  window._pendingOrderPayload = {
-    userId: user.userId || "",
-    fullName: fullName,
-    email: email,
-    mobile: mobile,
-    region: document.getElementById("checkoutRegion")?.selectedOptions[0]?.textContent || "",
-    province: document.getElementById("checkoutProvince")?.selectedOptions[0]?.textContent || "",
-    city: document.getElementById("checkoutCity")?.selectedOptions[0]?.textContent || "",
-    barangay: document.getElementById("checkoutBarangay")?.selectedOptions[0]?.textContent || "",
-    houseUnit: document.getElementById("checkoutHouseUnit")?.value.trim() || "",
-    street: document.getElementById("checkoutStreet")?.value.trim() || "",
-    additionalInstruction: document.getElementById("checkoutAdditionalInstruction")?.value.trim() || "",
-    paymentMethod: paymentEl.value,
-    items: []
-  };
-
-  // IMPORTANT: Show the confirmation popup immediately.
-  // The first address is saved only after the customer clicks
-  // "Yes, Place Order" so Checkout never gets stuck waiting for an
-  // address-save request before showing the confirmation step.
-  closeAccountSubmodal_("checkoutModal");
-  showOrderConfirmation_();
-}
-
-function showOrderConfirmation_() {
-  const modal = document.getElementById("orderConfirmModal");
-  const container = document.getElementById("orderConfirmItems");
-  const totalEl = document.getElementById("orderConfirmTotal");
-  const message = document.getElementById("orderConfirmMessage");
-  const yes = document.getElementById("orderConfirmYes");
-  if (!modal || !container || !totalEl) return;
-
-  // Freeze the exact menu selection at the moment the customer clicks
-  // Place Order. The confirmation popup must review ALL selected items.
-  const reviewItems = (Array.isArray(cartItems) ? cartItems : [])
-    .filter(function(item) { return Number(item.quantity || 0) > 0; })
-    .map(function(item) {
-      return {
-        id: item.id,
-        name: item.name || "Ramen item",
-        price: Number(item.price || 0),
-        image: item.image || "",
-        quantity: Number(item.quantity || 0)
-      };
-    });
-
-  window._pendingOrderPayload.items = reviewItems;
-
-  let total = 0;
-  container.innerHTML = reviewItems.map(function(item) {
-    const qty = Number(item.quantity || 0);
-    const price = Number(item.price || 0);
-    const lineTotal = price * qty;
-    total += lineTotal;
-    const image = item.image
-      ? '<img class="order-confirm-item-image" src="' + escapeHtml(item.image) + '" alt="' + escapeHtml(item.name) + '">'
-      : '<div class="order-confirm-item-image" aria-hidden="true"></div>';
-    return '<div class="order-confirm-item">' +
-      image +
-      '<span class="order-confirm-item-name">' + escapeHtml(item.name) + '</span>' +
-      '<span class="order-confirm-item-qty">× ' + qty + '</span>' +
-      '<span class="order-confirm-item-price">₱' + formatPrice(lineTotal) + '</span>' +
-      '</div>';
-  }).join("");
-
-  totalEl.textContent = "₱" + formatPrice(total);
-  if (message) message.textContent = "";
-  if (yes) { yes.disabled = false; yes.textContent = "Yes, Place Order"; }
-
-  modal.classList.add("show");
-  document.body.style.overflow = "hidden";
-}
-
-function cancelOrderConfirmation_() {
-  const modal = document.getElementById("orderConfirmModal");
-  if (modal) modal.classList.remove("show");
-  window._pendingOrderPayload = null;
-
-  // No = return to the Checkout popup so the customer can review/edit again.
-  const checkoutModal = document.getElementById("checkoutModal");
-  if (checkoutModal) {
-    checkoutModal.classList.add("show");
-    document.body.style.overflow = "hidden";
-  } else {
-    document.body.style.overflow = "";
-  }
-}
-
-function confirmPlaceOrder_() {
-  const payload = window._pendingOrderPayload;
-  const yes = document.getElementById("orderConfirmYes");
-  const message = document.getElementById("orderConfirmMessage");
-  if (!payload) {
-    if (message) { message.textContent = "Please review your order again."; message.style.color = "#a51620"; }
-    return;
-  }
-
-  const orderId = "MRH-" + Date.now();
-  if (yes) { yes.disabled = true; yes.textContent = "Placing Order..."; }
-  if (message) { message.textContent = "Saving your order..."; message.style.color = "#198754"; }
-
-  // IMPORTANT: do NOT write the order to local history yet.
-  // The server must confirm the order first. Otherwise the customer can see
-  // an order in Order History even though Admin Orders never received it.
-  const historyKey = getCustomerStorageKey_("mckenzieOrderHistory", payload.userId);
-  let history = [];
-  try { history = JSON.parse(localStorage.getItem(historyKey) || "[]"); } catch (e) { history = []; }
-
-  const order = {
-    id: orderId,
-    date: new Date().toLocaleString(),
-    total: (payload.items || []).reduce(function(sum, item) {
-      return sum + Number(item.price || 0) * Number(item.quantity || 0);
-    }, 0),
-    customer: payload.fullName,
-    phone: payload.mobile,
-    paymentMethod: payload.paymentMethod,
-    paymentStatus: "Pending",
-    orderStatus: "Pending",
-    address: [payload.houseUnit, payload.street, payload.barangay, payload.city, payload.province, payload.region].filter(Boolean).join(", "),
-    additionalInstruction: payload.additionalInstruction,
-    items: (payload.items || []).map(function(item) {
-      return { id:item.id, name:item.name, price:Number(item.price||0), image:item.image||"", quantity:Number(item.quantity||0) };
-    })
-  };
-
-  // Save the exact customer/order details on the restaurant server.
-  // Local Order History is updated ONLY after the server confirms success.
-  google.script.run
-    .withSuccessHandler(function(updated) {
-      if (updated && updated.success) {
-        try { localStorage.setItem("mckenzieUser", JSON.stringify(updated)); } catch (e) {}
-      }
-    })
-    .withFailureHandler(function(error) {
-      console.warn("Unable to update customer profile during checkout:", error);
-    })
-    .updateUserProfile(payload);
-
-  // Save the order on the server FIRST so the Admin Orders page can receive it.
-  // If this page is hosted by Apps Script, use google.script.run.
-  // If this page is hosted by GitHub Pages, use the public JSONP order API.
-  function finishSuccessfulOrderSave_(result) {
-    if (!result || !result.success) {
-      if (yes) { yes.disabled = false; yes.textContent = "Confirm Order"; }
-      if (message) {
-        message.textContent = "We could not save your order. Please try again.";
-        message.style.color = "#a51620";
-      }
-      return;
-    }
-
-    // Server accepted the order. Now, and only now, add it to the
-    // customer's local Order History.
-    history.unshift(order);
-    try { localStorage.setItem(historyKey, JSON.stringify(history.slice(0, 50))); } catch (e) {}
-
-    cartItems = [];
-    saveCart_();
-    renderCartModal_();
-    renderAllCartControls_();
-    renderCheckoutOrderSummary_();
-
-    const confirmModal = document.getElementById("orderConfirmModal");
-    if (confirmModal) confirmModal.classList.remove("show");
-    closeAccountSubmodal_("checkoutModal");
-    window._pendingOrderPayload = null;
-    showOrderSuccessAndTunnel_();
-  }
-
-  function failOrderSave_(error) {
-    console.error("Unable to create server order record:", error);
-    if (yes) { yes.disabled = false; yes.textContent = "Confirm Order"; }
-    if (message) {
-      message.textContent = "Unable to save your order to the restaurant system.";
-      message.style.color = "#a51620";
-    }
-    alert(
-      "Your order was NOT sent to the restaurant system.\n\n" +
-      (error && error.message ? error.message : "Please try again.")
-    );
-  }
-
-  // When hosted by Google Apps Script, call the SAME backend directly.
-  // This avoids the JSONP request that can fail under Apps Script concurrency limits.
-  if (window.google && google.script && google.script.run) {
-    google.script.run
-      .withSuccessHandler(function(result){
-        if (result && result.success) finishSuccessfulOrderSave_(result);
-        else failOrderSave_(result || {message:"The restaurant server rejected the order."});
-      })
-      .withFailureHandler(function(error){
-        failOrderSave_({message:error && error.message ? error.message : "The restaurant server could not be reached."});
-      })
-      .recordCompletedCustomerOrder(orderId, payload);
-    return;
-  }
-
-  // External-host fallback (GitHub Pages): keep the existing JSONP API.
-  // ALWAYS send the order to the current live Order API first.
-  // The customer page may be running from an older Apps Script deployment;
-  // using google.script.run there would send the order to that old deployment.
-  // The API URL below points to the same live backend used by Admin Orders.
-  {
-    // Apps Script receives this through doGet(api=recordOrder).
-    const callbackName = "mckenzieOrderCallback_" + Date.now() + "_" + Math.floor(Math.random() * 100000);
-    const script = document.createElement("script");
-    let settled = false;
-
-    function cleanup() {
-      try { delete window[callbackName]; } catch (e) {}
-      if (script.parentNode) script.parentNode.removeChild(script);
-    }
-
-    window[callbackName] = function(result) {
-      if (settled) return;
-      settled = true;
-      cleanup();
-      if (result && result.success) finishSuccessfulOrderSave_(result);
-      else failOrderSave_(result || { message: "The restaurant server rejected the order." });
-    };
-
-    script.onerror = function() {
-      if (settled) return;
-      settled = true;
-      cleanup();
-      failOrderSave_({ message: "The restaurant server could not be reached." });
-    };
-
-    const encodedPayload = encodeURIComponent(JSON.stringify(payload));
-    script.src = MCKENZIE_ORDER_API_URL +
-      "?api=recordOrder" +
-      "&orderId=" + encodeURIComponent(orderId) +
-      "&payload=" + encodedPayload +
-      "&callback=" + encodeURIComponent(callbackName);
-
-    document.head.appendChild(script);
-  }
-}
-
-function renderAllCartControls_() {
-  const products = window.mckenzieProducts || {};
-  Object.keys(products).forEach(function(id) {
-    renderCartControls_(id);
-  });
-}
-
-function showOrderSuccessAndTunnel_() {
-  const success = document.getElementById("orderSuccessOverlay");
-  const tunnel = document.getElementById("orderTunnelOverlay");
-  if (!success || !tunnel) return;
-
-  document.body.style.overflow = "hidden";
-  success.classList.add("show");
-  tunnel.classList.remove("show");
-
-  setTimeout(function() {
-    success.classList.remove("show");
-    tunnel.classList.add("show");
-  }, 1250);
-
-  setTimeout(function() {
-    tunnel.classList.remove("show");
-    document.body.style.overflow = "";
-  }, 2850);
-}
-
-
-/* =========================================================
-   ACCOUNT MENU / PROFILE / HISTORY / COUPONS / LOGOUT
-========================================================= */
-function getSavedUser_() {
-  try {
-    const raw = localStorage.getItem("mckenzieUser");
-    return raw ? JSON.parse(raw) : null;
-  } catch (error) { return null; }
-}
-
-function toggleAccountMenu_(event) {
-  if (event) event.stopPropagation();
-  const dropdown = document.getElementById("accountDropdown");
-  if (!dropdown) return;
-  dropdown.classList.toggle("show");
-  updateAccountMenu_();
-}
-
-function closeAccountMenu_() {
-  const dropdown = document.getElementById("accountDropdown");
-  if (dropdown) dropdown.classList.remove("show");
-}
-
-function updateAccountMenu_() {
-  const loggedIn = isLoggedIn_();
-  const guest = document.getElementById("accountGuestMessage");
-  const items = document.getElementById("accountLoggedInItems");
-  const label = document.getElementById("accountUserLabel");
-  const name = document.getElementById("accountUserName");
-  const email = document.getElementById("accountUserEmail");
-  const user = getSavedUser_() || {};
-  if (guest) guest.style.display = loggedIn ? "none" : "block";
-  if (items) items.style.display = loggedIn ? "block" : "none";
-  if (label) label.style.display = loggedIn ? "block" : "none";
-  if (name) name.textContent = user.fullName || user.username || "My Account";
-  if (email) email.textContent = user.email || "";
-}
-
-function accountMenuLogin_() {
-  closeAccountMenu_();
-  openLoginModal();
-}
-
-function openEditProfile_() {
-  if (!isLoggedIn_()) {
-    accountMenuLogin_();
-    return;
-  }
-
-  closeAccountMenu_();
-
-  const modal = document.getElementById("editProfileModal");
-  const loading = document.getElementById("profileLoading");
-  const form = document.getElementById("profileForm");
-  if (!modal) return;
-
-  if (loading) loading.style.display = "block";
-  if (form) form.style.display = "none";
-  modal.classList.add("show");
-  document.body.style.overflow = "hidden";
-
-  google.script.run
-    .withSuccessHandler(function(user) {
-      if (!user || !user.success) {
-        showProfileMessage_("Unable to load your profile.", true);
-        return;
-      }
-
-      populateProfileForm_(user);
-      if (loading) loading.style.display = "none";
-      if (form) form.style.display = "block";
-    })
-    .withFailureHandler(function(error) {
-      if (loading) loading.style.display = "none";
-      showProfileMessage_(error && error.message ? error.message : "Unable to load your profile.", true);
-    })
-    .getUserProfile(getSavedUser_()?.userId || "");
-}
-
-function populateProfileForm_(user) {
-  const map = {
-    profileFullName: user.fullName || "",
-    profileEmail: user.email || "",
-    profileMobile: user.mobile || "",
-    profileUsername: user.username || "",
-    profilePostalCode: user.postalCode || "",
-    profileHouseUnit: user.houseUnit || "",
-    profileStreet: user.street || "",
-    profileAdditionalInstruction: user.additionalInstruction || ""
-  };
-
-  Object.keys(map).forEach(function(id) {
-    const el = document.getElementById(id);
-    if (!el) return;
-    el.value = map[id];
-
-    // Name and email are verified account identity fields.
-    // They remain locked in Edit Profile.
-    if (id === "profileFullName" || id === "profileEmail") {
-      el.readOnly = true;
-      el.disabled = true;
-      el.classList.add("profile-verified-input");
-    }
-  });
-
-  loadAddressChain_("profile", user);
-}
-
-function saveProfile_() {
-  const user = getSavedUser_() || {};
-  const fullName = document.getElementById("profileFullName")?.value.trim() || "";
-  const email = document.getElementById("profileEmail")?.value.trim() || "";
-  const mobile = document.getElementById("profileMobile")?.value.trim() || "";
-
-  if (!fullName || !email || !mobile) {
-    showProfileMessage_("Full Name, Email Address, and Phone Number are required.", true);
-    return;
-  }
-
-  const button = document.getElementById("profileSaveButton");
-  if (button) {
-    button.disabled = true;
-    button.textContent = "Saving...";
-  }
-
-  const payload = {
-    userId: user.userId || "",
-    fullName: fullName,
-    email: email,
-    mobile: mobile,
-    houseUnit: document.getElementById("profileHouseUnit")?.value.trim() || "",
-    street: document.getElementById("profileStreet")?.value.trim() || "",
-    barangay: getSelectedText_("profileBarangay"),
-    city: getSelectedText_("profileCity"),
-    province: getSelectedText_("profileProvince"),
-    postalCode: document.getElementById("profilePostalCode")?.value.trim() || "",
-    region: getSelectedText_("profileRegion"),
-    additionalInstruction: document.getElementById("profileAdditionalInstruction")?.value.trim() || ""
-  };
-
-  google.script.run
-    .withSuccessHandler(function(updated) {
-      if (button) {
-        button.disabled = false;
-        button.textContent = "Save Changes";
-      }
-
-      try {
-        localStorage.setItem("mckenzieUser", JSON.stringify(updated));
-      } catch (error) {}
-
-      updateAccountMenu_();
-      showProfileMessage_("Profile saved successfully.", false);
-      setTimeout(function() {
-        closeAccountSubmodal_("editProfileModal");
-      }, 500);
-    })
-    .withFailureHandler(function(error) {
-      if (button) {
-        button.disabled = false;
-        button.textContent = "Save Changes";
-      }
-      showProfileMessage_(error && error.message ? error.message : "Unable to save your profile.", true);
-    })
-    .updateUserProfile(payload);
-}
-
-function showProfileMessage_(text, error) {
-  const el = document.getElementById("profileMessage");
-  if (el) {
-    el.textContent = String(text || "");
-    el.style.color = error ? "#a51620" : "#198754";
-  }
-}
-
-function handleProfileOverlayClick_(event) {
-  if (event.target && event.target.id === "editProfileModal") {
-    closeAccountSubmodal_("editProfileModal");
-  }
-}
-
-function getSelectedText_(id) {
-  const el = document.getElementById(id);
-  if (!el || !el.value) return "";
-  return el.selectedOptions && el.selectedOptions[0]
-    ? el.selectedOptions[0].textContent
-    : "";
-}
-
-function setSelectOptions_(id, items, placeholder) {
-  const el = document.getElementById(id);
-  if (!el) return;
-
-  el.innerHTML = "";
-  const first = document.createElement("option");
-  first.value = "";
-  first.textContent = placeholder || "Select";
-  el.appendChild(first);
-
-  (items || []).forEach(function(item) {
-    const option = document.createElement("option");
-    option.value = item.code || item.id || item.value || "";
-    option.textContent = item.name || item.label || "";
-    el.appendChild(option);
-  });
-
-  el.disabled = !(items && items.length);
-}
-
-function findCodeByName_(items, name) {
-  const target = String(name || "").trim().toLowerCase();
-  if (!target) return "";
-  const found = (items || []).find(function(item) {
-    return String(item.name || "").trim().toLowerCase() === target;
-  });
-  return found ? (found.code || found.id || found.value || "") : "";
-}
-
-function bindAddressChain_(prefix) {
-  const region = document.getElementById(prefix + "Region");
-  const province = document.getElementById(prefix + "Province");
-  const city = document.getElementById(prefix + "City");
-  const barangay = document.getElementById(prefix + "Barangay");
-  if (!region || !province || !city || !barangay) return;
-
-  region.onchange = function() {
-    setSelectOptions_(prefix + "Province", [], "Loading provinces...");
-    setSelectOptions_(prefix + "City", [], "Select city / municipality");
-    setSelectOptions_(prefix + "Barangay", [], "Select barangay");
-
-    google.script.run
-      .withSuccessHandler(function(items) {
-        setSelectOptions_(prefix + "Province", items, "Select province");
-      })
-      .withFailureHandler(function(error) {
-        setSelectOptions_(prefix + "Province", [], "Unable to load provinces");
-        console.error(error);
-      })
-      .getAddressProvinces(region.value);
-  };
-
-  province.onchange = function() {
-    setSelectOptions_(prefix + "City", [], "Loading cities / municipalities...");
-    setSelectOptions_(prefix + "Barangay", [], "Select barangay");
-
-    google.script.run
-      .withSuccessHandler(function(items) {
-        setSelectOptions_(prefix + "City", items, "Select city / municipality");
-      })
-      .withFailureHandler(function(error) {
-        setSelectOptions_(prefix + "City", [], "Unable to load cities");
-        console.error(error);
-      })
-      .getAddressCities(province.value);
-  };
-
-  city.onchange = function() {
-    setSelectOptions_(prefix + "Barangay", [], "Loading barangays...");
-
-    google.script.run
-      .withSuccessHandler(function(items) {
-        setSelectOptions_(prefix + "Barangay", items, "Select barangay");
-      })
-      .withFailureHandler(function(error) {
-        setSelectOptions_(prefix + "Barangay", [], "Unable to load barangays");
-        console.error(error);
-      })
-      .getAddressBarangays(city.value);
-  };
-}
-
-function loadAddressChain_(prefix, saved) {
-  bindAddressChain_(prefix);
-
-  const region = document.getElementById(prefix + "Region");
-  if (!region) return;
-
-  setSelectOptions_(prefix + "Region", [], "Loading regions...");
-
-  google.script.run
-    .withSuccessHandler(function(regions) {
-      setSelectOptions_(prefix + "Region", regions, "Select region");
-
-      const regionCode = findCodeByName_(regions, saved && saved.region);
-      if (!regionCode) return;
-
-      region.value = regionCode;
-      google.script.run
-        .withSuccessHandler(function(provinces) {
-          setSelectOptions_(prefix + "Province", provinces, "Select province");
-
-          const provinceCode = findCodeByName_(provinces, saved && saved.province);
-          if (!provinceCode) return;
-
-          const province = document.getElementById(prefix + "Province");
-          province.value = provinceCode;
-
-          google.script.run
-            .withSuccessHandler(function(cities) {
-              setSelectOptions_(prefix + "City", cities, "Select city / municipality");
-
-              const cityCode = findCodeByName_(cities, saved && saved.city);
-              if (!cityCode) return;
-
-              const city = document.getElementById(prefix + "City");
-              city.value = cityCode;
-
-              google.script.run
-                .withSuccessHandler(function(barangays) {
-                  setSelectOptions_(prefix + "Barangay", barangays, "Select barangay");
-
-                  const barangayCode = findCodeByName_(barangays, saved && saved.barangay);
-                  if (barangayCode) {
-                    document.getElementById(prefix + "Barangay").value = barangayCode;
-                  }
-                })
-                .withFailureHandler(console.error)
-                .getAddressBarangays(cityCode);
-            })
-            .withFailureHandler(console.error)
-            .getAddressCities(provinceCode);
-        })
-        .withFailureHandler(console.error)
-        .getAddressProvinces(regionCode);
-    })
-    .withFailureHandler(function(error) {
-      setSelectOptions_(prefix + "Region", [], "Unable to load regions");
-      console.error(error);
-    })
-    .getAddressRegions();
-}
-
-function populateCheckoutProfile_(user) {
-  user = user || {};
-
-  const identityFields = {
-    checkoutCustomerName: String(user.fullName || user.name || "").trim(),
-    checkoutCustomerEmail: String(user.email || user.customerEmail || "").trim(),
-    checkoutCustomerMobile: String(user.mobile || user.phone || user.phoneNumber || "").trim()
-  };
-
-  Object.keys(identityFields).forEach(function(id) {
-    const el = document.getElementById(id);
-    if (!el) return;
-    el.value = identityFields[id];
-    const saved = !!identityFields[id];
-    el.disabled = saved;
-    el.classList.toggle("checkout-saved-field", saved);
-    el.setAttribute("aria-readonly", saved ? "true" : "false");
-  });
-
-  const addressFields = {
-    checkoutHouseUnit: user.houseUnit || "",
-    checkoutStreet: user.street || "",
-    checkoutAdditionalInstruction: user.additionalInstruction || ""
-  };
-  Object.keys(addressFields).forEach(function(id) {
-    const el = document.getElementById(id);
-    if (el) el.value = addressFields[id];
-  });
-
-  loadAddressChain_("checkout", user);
-  loadCheckoutAddresses_(user);
-}
-
-let checkoutAddresses_ = [];
-let checkoutDefaultAddressId_ = "";
-
-function getCheckoutAddressPayloadFromFields_(prefix) {
-  const region = document.getElementById(prefix + "Region");
-  const province = document.getElementById(prefix + "Province");
-  const city = document.getElementById(prefix + "City");
-  const barangay = document.getElementById(prefix + "Barangay");
-  return {
-    label: String(document.getElementById(prefix + "Label")?.value || "").trim(),
-    region: region?.selectedOptions?.[0]?.textContent || "",
-    province: province?.selectedOptions?.[0]?.textContent || "",
-    city: city?.selectedOptions?.[0]?.textContent || "",
-    barangay: barangay?.selectedOptions?.[0]?.textContent || "",
-    houseUnit: String(document.getElementById(prefix + "HouseUnit")?.value || "").trim(),
-    street: String(document.getElementById(prefix + "Street")?.value || "").trim(),
-    additionalInstruction: String(document.getElementById(prefix + "AdditionalInstruction")?.value || "").trim()
-  };
-}
-
-function applyCheckoutAddress_(address) {
-  address = address || {};
-  ["checkoutHouseUnit","checkoutStreet","checkoutAdditionalInstruction"].forEach(function(id) {
-    const el = document.getElementById(id);
-    if (!el) return;
-    const key = id === "checkoutHouseUnit" ? "houseUnit" : id === "checkoutStreet" ? "street" : "additionalInstruction";
-    el.value = address[key] || "";
-    el.disabled = true;
-    el.classList.add("checkout-saved-field");
-  });
-  loadAddressChain_("checkout", {
-    region: address.region || "", province: address.province || "",
-    city: address.city || "", barangay: address.barangay || ""
-  });
-  setTimeout(function() {
-    ["checkoutRegion","checkoutProvince","checkoutCity","checkoutBarangay"].forEach(function(id) {
-      const el = document.getElementById(id);
-      if (el) { el.disabled = true; el.classList.add("address-saved-field"); }
-    });
-  }, 400);
-}
-
-function makeCheckoutAddressEditable_() {
-  ["checkoutRegion","checkoutProvince","checkoutCity","checkoutBarangay","checkoutHouseUnit","checkoutStreet","checkoutAdditionalInstruction"].forEach(function(id) {
-    const el = document.getElementById(id);
-    if (!el) return;
-    el.disabled = ["checkoutProvince","checkoutCity","checkoutBarangay"].indexOf(id) >= 0;
-    el.classList.remove("checkout-saved-field", "address-saved-field");
-  });
-}
-
-function renderCheckoutAddressOptions_() {
-  const manager = document.getElementById("checkoutAddressManager");
-  const select = document.getElementById("checkoutAddressSelect");
-  if (!manager || !select) return;
-  select.innerHTML = "";
-  checkoutAddresses_.forEach(function(address) {
-    const option = document.createElement("option");
-    option.value = String(address.addressId || "");
-    option.textContent = String(address.label || "Saved Address") + (address.isDefault ? " • Default" : "");
-    select.appendChild(option);
-  });
-  if (!checkoutAddresses_.length) {
-    manager.style.display = "none";
-    checkoutDefaultAddressId_ = "";
-    makeCheckoutAddressEditable_();
-    return;
-  }
-  manager.style.display = "block";
-  const defaultAddress = checkoutAddresses_.find(function(a) { return a.isDefault; }) || checkoutAddresses_[0];
-  checkoutDefaultAddressId_ = String(defaultAddress.addressId || "");
-  select.value = checkoutDefaultAddressId_;
-  applyCheckoutAddress_(defaultAddress);
-}
-
-function loadCheckoutAddresses_(user) {
-  const userId = String((user && user.userId) || getCurrentCustomerId_()).trim();
-  if (!userId) return;
-  google.script.run.withSuccessHandler(function(addresses) {
-    checkoutAddresses_ = Array.isArray(addresses) ? addresses : [];
-    renderCheckoutAddressOptions_();
-  }).withFailureHandler(function(error) {
-    console.warn("Unable to load saved addresses:", error);
-    checkoutAddresses_ = [];
-    renderCheckoutAddressOptions_();
-  }).getCustomerAddresses(userId);
-}
-
-function checkoutAddressChanged_() {
-  const select = document.getElementById("checkoutAddressSelect");
-  const addressId = String(select?.value || "").trim();
-  const userId = getCurrentCustomerId_();
-  if (!addressId || !userId) return;
-  const address = checkoutAddresses_.find(function(a) { return String(a.addressId || "") === addressId; });
-  if (!address) return;
-  checkoutDefaultAddressId_ = addressId;
-  applyCheckoutAddress_(address);
-  google.script.run.withSuccessHandler(function(updated) {
-    checkoutAddresses_ = Array.isArray(updated) ? updated : checkoutAddresses_;
-    renderCheckoutAddressOptions_();
-  }).withFailureHandler(function(error) {
-    console.error("Unable to set default address:", error);
-  }).setDefaultCustomerAddress(userId, addressId);
-}
-
-function openAddAddressModal_() {
-  const modal = document.getElementById("addAddressModal");
-  if (!modal) return;
-  ["newAddressLabel","newAddressHouseUnit","newAddressStreet","newAddressAdditionalInstruction"].forEach(function(id) {
-    const el = document.getElementById(id); if (el) el.value = "";
-  });
-  const message = document.getElementById("newAddressMessage"); if (message) message.textContent = "";
-  const button = document.getElementById("addressSaveButton");
-  if (button) { button.disabled = false; button.textContent = "Save & Set as Default"; }
-  modal.classList.add("show");
-  document.body.style.overflow = "hidden";
-  loadAddressChain_("newAddress", {});
-}
-
-function closeAddAddressModal_() {
-  const modal = document.getElementById("addAddressModal"); if (modal) modal.classList.remove("show");
-  if (!document.getElementById("checkoutModal")?.classList.contains("show") && !document.getElementById("orderConfirmModal")?.classList.contains("show")) document.body.style.overflow = "";
-}
-
-function saveNewAddress_() {
-  const userId = getCurrentCustomerId_(); if (!userId) return;
-  const payload = getCheckoutAddressPayloadFromFields_("newAddress");
-  const required = [["newAddressRegion","Please select your region."],["newAddressProvince","Please select your province."],["newAddressCity","Please select your city/municipality."],["newAddressBarangay","Please select your barangay."],["newAddressHouseUnit","Please enter your lot/house/unit number."],["newAddressStreet","Please enter your street."]];
-  for (let i=0;i<required.length;i++) {
-    const el=document.getElementById(required[i][0]);
-    if(!el || !String(el.value||"").trim()) { const msg=document.getElementById("newAddressMessage"); if(msg){msg.style.color="#a51620";msg.textContent=required[i][1];} if(el)el.focus(); return; }
-  }
-  if (!payload.label) payload.label = "Address " + (checkoutAddresses_.length + 1);
-  const button=document.getElementById("addressSaveButton"), msg=document.getElementById("newAddressMessage");
-  if(button){button.disabled=true;button.textContent="Saving...";} if(msg)msg.textContent="";
-  google.script.run.withSuccessHandler(function(addresses){
-    checkoutAddresses_=Array.isArray(addresses)?addresses:[]; renderCheckoutAddressOptions_(); closeAddAddressModal_();
-  }).withFailureHandler(function(error){
-    if(button){button.disabled=false;button.textContent="Save & Set as Default";} if(msg){msg.style.color="#a51620";msg.textContent=error&&error.message?error.message:"Unable to save address.";}
-  }).saveCustomerAddress(Object.assign({userId:userId,isDefault:true},payload));
-}
-
-function saveFirstCheckoutAddressIfNeeded_(done) {
-  const userId = getCurrentCustomerId_();
-
-  // If the account already has a saved address, do not create another one.
-  if (!userId || checkoutAddresses_.length) {
-    if (typeof done === "function") done();
-    return;
-  }
-
-  const payload = getCheckoutAddressPayloadFromFields_("checkout");
-  payload.label = "Home";
-
-  google.script.run
-    .withSuccessHandler(function(addresses) {
-      checkoutAddresses_ = Array.isArray(addresses) ? addresses : [];
-      renderCheckoutAddressOptions_();
-
-      // Continue to the confirmation popup only after the first address
-      // has been successfully saved.
-      if (typeof done === "function") done();
-    })
-    .withFailureHandler(function(error) {
-      showCheckoutMessage_(
-        error && error.message
-          ? error.message
-          : "Unable to save your delivery address. Please try again.",
-        true
-      );
-    })
-    .saveCustomerAddress(
-      Object.assign({ userId: userId, isDefault: true }, payload)
-    );
-}
-
-function openOrderHistory_() {
-  if (!isLoggedIn_()) { accountMenuLogin_(); return; }
-  closeAccountMenu_();
-  const content = document.getElementById("orderHistoryContent");
-  const modal = document.getElementById("orderHistoryModal");
-  if (modal) { modal.classList.add("show"); document.body.style.overflow="hidden"; }
-  if (content) content.innerHTML = '<div class="order-feature-loading">Loading your orders…</div>';
-
-  const user = getSavedUser_() || {};
-  if (!user.userId) { if(content) content.innerHTML='<div class="order-feature-error">Please log in again.</div>'; return; }
-
-  google.script.run
-    .withSuccessHandler(function(orders) {
-      if (!Array.isArray(orders) || !orders.length) {
-        content.innerHTML = '<div class="order-feature-empty">No orders found yet.<br>Your orders will appear here after checkout. 🍜</div>';
-        return;
-      }
-      content.innerHTML = orders.map(renderCustomerOrderCard_).join("");
-    })
-    .withFailureHandler(function(error) {
-      content.innerHTML = '<div class="order-feature-error">' + escapeHtml(error && error.message ? error.message : "Unable to load order history.") + '</div>';
-    })
-    .getCustomerOrderHistory(String(user.userId));
-}
-
-function orderStatusIndex_(status) {
-  const s = String(status || "Pending").toLowerCase();
-  if (s === "pending") return 0;
-  if (s === "processing" || s === "preparing") return 1;
-  if (s === "on the way") return 2;
-  if (s === "delivered") return 3;
-  return 0;
-}
-
-function renderStatusTrack_(status) {
-  const current = orderStatusIndex_(status);
-  const labels = ["Pending", "Processing", "On the Way", "Delivered"];
-  return '<div class="order-status-track">' + labels.map(function(label, i) {
-    const cls = i < current ? "done" : (i === current ? "active" : "");
-    return '<div class="order-status-step ' + cls + '"><div class="order-status-dot"></div>' + label + '</div>';
-  }).join("") + '</div>';
-}
-
-function openRatingPage_(orderId) {
-  const id = String(orderId || "").trim();
-  if (!id) return;
-  const modal = document.getElementById("mckSurveyModal");
-  if (!modal) return;
-  modal.classList.add("show");
-  document.body.style.overflow = "hidden";
-  loadInlineSurvey_(id);
-}
-
-function closeSurveyModal_() {
-  const modal = document.getElementById("mckSurveyModal");
-  const content = document.getElementById("mckSurveyContent");
-  if (modal) modal.classList.remove("show");
-  if (content) content.innerHTML = '<div class="mck-survey-loading">Loading your order…</div>';
-  document.body.style.overflow = "";
-}
-
-function openOrderDetail_(order) {
-  const content = document.getElementById("orderHistoryContent");
-  if (!content) return;
-  content.innerHTML = renderCustomerOrderDetail_(order);
-}
-
-function backToOrderList_() {
-  openOrderHistory_();
-}
-
-function confirmOrderReceived_(orderId, button) {
-  const user = getSavedUser_() || {};
-  if (!user.userId) { accountMenuLogin_(); return; }
-  if (button) { button.disabled=true; button.textContent="Confirming…"; }
-  google.script.run
-    .withSuccessHandler(function(){
-      // After the customer confirms receipt, take them directly to the survey/rating page.
-      openRatingPage_(orderId);
-    })
-    .withFailureHandler(function(error){
-      if(button){button.disabled=false;button.textContent="✓ Yes, I Received My Order";}
-      alert(error && error.message ? error.message : "Unable to confirm the order.");
-    })
-    .confirmCustomerOrderReceived(String(user.userId), String(orderId));
-}
-
-function renderCustomerOrderCard_(order) {
-  const orderKey = encodeURIComponent(String(order.orderId || ""));
-  const items = Array.isArray(order.items) ? order.items : [];
-  const itemCount = items.reduce(function(total, item){ return total + Number(item.quantity || 0); }, 0);
-  const firstItems = items.slice(0, 2).map(function(item){
-    return escapeHtml(item.productName || "Ramen item");
-  }).join(" • ");
-  const more = items.length > 2 ? " + " + (items.length - 2) + " more" : "";
-  return '<div class="order-history-card" tabindex="0" role="button" data-order-key="' + orderKey + '" onclick="openOrderDetailByKey_(this.dataset.orderKey)" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();openOrderDetailByKey_(this.dataset.orderKey)}">' +
-    '<div class="order-history-head"><div><div class="order-history-id">Order #' + escapeHtml(order.orderId || "") + '</div><div class="order-history-date">' + escapeHtml(order.orderedAt ? new Date(order.orderedAt).toLocaleString() : "") + '</div></div><div class="order-history-total">₱' + formatPrice(order.total || 0) + '</div></div>' +
-    renderStatusTrack_(order.orderStatus) +
-    '<div class="order-history-items"><div class="order-history-item"><div><div class="order-history-item-name">' + (firstItems || "No items recorded") + '</div><div class="order-history-item-meta">' + itemCount + ' item' + (itemCount === 1 ? '' : 's') + ' • Tap to view full order breakdown</div></div><strong>›</strong></div></div>' +
-    '<div class="order-detail-box"><b>Payment:</b> ' + escapeHtml(order.paymentMethod || "Not specified") + ' &nbsp; • &nbsp; <b>Delivery:</b> ' + escapeHtml(order.orderStatus || "Preparing") + '</div>' +
-    '</div>';
-}
-
-function openOrderDetailByKey_(encodedOrderId) {
-  const id = decodeURIComponent(String(encodedOrderId || ""));
-  const user = getSavedUser_() || {};
-  if (!user.userId || !id) return;
-  const content = document.getElementById("orderHistoryContent");
-  if (content) content.innerHTML = '<div class="order-feature-loading">Loading order details…</div>';
-  google.script.run
-    .withSuccessHandler(function(orders){
-      const list = Array.isArray(orders) ? orders : [];
-      const order = list.find(function(item){ return String(item.orderId || "") === id; });
-      if (!order) {
-        if (content) content.innerHTML = '<div class="order-feature-error">Order details could not be found.</div>';
-        return;
-      }
-      openOrderDetail_(order);
-    })
-    .withFailureHandler(function(error){
-      if (content) content.innerHTML = '<div class="order-feature-error">' + escapeHtml(error && error.message ? error.message : "Unable to load order details.") + '</div>';
-    })
-    .getCustomerOrderHistory(String(user.userId));
-}
-
-function renderCustomerOrderDetail_(order) {
-  const items = Array.isArray(order.items) ? order.items : [];
-  const itemsHtml = items.map(function(item) {
-    return '<div class="order-detail-item"><div><div class="order-detail-item-name">' + escapeHtml(item.productName || "Ramen item") + '</div><div class="order-detail-item-meta">Qty ' + Number(item.quantity || 0) + ' × ₱' + formatPrice(item.price || 0) + '</div></div><strong>₱' + formatPrice(item.subtotal || 0) + '</strong></div>';
-  }).join("");
-
-  let actionHtml = '';
-  if (String(order.orderStatus) === "Delivered" && !order.customerConfirmed) {
-    actionHtml = '<button type="button" class="order-feature-btn" onclick="confirmOrderReceived_(\'' + String(order.orderId).replace(/'/g,"\\'") + '\',this)">✓ Yes, I Received My Order</button>';
-  } else if (order.customerConfirmed && order.canRate) {
-    actionHtml = '<button type="button" class="order-feature-btn" onclick="openRatingPage_(\'' + String(order.orderId).replace(/'/g,"\\'") + '\')">⭐ Continue to Customer Survey</button>';
-  } else if (String(order.orderStatus) === "Delivered" && order.customerConfirmed && !order.canRate) {
-    actionHtml = '<div class="order-detail-survey"><div class="order-detail-survey-title">✓ Thank you for your feedback!</div><div class="order-detail-survey-text">This order has already been reviewed.</div></div>';
-  }
-
-  return '<div class="order-detail-top"><button type="button" class="order-detail-back" onclick="backToOrderList_()">← Back</button><div class="order-detail-title">Order Details</div></div>' +
-    '<div class="order-history-card" style="cursor:default"><div class="order-history-head"><div><div class="order-history-id">Order #' + escapeHtml(order.orderId || "") + '</div><div class="order-history-date">' + escapeHtml(order.orderedAt ? new Date(order.orderedAt).toLocaleString() : "") + '</div></div><div class="order-history-total">₱' + formatPrice(order.total || 0) + '</div></div>' +
-    renderStatusTrack_(order.orderStatus) + '</div>' +
-    '<div class="order-detail-section"><div class="order-detail-section-title">Order Breakdown</div>' + itemsHtml + '<div class="order-detail-total"><span>Total</span><span>₱' + formatPrice(order.total || 0) + '</span></div></div>' +
-    '<div class="order-detail-section"><div class="order-detail-section-title">Payment & Delivery</div><div class="order-detail-box"><b>Payment Method:</b> ' + escapeHtml(order.paymentMethod || "Not specified") + '<br><b>Payment Status:</b> ' + escapeHtml(order.paymentStatus || "Pending") + '<br><b>Order Status:</b> ' + escapeHtml(order.orderStatus || "Preparing") + (order.address ? '<br><b>Delivery Address:</b> ' + escapeHtml(order.address) : '') + (order.instruction ? '<br><b>Instruction:</b> ' + escapeHtml(order.instruction) : '') + '</div></div>' +
-    (order.customerConfirmed ? '<div class="order-received-note">✓ You confirmed that this order was received.</div>' : '') +
-    (actionHtml ? '<div class="order-history-actions">' + actionHtml + '</div>' : '') +
-    (String(order.orderStatus) === "Delivered" && !order.customerConfirmed ? '<div class="order-detail-survey"><div class="order-detail-survey-title">Your order has been delivered.</div><div class="order-detail-survey-text">Please confirm that you received it. After confirmation, the customer survey and product rating page will open.</div></div>' : '') +
-    '</div>';
-}
-
-function openPaymentHistory_() {
-  if (!isLoggedIn_()) { accountMenuLogin_(); return; }
-  closeAccountMenu_();
-  const modal=document.getElementById("paymentHistoryModal"), content=document.getElementById("paymentHistoryContent");
-  if(modal){modal.classList.add("show");document.body.style.overflow="hidden";}
-  if(content)content.innerHTML='<div class="order-feature-loading">Loading payment history…</div>';
-  const user=getSavedUser_()||{};
-  google.script.run.withSuccessHandler(function(rows){
-    if(!rows||!rows.length){content.innerHTML='<div class="order-feature-empty">No payment records yet.</div>';return;}
-    content.innerHTML=rows.map(function(r){
-      const ps=String(r.paymentStatus||"Pending").toLowerCase();
-      const cls=ps.indexOf("paid")>=0?"paid":(ps.indexOf("refund")>=0?"refunded":"pending");
-      return '<div class="payment-history-card"><div class="payment-history-row"><span><b>#'+escapeHtml(r.orderId)+'</b></span><strong>₱'+formatPrice(r.total||0)+'</strong></div><div class="payment-history-row"><span>Payment Method</span><span class="payment-history-method">'+escapeHtml(r.paymentMethod||"Not specified")+'</span></div><div class="payment-history-row"><span>Payment Status</span><span class="payment-status '+cls+'">'+escapeHtml(r.paymentStatus||"Pending")+'</span></div><div class="payment-history-row"><span>Order Status</span><span>'+escapeHtml(r.orderStatus||"Preparing")+'</span></div><div class="payment-history-row" style="color:#806c65;font-size:9px">'+escapeHtml(r.orderedAt?new Date(r.orderedAt).toLocaleString():"")+'</div></div>';
-    }).join("");
-  }).withFailureHandler(function(e){content.innerHTML='<div class="order-feature-error">'+escapeHtml(e&&e.message?e.message:"Unable to load payment history.")+'</div>'}).getCustomerPaymentHistory(String(user.userId));
-}
-
-function openCoupons_() {
-  if (!isLoggedIn_()) { accountMenuLogin_(); return; }
-  closeAccountMenu_();
-  const modal = document.getElementById("couponsModal");
-  if (modal) { modal.classList.add("show"); document.body.style.overflow="hidden"; }
-}
-
-function closeAccountSubmodal_(id) {
-  const modal = document.getElementById(id);
-  if (modal) modal.classList.remove("show");
-  if (!document.getElementById("loginModal")?.classList.contains("show") &&
-      !document.getElementById("createAccountModal")?.classList.contains("show") &&
-      !document.getElementById("cartModal")?.classList.contains("show") &&
-      !document.getElementById("checkoutModal")?.classList.contains("show") &&
-      !document.getElementById("editProfileModal")?.classList.contains("show")) {
-    document.body.style.overflow="";
-  }
-}
-
-function showLoginRamenLoader_(successMode) {
-  let loader = document.getElementById("loginRamenLoader");
-
-  if (!loader) {
-    loader = document.createElement("div");
-    loader.id = "loginRamenLoader";
-    loader.innerHTML =
-      '<div class="login-ramen-loader-inner" style="text-align:center;">' +
-        '<img id="loginRamenLoaderImage" alt="Preparing your ramen">' +
-        '<div id="loginRamenLoaderText" style="margin-top:18px;color:#fff7ef;font-size:20px;font-weight:800;letter-spacing:.3px;opacity:0;transition:opacity .25s ease;">' +
-          'Welcome to Mckenzie Ramen House 🍜' +
-        '</div>' +
-      '</div>';
-
-    loader.style.cssText =
-      "position:fixed;inset:0;z-index:2147483647;" +
-      "display:flex;align-items:center;justify-content:center;" +
-      "background:rgba(35,5,7,.97);opacity:1;visibility:visible;pointer-events:all;";
-    document.body.appendChild(loader);
-
-    const image = document.getElementById("loginRamenLoaderImage");
-    if (image) {
-      image.style.cssText =
-        "width:min(260px,62vw);height:min(260px,62vw);object-fit:contain;" +
-        "display:block;margin:auto;opacity:0;filter:drop-shadow(0 12px 24px rgba(0,0,0,.5));";
-    }
-
-    if (!document.getElementById("ramenLoginLogoutLoaderStyle")) {
-      const style = document.createElement("style");
-      style.id = "ramenLoginLogoutLoaderStyle";
-      style.textContent =
-        "@keyframes loginRamenSip{" +
-        "0%{transform:translateY(12px) scale(.82);opacity:0}" +
-        "35%{transform:translateY(-4px) scale(1.04);opacity:1}" +
-        "55%{transform:translateY(0) scale(.98);opacity:1}" +
-        "75%{transform:translateY(-3px) scale(1.02);opacity:1}" +
-        "100%{transform:translateY(0) scale(1);opacity:1}" +
-        "}" +
-        "@keyframes logoutRamenSip{" +
-        "0%{transform:translateY(10px) scale(.84);opacity:0}" +
-        "35%{transform:translateY(-4px) scale(1.04);opacity:1}" +
-        "65%{transform:translateY(0) scale(1);opacity:1}" +
-        "100%{transform:translateY(-2px) scale(1.02);opacity:1}" +
-        "}" +
-        " #loginRamenLoaderImage,#logoutRamenLoaderImage{position:relative;z-index:1;}";
-      document.head.appendChild(style);
-    }
-  }
-
-  const image = document.getElementById("loginRamenLoaderImage");
-  const text = document.getElementById("loginRamenLoaderText");
-  if (!image) return;
-
-  if (text) text.style.opacity = successMode ? "1" : "0";
-
-  /* Use the already-embedded I9 ramen image so Login never waits on Apps Script. */
-  const homepageRamen = document.getElementById("loaderRamenImage");
-  if (homepageRamen && homepageRamen.src) {
-    image.src = homepageRamen.src;
-    image.style.opacity = "1";
-    image.style.animation = "loginRamenSip .9s cubic-bezier(.22,.75,.25,1) both";
-  } else {
-    const cached = getCachedRamenLoader_();
-    if (cached) {
-      setRamenLoaderImage_(image, cached, "loginRamenSip .9s cubic-bezier(.22,.75,.25,1) both");
-    }
-  }
-
-  clearTimeout(window._loginRamenLoaderTimeout);
-  window._loginRamenLoaderTimeout = setTimeout(function() {
-    if (!successMode) hideLoginRamenLoader_();
-  }, 1800);
-}
-
-function completeLoginRamenLoader_() {
-  const image = document.getElementById("loginRamenLoaderImage");
-  const text = document.getElementById("loginRamenLoaderText");
-  if (text) text.style.opacity = "1";
-  if (image) {
-    image.style.opacity = "1";
-    image.style.animation = "loginRamenSip .9s cubic-bezier(.22,.75,.25,1) both";
-  }
-  clearTimeout(window._loginRamenLoaderTimeout);
-  window._loginRamenLoaderTimeout = setTimeout(function() {
-    hideLoginRamenLoader_();
-  }, 1000);
-}
-
-function hideLoginRamenLoader_() {
-  clearTimeout(window._loginRamenLoaderTimeout);
-  const loader = document.getElementById("loginRamenLoader");
-  if (loader) {
-    loader.style.transition = "opacity .22s ease";
-    loader.style.opacity = "0";
-    setTimeout(function() {
-      if (loader && loader.parentNode) loader.parentNode.removeChild(loader);
-    }, 230);
-  }
-}
-
-function logoutUser_() {
-  closeAccountMenu_();
-  closeCartModal_();
-  closeAccountSubmodal_("checkoutModal");
-  closeAccountSubmodal_("editProfileModal");
-  closeAccountSubmodal_("orderHistoryModal");
-  closeAccountSubmodal_("paymentHistoryModal");
-  closeAccountSubmodal_("couponsModal");
-
-  // Clear the login state first so the UI becomes guest state immediately.
-  setLoggedInState_(false);
-  try { localStorage.removeItem("mckenzieUser"); } catch(error) {}
-
-  // Clear only the in-memory cart when leaving the account.
-  // The customer's saved cart remains stored under that customer's ID.
-  cartItems = [];
-  renderCartModal_();
-  updateAccountMenu_();
-
-  // Show the same ramen-slurping loader used by the homepage.
-  showLogoutRamenLoader_();
-}
-
-function showLogoutRamenLoader_() {
-  let loader = document.getElementById("logoutRamenLoader");
-
-  if (!loader) {
-    loader = document.createElement("div");
-    loader.id = "logoutRamenLoader";
-    loader.innerHTML =
-      '<div class="logout-ramen-loader-inner" style="text-align:center;">' +
-        '<img id="logoutRamenLoaderImage" alt="Logging out">' +
-      '</div>';
-    loader.style.cssText =
-      "position:fixed;inset:0;z-index:2147483647;display:flex;" +
-      "align-items:center;justify-content:center;background:rgba(35,5,7,.97);" +
-      "opacity:1;visibility:visible;pointer-events:all;";
-    document.body.appendChild(loader);
-
-    const image = document.getElementById("logoutRamenLoaderImage");
-    if (image) {
-      image.style.cssText =
-        "width:min(240px,60vw);height:min(240px,60vw);object-fit:contain;" +
-        "display:block;margin:auto;opacity:0;filter:drop-shadow(0 12px 24px rgba(0,0,0,.5));";
-    }
-  }
-
-  const image = document.getElementById("logoutRamenLoaderImage");
-  if (!image) return;
-
-  /* Use the same embedded I9 ramen image immediately. */
-  const homepageRamen = document.getElementById("loaderRamenImage");
-  if (homepageRamen && homepageRamen.src) {
-    image.src = homepageRamen.src;
-    image.style.opacity = "1";
-    image.style.animation = "logoutRamenSip .9s cubic-bezier(.22,.75,.25,1) both";
-  } else {
-    const cached = getCachedRamenLoader_();
-    if (cached) {
-      setRamenLoaderImage_(image, cached, "logoutRamenSip .9s cubic-bezier(.22,.75,.25,1) both");
-    }
-  }
-
-  clearTimeout(window._logoutRamenLoaderTimeout);
-  window._logoutRamenLoaderTimeout = setTimeout(function() {
-    const current = document.getElementById("logoutRamenLoader");
-    if (current) {
-      current.style.transition = "opacity .22s ease";
-      current.style.opacity = "0";
-      setTimeout(function() {
-        if (current && current.parentNode) current.parentNode.removeChild(current);
-      }, 230);
-    }
-    window.scrollTo(0, 0);
-  }, 1100);
-}
-
-document.addEventListener("click", function(event) {
-  const wrap = document.querySelector(".account-menu-wrap");
-  if (wrap && !wrap.contains(event.target)) closeAccountMenu_();
-});
-
-/* =========================================================
-   PASSWORD RESET / CHANGE PASSWORD
-========================================================= */
-let passwordResetToken_ = "";
-let passwordResetMode_ = "forgot";
-
-function openForgotPassword_(event) {
-  if (event) event.preventDefault();
-  closeLoginModal();
-  const modal = document.getElementById("forgotPasswordModal");
-  if (!modal) return;
-  modal.classList.add("show");
-  document.body.style.overflow = "hidden";
-  const msg = document.getElementById("forgotPasswordMessage");
-  if (msg) msg.textContent = "";
-  setTimeout(function(){ const el=document.getElementById("forgotPasswordIdentifier"); if(el)el.focus(); },50);
-}
-function closeForgotPassword_() {
-  const modal=document.getElementById("forgotPasswordModal"); if(modal)modal.classList.remove("show");
-  if (!document.querySelector(".password-modal.show") && !document.getElementById("loginModal")?.classList.contains("show")) document.body.style.overflow="";
-}
-function openChangePassword_() {
-  const modal=document.getElementById("changePasswordModal"); if(!modal)return;
-  modal.classList.add("show"); document.body.style.overflow="hidden";
-  ["oldPassword","newPassword","confirmNewPassword"].forEach(function(id){const e=document.getElementById(id);if(e)e.value="";});
-  const msg=document.getElementById("changePasswordMessage"); if(msg)msg.textContent="";
-}
-function closeChangePassword_() {
-  const modal=document.getElementById("changePasswordModal"); if(modal)modal.classList.remove("show");
-  if (!document.querySelector(".password-modal.show") && !document.getElementById("editProfileModal")?.classList.contains("show")) document.body.style.overflow="";
-}
-function useForgotPasswordFromChange_(event) {
-  if(event)event.preventDefault();
-  closeChangePassword_();
-  const user=getSavedUser_()||{};
-  if(!user.userId){openForgotPassword_();return;}
-  passwordResetMode_="loggedIn";
-  sendPasswordOtpForUser_(String(user.userId));
-}
-function sendForgotPasswordOtp_() {
-  const identifier=String(document.getElementById("forgotPasswordIdentifier")?.value||"").trim();
-  const btn=document.getElementById("forgotPasswordSendButton"), msg=document.getElementById("forgotPasswordMessage");
-  if(!identifier){if(msg)msg.textContent="Please enter your username or email.";return;}
-  if(btn){btn.disabled=true;btn.textContent="Sending...";}
-  google.script.run.withSuccessHandler(function(result){
-    if(btn){btn.disabled=false;btn.textContent="Send OTP";}
-    passwordResetMode_="forgot"; passwordResetToken_=result.verificationToken||"";
-    closeForgotPassword_(); openPasswordOtp_(result.email);
-  }).withFailureHandler(function(error){
-    if(btn){btn.disabled=false;btn.textContent="Send OTP";}
-    if(msg)msg.textContent=error&&error.message?error.message:"Unable to send OTP.";
-  }).requestPasswordResetOtp(identifier);
-}
-function sendPasswordOtpForUser_(userId) {
-  google.script.run.withSuccessHandler(function(result){
-    passwordResetToken_=result.verificationToken||"";
-    openPasswordOtp_(result.email);
-  }).withFailureHandler(function(error){
-    const modal=document.getElementById("changePasswordModal"); if(modal)modal.classList.add("show");
-    const msg=document.getElementById("changePasswordMessage"); if(msg)msg.textContent=error&&error.message?error.message:"Unable to send OTP.";
-  }).requestPasswordResetOtpForUser(userId);
-}
-function openPasswordOtp_(email) {
-  const modal=document.getElementById("passwordOtpModal"); if(!modal)return;
-  modal.classList.add("show"); document.body.style.overflow="hidden";
-  const emailEl=document.getElementById("passwordOtpEmail"); if(emailEl)emailEl.textContent=email||"your registered email";
-  ["passwordOtpCode","passwordOtpNewPassword","passwordOtpConfirmPassword"].forEach(function(id){const e=document.getElementById(id);if(e)e.value="";});
-  const msg=document.getElementById("passwordOtpMessage"); if(msg)msg.textContent="";
-  setTimeout(function(){const e=document.getElementById("passwordOtpCode");if(e)e.focus();},50);
-}
-function closePasswordOtp_() {
-  const modal=document.getElementById("passwordOtpModal");if(modal)modal.classList.remove("show");
-  if(!document.querySelector(".password-modal.show"))document.body.style.overflow="";
-}
-function submitPasswordOtp_() {
-  const code=String(document.getElementById("passwordOtpCode")?.value||"").replace(/\D/g,"");
-  const newPassword=String(document.getElementById("passwordOtpNewPassword")?.value||"");
-  const confirm=String(document.getElementById("passwordOtpConfirmPassword")?.value||"");
-  const btn=document.getElementById("passwordOtpSubmit"),msg=document.getElementById("passwordOtpMessage");
-  if(!passwordResetToken_){if(msg)msg.textContent="Your OTP session expired. Please request a new code.";return;}
-  if(!/^\d{6}$/.test(code)){if(msg)msg.textContent="Please enter the 6-digit OTP.";return;}
-  if(newPassword.length<6){if(msg)msg.textContent="Password must be at least 6 characters.";return;}
-  if(newPassword!==confirm){if(msg)msg.textContent="Passwords do not match.";return;}
-  if(btn){btn.disabled=true;btn.textContent="Updating...";}
-  google.script.run.withSuccessHandler(function(){
-    if(btn){btn.disabled=false;btn.textContent="Verify & Change Password";}
-    if(msg){msg.style.color="#198754";msg.textContent="Password changed successfully.";}
-    passwordResetToken_="";
-    setTimeout(function(){closePasswordOtp_();},800);
-  }).withFailureHandler(function(error){
-    if(btn){btn.disabled=false;btn.textContent="Verify & Change Password";}
-    if(msg){msg.style.color="#a51620";msg.textContent=error&&error.message?error.message:"Unable to change password.";}
-  }).resetPasswordWithOtp(passwordResetToken_,code,newPassword);
-}
-function submitChangePassword_() {
-  const user=getSavedUser_()||{};
-  const oldPassword=String(document.getElementById("oldPassword")?.value||"");
-  const newPassword=String(document.getElementById("newPassword")?.value||"");
-  const confirm=String(document.getElementById("confirmNewPassword")?.value||"");
-  const btn=document.getElementById("changePasswordSubmit"),msg=document.getElementById("changePasswordMessage");
-  if(!user.userId){if(msg)msg.textContent="Please log in again.";return;}
-  if(!oldPassword){if(msg)msg.textContent="Please enter your old password.";return;}
-  if(newPassword.length<6){if(msg)msg.textContent="Password must be at least 6 characters.";return;}
-  if(newPassword!==confirm){if(msg)msg.textContent="Passwords do not match.";return;}
-  if(btn){btn.disabled=true;btn.textContent="Updating...";}
-  google.script.run.withSuccessHandler(function(){
-    if(btn){btn.disabled=false;btn.textContent="Change Password";}
-    if(msg){msg.style.color="#198754";msg.textContent="Password changed successfully.";}
-    setTimeout(function(){closeChangePassword_();},800);
-  }).withFailureHandler(function(error){
-    if(btn){btn.disabled=false;btn.textContent="Change Password";}
-    if(msg){msg.style.color="#a51620";msg.textContent=error&&error.message?error.message:"Unable to change password.";}
-  }).changePassword(user.userId,oldPassword,newPassword);
-}
-
-/* =========================================================
-   LOGIN
-========================================================= */
-
-function goToLogin() {
-  openLoginModal();
-}
-
-function openLoginModal() {
-  const modal = document.getElementById("loginModal");
-  if (!modal) return;
-
-  modal.classList.add("show");
-  document.body.style.overflow = "hidden";
-
-  const message = document.getElementById("popupLoginMessage");
-  if (message) message.textContent = "";
-
-  setTimeout(function() {
-    const field = document.getElementById("popupLoginIdentifier");
-    if (field) field.focus();
-  }, 50);
-}
-
-function closeLoginModal() {
-  const modal = document.getElementById("loginModal");
-  if (!modal) return;
-
-  modal.classList.remove("show");
-  document.body.style.overflow = "";
-}
-
-function handleLoginOverlayClick(event) {
-  // Outside click does not close the login popup.
-}
-
-function togglePopupPassword() {
-  const input = document.getElementById("popupLoginPassword");
-  const button = document.querySelector(".login-show-password");
-  if (!input) return;
-
-  if (input.type === "password") {
-    input.type = "text";
-    if (button) button.textContent = "HIDE";
-  } else {
-    input.type = "password";
-    if (button) button.textContent = "SHOW";
-  }
-}
-
-function showLoginSuccessToast_(firstName) {
-  const oldToast = document.getElementById("loginSuccessToast");
-  if (oldToast && oldToast.parentNode) oldToast.parentNode.removeChild(oldToast);
-
-  const toast = document.createElement("div");
-  toast.id = "loginSuccessToast";
-  toast.textContent = firstName
-    ? "Welcome back, " + firstName + "! You are now successfully logged in. 🍜"
-    : "Welcome back! You are now successfully logged in. 🍜";
-
-  toast.style.position = "fixed";
-  toast.style.left = "50%";
-  toast.style.top = "28px";
-  toast.style.transform = "translateX(-50%) translateY(-12px)";
-  toast.style.zIndex = "999999";
-  toast.style.maxWidth = "min(92vw, 560px)";
-  toast.style.padding = "14px 20px";
-  toast.style.borderRadius = "16px";
-  toast.style.background = "#fff8f0";
-  toast.style.border = "1px solid #e2b16a";
-  toast.style.boxShadow = "0 12px 35px rgba(0,0,0,.22)";
-  toast.style.color = "#7b1520";
-  toast.style.fontWeight = "700";
-  toast.style.fontSize = "14px";
-  toast.style.textAlign = "center";
-  toast.style.opacity = "0";
-  toast.style.transition = "opacity .25s ease, transform .25s ease";
-  toast.style.pointerEvents = "none";
-
-  document.body.appendChild(toast);
-
-  requestAnimationFrame(function() {
-    toast.style.opacity = "1";
-    toast.style.transform = "translateX(-50%) translateY(0)";
-  });
-
-  setTimeout(function() {
-    toast.style.opacity = "0";
-    toast.style.transform = "translateX(-50%) translateY(-12px)";
-    setTimeout(function() {
-      if (toast.parentNode) toast.parentNode.removeChild(toast);
-    }, 300);
-  }, 3500);
-}
-
-function submitLoginPopup(event) {
-  event.preventDefault();
-
-  const identifier = String(
-    document.getElementById("popupLoginIdentifier").value || ""
-  ).trim();
-  const password = String(
-    document.getElementById("popupLoginPassword").value || ""
-  );
-  const submitButton = document.getElementById("popupLoginSubmit");
-  const message = document.getElementById("popupLoginMessage");
-
-  if (!identifier || !password) {
-    if (message) message.textContent = "Please enter your username/email and password.";
-    return;
-  }
-
-  if (submitButton) {
-    submitButton.disabled = true;
-    submitButton.textContent = "Logging in...";
-  }
-  if (message) message.textContent = "";
-  showLoginRamenLoader_();
-
-  google.script.run
-    .withSuccessHandler(function(result) {
-      if (result && result.success) {
-        if (message) {
-          message.style.color = "#198754";
-          message.textContent = "Login successful!";
-        }
-
-        setLoggedInState_(true);
-
-        // Close the login popup as soon as the credentials are successfully
-        // validated. Do not wait for the background profile refresh.
-        closeLoginModal();
-
-        // Show a friendly success message on the homepage.
-        const welcomeName = String(result.fullName || result.username || identifier || "").trim();
-        const welcomeFirstName = welcomeName ? welcomeName.split(/\s+/)[0] : "";
-        showLoginSuccessToast_(welcomeFirstName);
-
-        const basicUser = {
-          userId: result.userId || "",
-          fullName: result.fullName || "",
-          username: result.username || identifier,
-          email: result.email || "",
-          mobile: result.mobile || "",
-          houseUnit: result.houseUnit || "",
-          street: result.street || "",
-          barangay: result.barangay || "",
-          city: result.city || "",
-          province: result.province || "",
-          postalCode: result.postalCode || "",
-          country: result.country || "Philippines",
-          region: result.region || "",
-          additionalInstruction: result.additionalInstruction || ""
-        };
-
-        try {
-          localStorage.setItem("mckenzieUser", JSON.stringify(basicUser));
-        } catch (storageError) {
-          console.warn("Unable to save user details:", storageError);
-        }
-
-        // IMPORTANT: switch the in-memory cart to this exact customer's cart.
-        // This prevents the previous customer's cart from appearing after login.
-        loadCartForCurrentCustomer_();
-
-        // Refresh the complete profile from the Users sheet. This makes
-        // Checkout use the exact customer information for this account.
-        google.script.run
-          .withSuccessHandler(function(profile) {
-            const finalUser = Object.assign({}, basicUser, profile || {});
-            finalUser.userId = (profile && profile.userId) || basicUser.userId;
-            finalUser.username = (profile && profile.username) || basicUser.username;
-            finalUser.fullName = (profile && profile.fullName) || basicUser.fullName;
-            finalUser.email = (profile && profile.email) || basicUser.email;
-            finalUser.mobile = (profile && profile.mobile) || basicUser.mobile;
-
-            try {
-              localStorage.setItem("mckenzieUser", JSON.stringify(finalUser));
-            } catch (storageError) {
-              console.warn("Unable to refresh saved user details:", storageError);
-            }
-
-            // Switch the active cart to this exact customer's private cart.
-            loadCartForCurrentCustomer_();
-            updateAccountMenu_();
-            completeLoginRamenLoader_();
-
-            if (submitButton) {
-              submitButton.disabled = false;
-              submitButton.textContent = "Log In";
-            }
-          })
-          .withFailureHandler(function(profileError) {
-            // Login is already valid; if profile refresh fails, continue
-            // using the details returned by login.
-            console.warn("Unable to refresh profile after login:", profileError);
-            // Even if profile refresh fails, keep the cart isolated by Customer ID.
-            loadCartForCurrentCustomer_();
-            updateAccountMenu_();
-            completeLoginRamenLoader_();
-
-            if (submitButton) {
-              submitButton.disabled = false;
-              submitButton.textContent = "Log In";
-            }
-          })
-          .getUserProfile(basicUser.userId);
-      } else {
-        throw new Error("Unable to log in.");
-      }
-    })
-    .withFailureHandler(function(error) {
-      // IMPORTANT: an invalid login must NEVER leave the ramen loader stuck.
-      // Hide it first, then show the actual login error in the popup.
-      hideLoginRamenLoader_();
-      completeLoginRamenLoader_ = completeLoginRamenLoader_;
-      console.error("Login error:", error);
-
-      const serverMessage = error && error.message ? String(error.message) : "";
-      let friendlyMessage = serverMessage;
-      if (!friendlyMessage || /Unable to log in/i.test(friendlyMessage)) {
-        friendlyMessage = "Incorrect username/email or password.";
-      }
-
-      if (message) {
-        message.style.color = "#a51620";
-        message.textContent = friendlyMessage;
-      }
-
-      if (submitButton) {
-        submitButton.disabled = false;
-        submitButton.textContent = "Log In";
-      }
-    })
-    .loginUser(identifier, password);
-}
-
-document.addEventListener("keydown", function(event) {
-  if (event.key === "Escape") {
-    closeLoginModal();
-    closeCartModal_();
-    closeCreateAccountModal();
-    closeAccountMenu_();
-    closeAccountSubmodal_("editProfileModal");
-    closeAccountSubmodal_("orderHistoryModal");
-    closeAccountSubmodal_("couponsModal");
-  }
-});
-
-
-
-/* =========================================================
-   HOMEPAGE RAMEN LOADER
-   SOURCE: Products!I9
-   Waits for I9 + brand assets + product images.
-========================================================= */
-window._pageLoaderState = { brand: false, products: false, loader: true, closed: false };
-
-function closeQuickLoader_() {
-  const state = window._pageLoaderState;
-  if (state.closed) return;
-  state.closed = true;
-
-  const loader = document.getElementById('pageLoader');
-  if (loader) {
-    loader.classList.add('hide');
-  }
-  document.documentElement.classList.remove('quick-loading');
-  document.body.classList.remove('quick-loading');
-}
-
-function maybeClosePageLoader_() {
-  const state = window._pageLoaderState;
-  if (!state || state.closed) return;
-
-  /* Ramen stays visible until the brand assets AND product cards/images are ready. */
-  if (state.brand && state.products) {
-    clearTimeout(window._pageLoaderCloseTimer);
-
-    /* Wait for the browser to paint the already-loaded logo, background,
-       sakura, and product images before removing the ramen overlay. */
-    window._pageLoaderCloseTimer = setTimeout(function() {
-      requestAnimationFrame(function() {
-        requestAnimationFrame(function() {
-          closeQuickLoader_();
-        });
-      });
-    }, 120);
-  }
-}
-
-function startHomepageRamenLoader_() {
-  const img = document.getElementById('loaderRamenImage');
-  if (!img) return;
-
-  /* Never show the old low-resolution embedded fallback.
-     The loader appears only after the real Products!I9 image is fully decoded. */
-  img.classList.remove('animate', 'sipping', 'loader-ready');
-  img.style.display = 'none';
-  img.style.opacity = '0';
-
-  const showClearI9_ = function(url) {
-    if (!url) return false;
-    const clear = new Image();
-    clear.decoding = 'async';
-    clear.onload = function() {
-      try {
-        img.src = clear.src;
-        img.style.display = 'block';
-        img.style.opacity = '1';
-        img.classList.add('loader-ready', 'sipping');
-      } catch (e) {
-        console.warn('Unable to display I9 loader image:', e);
-      }
-    };
-    clear.onerror = function() {
-      console.warn('Products!I9 loader image failed to load.');
-    };
-    clear.src = String(url);
-    if (clear.complete && clear.naturalWidth > 0) clear.onload();
+  async function requireAdmin() {
+    if (!(await isAdmin())) throw makeError("Admin access is not configured for this account.");
     return true;
-  };
-
-  /* Use a cached I9 URL first when available, so repeat visits can show the
-     clear ramen almost immediately. */
-  try {
-    const cachedI9 = localStorage.getItem('mckenzieRamenLoaderI9');
-    if (cachedI9) showClearI9_(cachedI9);
-  } catch (e) {}
-
-  try {
-    google.script.run
-      .withSuccessHandler(function(url) {
-        if (url) {
-          try { localStorage.setItem('mckenzieRamenLoaderI9', String(url)); } catch (e) {}
-          showClearI9_(String(url));
-        }
-      })
-      .withFailureHandler(function(err) {
-        console.warn('I9 loader image unavailable.', err);
-      })
-      .getRamenLoadingImage();
-  } catch (e) {
-    console.warn('Unable to request Products!I9 loader image.', e);
   }
 
-  markPageAssetReady_('loader');
-}
-
-/* Safety only: never trap a customer forever if Google Apps Script itself fails. */
-setTimeout(function() {
-  if (window._pageLoaderState && !window._pageLoaderState.closed) {
-    closeQuickLoader_();
+  function cleanTimestamp(v) {
+    if (!v) return "";
+    if (typeof v === "string") return v;
+    if (v && typeof v.toDate === "function") return v.toDate().toISOString();
+    if (v instanceof Date) return v.toISOString();
+    return String(v);
   }
-}, 6000);
 
-/* =========================================================
-   BRAND ASSETS
-========================================================= */
-
-function markPageAssetReady_(name) {
-  window._pageLoaderState = window._pageLoaderState || {
-    brand: false,
-    products: false,
-    loader: false,
-    closed: false
-  };
-  window._pageLoaderState[name] = true;
-  maybeClosePageLoader_();
-}
-
-function preloadPageImage_(url, done) {
-  if (!url) {
-    done();
-    return;
+  function docData(snap) {
+    return snap.exists() ? { id: snap.id, ...snap.data() } : null;
   }
-  const img = new Image();
-  let finished = false;
-  const finish = function() {
-    if (finished) return;
-    finished = true;
-    done();
-  };
-  img.onload = finish;
-  img.onerror = finish;
-  img.src = String(url);
-  if (img.complete && img.naturalWidth > 0) finish();
-}
 
-function getCachedBrandAssets_() {
-  try {
-    const raw = localStorage.getItem('mckenzieBrandAssets');
-    return raw ? JSON.parse(raw) : null;
-  } catch (e) { return null; }
-}
+  async function getDocById(collectionName, id) {
+    const f = await READY;
+    const snap = await f.getDoc(f.doc(f.db, collectionName, String(id)));
+    return docData(snap);
+  }
 
-function applyBrandAssets_(assets) {
-  assets = assets || {};
-  if (assets.logo) {
-    const logo = document.getElementById('brandLogo');
-    const footerLogo = document.getElementById('footerLogo');
-    const stickyLogo = document.getElementById('siteStickyLogo');
-    if (stickyLogo) {
-      stickyLogo.src = assets.logo;
-      stickyLogo.classList.add('ready');
+  async function getCollection(collectionName, queryConstraint) {
+    const f = await READY;
+    const ref = f.collection(f.db, collectionName);
+    const snap = queryConstraint
+      ? await f.getDocs(f.query(ref, queryConstraint))
+      : await f.getDocs(ref);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  }
+
+  function profileFromUser(u, data) {
+    const p = data || {};
+    return {
+      success: true,
+      userId: u.uid,
+      username: p.username || "",
+      email: u.email || p.email || "",
+      mobile: p.mobile || "",
+      fullName: p.fullName || u.displayName || "",
+      houseUnit: p.houseUnit || "",
+      street: p.street || "",
+      barangay: p.barangay || "",
+      city: p.city || "",
+      province: p.province || "",
+      postalCode: p.postalCode || "",
+      country: p.country || "Philippines",
+      region: p.region || "",
+      additionalInstruction: p.additionalInstruction || ""
+    };
+  }
+
+  async function getProfile(userId) {
+    const u = await currentUser(true);
+    if (String(userId) !== String(u.uid)) throw makeError("You can only access your own profile.");
+    const p = await getDocById("users", u.uid);
+    return profileFromUser(u, p || {});
+  }
+
+  async function saveProfile(data) {
+    const f = await READY;
+    const u = await currentUser(true);
+    data = data || {};
+    if (String(data.userId || "") !== u.uid) throw makeError("Invalid customer account.");
+    const fullName = String(data.fullName || "").trim();
+    const email = String(data.email || u.email || "").trim().toLowerCase();
+    const mobile = String(data.mobile || "").trim();
+    if (!fullName) throw makeError("Full name is required.");
+    if (!email) throw makeError("Email address is required.");
+    if (!mobile) throw makeError("Phone number is required.");
+
+    await f.setDoc(f.doc(f.db, "users", u.uid), {
+      username: data.username || "",
+      email, fullName, mobile,
+      houseUnit: String(data.houseUnit || "").trim(),
+      street: String(data.street || "").trim(),
+      barangay: String(data.barangay || "").trim(),
+      city: String(data.city || "").trim(),
+      province: String(data.province || "").trim(),
+      postalCode: String(data.postalCode || "").trim(),
+      country: String(data.country || "Philippines").trim() || "Philippines",
+      region: String(data.region || "").trim(),
+      additionalInstruction: String(data.additionalInstruction || "").trim(),
+      updatedAt: isoNow()
+    }, { merge: true });
+
+    return getProfile(u.uid);
+  }
+
+  async function loginUser(identifier, password) {
+    const f = await READY;
+    identifier = String(identifier || "").trim().toLowerCase();
+    password = String(password || "");
+    if (!identifier || !password) throw makeError("Please enter username/email and password.");
+
+    // Firebase Auth signs in by email. Username login is intentionally disabled
+    // in the standalone version because exposing a username→email directory
+    // would weaken privacy.
+    if (!identifier.includes("@")) {
+      throw makeError("Please log in using your registered email address.");
     }
-    if (logo) {
-      logo.src = assets.logo;
-      logo.style.display = 'block';
-      logo.addEventListener('load', function() { logo.classList.add('asset-ready'); }, { once: true });
-    }
-    if (footerLogo) {
-      footerLogo.src = assets.logo;
-      footerLogo.style.display = 'block';
-      footerLogo.addEventListener('load', function() { footerLogo.classList.add('asset-ready'); }, { once: true });
-    }
+
+    const cred = await f.signInWithEmailAndPassword(f.auth, identifier, password);
+    const p = await getDocById("users", cred.user.uid);
+    return profileFromUser(cred.user, p || {});
   }
-  if (assets.background) {
-    const hero = document.getElementById('home');
-    const bg = 'url("' + String(assets.background).replace(/"/g, '\\"') + '")';
-    document.documentElement.style.setProperty('--hero-image', bg);
-    if (hero) {
-      hero.style.backgroundImage = 'linear-gradient(rgba(0,0,0,.38), rgba(0,0,0,.62)), ' + bg;
-      hero.style.backgroundSize = 'cover';
-      hero.style.backgroundPosition = 'center';
-      hero.style.backgroundRepeat = 'no-repeat';
+
+  async function createAccount(fullName, email, username, password, mobile) {
+    const f = await READY;
+    const cred = await f.createUserWithEmailAndPassword(f.auth, String(email).trim().toLowerCase(), String(password));
+    await f.setDoc(f.doc(f.db, "users", cred.user.uid), {
+      username: String(username || "").trim(),
+      email: cred.user.email || String(email).trim().toLowerCase(),
+      fullName: String(fullName || "").trim(),
+      mobile: String(mobile || "").trim(),
+      country: "Philippines",
+      status: "ACTIVE",
+      createdAt: isoNow(),
+      updatedAt: isoNow()
+    }, { merge: true });
+
+    try { await f.sendEmailVerification(cred.user); } catch (e) {
+      console.warn("Verification email could not be sent:", e);
     }
+    return {
+      success: true,
+      message: "Account created. Please verify your email, then log in.",
+      verificationToken: cred.user.uid,
+      email: cred.user.email || email,
+      expiresInSeconds: 600
+    };
   }
-  if (assets.sakura) {
-    document.documentElement.style.setProperty('--sakura-image', "url('" + String(assets.sakura).replace(/'/g, "\\'") + "')");
+
+  async function verifyEmailCode(token, code) {
+    const f = await READY;
+    const u = await currentUser(true);
+    await f.auth.currentUser.reload();
+    if (!f.auth.currentUser.emailVerified) {
+      throw makeError("Please open the verification email and click the verification link first.");
+    }
+    return { success: true, message: "Email verified." };
   }
-}
 
-function getCachedProducts_() {
-  try {
-    const raw = localStorage.getItem('mckenzieProductsCache');
-    return raw ? JSON.parse(raw) : null;
-  } catch (e) { return null; }
-}
+  async function sendPasswordReset(identifier) {
+    const f = await READY;
+    const email = String(identifier || "").trim().toLowerCase();
+    if (!email || !email.includes("@")) {
+      throw makeError("Please enter your registered email address.");
+    }
+    await f.sendPasswordResetEmail(f.auth, email);
+    return { success: true, email, message: "Password reset email sent." };
+  }
 
-function loadBrandAssets() {
-  const cached = getCachedBrandAssets_();
-  if (cached) applyBrandAssets_(cached);
+  async function changePassword(userId, oldPassword, newPassword) {
+    const f = await READY;
+    const u = await currentUser(true);
+    if (u.uid !== String(userId)) throw makeError("Invalid customer account.");
+    if (!newPassword || String(newPassword).length < 6) throw makeError("Password must be at least 6 characters.");
+    // Re-authenticate with the old password, then update.
+    if (!u.email) throw makeError("Your account has no email address.");
+    const cred = f.EmailAuthProvider.credential(u.email, String(oldPassword || ""));
+    await f.reauthenticateWithCredential(u, cred);
+    await f.updatePassword(u, String(newPassword));
+    return { success: true };
+  }
 
-  google.script.run
-    .withSuccessHandler(function (assets) {
-      assets = assets || {};
-      applyBrandAssets_(assets);
-      try { localStorage.setItem('mckenzieBrandAssets', JSON.stringify(assets)); } catch (e) {}
+  async function addresses(userId) {
+    const f = await READY;
+    const u = await currentUser(true);
+    if (u.uid !== String(userId)) throw makeError("Invalid customer account.");
+    const list = await getCollection("addresses");
+    return list
+      .filter(a => String(a.userId) === u.uid)
+      .sort((a,b) => (b.isDefault ? 1 : 0) - (a.isDefault ? 1 : 0))
+      .map(a => ({
+        addressId: a.id, userId: a.userId, label: a.label || "Saved Address",
+        houseUnit: a.houseUnit || "", street: a.street || "", barangay: a.barangay || "",
+        city: a.city || "", province: a.province || "", region: a.region || "",
+        postalCode: a.postalCode || "", country: a.country || "Philippines",
+        additionalInstruction: a.additionalInstruction || "",
+        isDefault: !!a.isDefault, createdAt: cleanTimestamp(a.createdAt), updatedAt: cleanTimestamp(a.updatedAt)
+      }));
+  }
 
-      /* Apply URLs immediately so the browser can paint them while the ramen is visible. */
-      if (assets.logo) {
-        const logo = document.getElementById('brandLogo');
-        const footerLogo = document.getElementById('footerLogo');
-        const stickyLogo = document.getElementById('siteStickyLogo');
-        if (logo) { logo.src = assets.logo; logo.style.display = 'block'; }
-        if (footerLogo) { footerLogo.src = assets.logo; footerLogo.style.display = 'block'; }
-        if (stickyLogo) { stickyLogo.src = assets.logo; stickyLogo.classList.add('ready'); }
+  async function saveAddress(data) {
+    const f = await READY;
+    const u = await currentUser(true);
+    data = data || {};
+    if (String(data.userId || "") !== u.uid) throw makeError("Invalid customer account.");
+    const required = [["region","region"],["province","province"],["city","city/municipality"],["barangay","barangay"],["houseUnit","lot/house/unit number"],["street","street"]];
+    for (const [key,label] of required) if (!String(data[key] || "").trim()) throw makeError("Please select/enter your " + label + ".");
+    const all = await addresses(u.uid);
+    const id = String(data.addressId || ("ADDR-" + Date.now() + "-" + Math.floor(Math.random()*10000)));
+    if (data.isDefault !== false) {
+      for (const a of all) if (a.isDefault) {
+        await f.updateDoc(f.doc(f.db, "addresses", a.addressId), { isDefault:false, updatedAt:isoNow() });
       }
+    }
+    await f.setDoc(f.doc(f.db, "addresses", id), {
+      userId:u.uid, label:String(data.label || "Saved Address").trim(),
+      houseUnit:String(data.houseUnit || "").trim(), street:String(data.street || "").trim(),
+      barangay:String(data.barangay || "").trim(), city:String(data.city || "").trim(),
+      province:String(data.province || "").trim(), region:String(data.region || "").trim(),
+      postalCode:String(data.postalCode || "").trim(), country:String(data.country || "Philippines").trim(),
+      additionalInstruction:String(data.additionalInstruction || "").trim(),
+      isDefault:data.isDefault !== false, createdAt:data.createdAt || isoNow(), updatedAt:isoNow()
+    }, {merge:true});
+    if (data.isDefault !== false) {
+      await f.setDoc(f.doc(f.db, "users", u.uid), {
+        houseUnit:data.houseUnit || "", street:data.street || "", barangay:data.barangay || "",
+        city:data.city || "", province:data.province || "", region:data.region || "",
+        postalCode:data.postalCode || "", country:data.country || "Philippines",
+        additionalInstruction:data.additionalInstruction || "", updatedAt:isoNow()
+      }, {merge:true});
+    }
+    return addresses(u.uid);
+  }
 
-      if (assets.background) {
-        const hero = document.getElementById('home');
-        const bg = 'url("' + String(assets.background).replace(/"/g, '\\"') + '")';
-        document.documentElement.style.setProperty('--hero-image', bg);
-        if (hero) {
-          hero.style.backgroundImage =
-            'linear-gradient(rgba(0,0,0,.38), rgba(0,0,0,.62)), ' + bg;
-          hero.style.backgroundSize = 'cover';
-          hero.style.backgroundPosition = 'center';
-          hero.style.backgroundRepeat = 'no-repeat';
-        }
-      }
+  async function setDefaultAddress(userId, addressId) {
+    const f = await READY;
+    const u = await currentUser(true);
+    if (u.uid !== String(userId)) throw makeError("Invalid customer account.");
+    const all = await addresses(u.uid);
+    const selected = all.find(a => a.addressId === String(addressId));
+    if (!selected) throw makeError("Address not found.");
+    for (const a of all) {
+      await f.updateDoc(f.doc(f.db, "addresses", a.addressId), {isDefault:a.addressId === selected.addressId, updatedAt:isoNow()});
+    }
+    return addresses(u.uid);
+  }
 
-      if (assets.sakura) {
-        document.documentElement.style.setProperty(
-          '--sakura-image',
-          "url('" + String(assets.sakura).replace(/'/g, "\\'") + "')"
-        );
-      }
+  async function getProducts() {
+    const f = await READY;
+    const list = await getCollection("products");
+    return list.filter(p => p.name).map(p => ({
+      id:p.id, name:p.name, category:p.category || "Ramen", price:Number(p.price || 0),
+      image:p.image || "", description:p.description || "", available:p.available !== false,
+      bestSeller:!!p.bestSeller, newProduct:!!p.newProduct
+    }));
+  }
 
-      /* Preload the visible assets in parallel, but never block forever. */
-      const urls = [assets.logo, assets.background, assets.sakura].filter(Boolean);
-      if (!urls.length) {
-        markPageAssetReady_('brand');
-        return;
-      }
+  async function getBrandAssets() {
+    // Keep each large image in its own Firestore document so the
+    // Firestore 1 MiB document limit is not shared by logo + background.
+    const [main, logo, background] = await Promise.all([
+      getDocById("brandAssets", "main"),
+      getDocById("brandAssets", "logo"),
+      getDocById("brandAssets", "background")
+    ]);
 
-      let remaining = urls.length;
-      let marked = false;
-      const done = function() {
-        remaining--;
-        if (remaining <= 0 && !marked) {
-          marked = true;
-          markPageAssetReady_('brand');
-        }
+    return {
+      ...(main || {}),
+      logo: (logo && logo.imageUrl) || (main && main.logo) || "",
+      background: (background && background.imageUrl) || (main && main.background) || "",
+      logoUrl: (logo && logo.imageUrl) || (main && main.logoUrl) || (main && main.logo) || "",
+      backgroundUrl: (background && background.imageUrl) || (main && main.backgroundUrl) || (main && main.background) || ""
+    };
+  }
+
+  function imageObjectToDataUrl(image) {
+    if (!image || typeof image !== "object") return "";
+    const type = String(image.type || "image/jpeg").toLowerCase();
+    const base64 = String(image.base64 || "").trim();
+    if (!base64) return "";
+    if (!/^image\/(jpeg|jpg|png|webp)$/i.test(type)) {
+      throw makeError("Image must be JPG, PNG, or WEBP.");
+    }
+    return "data:" + type + ";base64," + base64;
+  }
+
+  function compressBrandImage(dataUrl, kind) {
+    return new Promise((resolve, reject) => {
+      if (!dataUrl) { reject(makeError("Please select an image.")); return; }
+      const img = new Image();
+      img.onload = function () {
+        try {
+          const isLogo = kind === "logo";
+          const max = isLogo ? 1000 : 1800;
+          const scale = Math.min(1, max / Math.max(img.width || 1, img.height || 1));
+          const w = Math.max(1, Math.round((img.width || 1) * scale));
+          const h = Math.max(1, Math.round((img.height || 1) * scale));
+          const canvas = document.createElement("canvas");
+          canvas.width = w; canvas.height = h;
+          const ctx = canvas.getContext("2d", {alpha:false});
+          if (!ctx) throw makeError("Your browser cannot process this image.");
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(0, 0, w, h);
+          ctx.drawImage(img, 0, 0, w, h);
+          let quality = isLogo ? 0.88 : 0.78;
+          let result = canvas.toDataURL("image/jpeg", quality);
+          while (result.length > 700000 && quality > 0.42) {
+            quality -= 0.06;
+            result = canvas.toDataURL("image/jpeg", quality);
+          }
+          if (result.length > 800000) {
+            const smaller = document.createElement("canvas");
+            smaller.width = Math.max(1, Math.round(w * 0.72));
+            smaller.height = Math.max(1, Math.round(h * 0.72));
+            const sctx = smaller.getContext("2d", {alpha:false});
+            sctx.fillStyle = "#ffffff";
+            sctx.fillRect(0, 0, smaller.width, smaller.height);
+            sctx.drawImage(img, 0, 0, smaller.width, smaller.height);
+            result = smaller.toDataURL("image/jpeg", 0.58);
+          }
+          if (result.length > 900000) throw makeError("Image is still too large. Please choose a smaller image.");
+          resolve(result);
+        } catch (e) { reject(e); }
       };
+      img.onerror = function () { reject(makeError("Unable to process the selected image.")); };
+      img.src = dataUrl;
+    });
+  }
 
-      urls.forEach(function(url) {
-        preloadPageImage_(url, done);
+  async function adminSaveBrandAsset(assetKey, image) {
+    const f = await READY;
+    await requireAdmin();
+    const key = String(assetKey || "").trim().toLowerCase();
+    if (key !== "logo" && key !== "background") {
+      throw makeError("Invalid brand asset. Use logo or background.");
+    }
+    const raw = imageObjectToDataUrl(image);
+    if (!raw) throw makeError("Please select an image first.");
+    const imageUrl = await compressBrandImage(raw, key);
+    await f.setDoc(
+      f.doc(f.db, "brandAssets", key),
+      {
+        assetKey: key,
+        imageUrl,
+        updatedAt: isoNow()
+      },
+      {merge:true}
+    );
+    return {
+      success: true,
+      assetKey: key,
+      imageUrl
+    };
+  }
+
+  async function getRamenLoadingImage() {
+    const p = await getBrandAssets();
+    return p.ramenLoadingImage || "";
+  }
+
+  function orderAddress(payload) {
+    return [payload.houseUnit,payload.street,payload.barangay,payload.city,payload.province,payload.region]
+      .map(v => String(v || "").trim()).filter(Boolean).join(", ");
+  }
+
+  async function saveOrder(orderId, payload) {
+    const f = await READY;
+    const u = await currentUser(true);
+    payload = payload || {};
+    if (String(payload.userId || "") !== u.uid) throw makeError("Please log in again.");
+    const cleanItems = Array.isArray(payload.items) ? payload.items.map(item => ({
+      productId:String(item.id || item.productId || ""),
+      productName:String(item.name || item.productName || "Ramen item"),
+      price:Number(item.price || 0), quantity:Number(item.quantity || 0),
+      subtotal:Number(item.subtotal != null ? item.subtotal : Number(item.price||0)*Number(item.quantity||0)),
+      itemStatus:"Preparing"
+    })).filter(x => x.quantity > 0) : [];
+    if (!cleanItems.length) throw makeError("The order contains no items.");
+    const total = cleanItems.reduce((s,i)=>s+i.subtotal,0);
+    const ref = f.doc(f.db, "orders", String(orderId));
+    const existing = await f.getDoc(ref);
+    if (existing.exists()) return {success:true, orderId:String(orderId), duplicate:true};
+    await f.setDoc(ref, {
+      orderId:String(orderId), userId:u.uid, customerName:String(payload.fullName || ""),
+      fullName:String(payload.fullName || ""), email:u.email || "", mobile:String(payload.mobile || ""),
+      items:cleanItems, total, paymentMethod:String(payload.paymentMethod || ""),
+      paymentStatus:"Pending", orderStatus:"Preparing", address:orderAddress(payload),
+      instruction:String(payload.additionalInstruction || ""), orderedAt:isoNow(),
+      customerConfirmed:false, confirmedAt:"", deliveredAt:"", closed:false
+    });
+    return {success:true, orderId:String(orderId), status:"Preparing"};
+  }
+
+  function normalizeOrder(o) {
+    if (!o) return null;
+    return {
+      orderId:String(o.orderId || o.id || ""), userId:String(o.userId || ""),
+      customerName:o.customerName || o.fullName || "Customer", fullName:o.fullName || o.customerName || "Customer",
+      email:o.email || "", mobile:o.mobile || "", items:Array.isArray(o.items) ? o.items.map((it,idx)=>({
+        itemIndex:idx, productId:String(it.productId || it.id || ""), productName:it.productName || it.name || "Ramen item",
+        price:Number(it.price || 0), quantity:Number(it.quantity || 0),
+        subtotal:Number(it.subtotal != null ? it.subtotal : Number(it.price||0)*Number(it.quantity||0)),
+        itemStatus:String(it.itemStatus || "Preparing")
+      })) : [],
+      total:Number(o.total || 0), paymentMethod:o.paymentMethod || "", paymentStatus:o.paymentStatus || "Pending",
+      orderStatus:o.orderStatus === "Pending" ? "Preparing" : (o.orderStatus || "Preparing"),
+      address:o.address || "", instruction:o.instruction || o.additionalInstruction || "",
+      orderedAt:cleanTimestamp(o.orderedAt), customerConfirmed:!!o.customerConfirmed,
+      confirmedAt:cleanTimestamp(o.confirmedAt), deliveredAt:cleanTimestamp(o.deliveredAt),
+      closed:!!o.closed, canRate:(o.orderStatus === "Delivered" && !!o.customerConfirmed)
+    };
+  }
+
+  async function getOrdersForUser(userId) {
+    const f = await READY;
+    const u = await currentUser(true);
+    if (u.uid !== String(userId)) throw makeError("Invalid customer account.");
+    const list = await getCollection("orders");
+    return list.filter(o => String(o.userId) === u.uid).map(normalizeOrder)
+      .sort((a,b)=>String(b.orderedAt).localeCompare(String(a.orderedAt)));
+  }
+
+  async function getReviewsForOrder(orderId, userId) {
+    const list = await getCollection("reviews");
+    return list.filter(r => String(r.orderId)===String(orderId) && String(r.customerId || r.userId)===String(userId));
+  }
+
+  async function getReviewForm(userId, orderId) {
+    const u = await currentUser(true);
+    if (u.uid !== String(userId)) throw makeError("Invalid customer account.");
+    const order = (await getOrdersForUser(u.uid)).find(o=>o.orderId===String(orderId));
+    if (!order) throw makeError("Order not found.");
+    if (order.orderStatus !== "Delivered" || !order.customerConfirmed) throw makeError("You can review this order only after it has been delivered and received.");
+    const reviews = await getReviewsForOrder(orderId,u.uid);
+    const byProduct = {};
+    reviews.forEach(r=>byProduct[String(r.productId)] = r);
+    return {
+      success:true, orderId:order.orderId, customerName:order.customerName || "Customer",
+      items:order.items.map(item=>({
+        productId:item.productId, productName:item.productName, quantity:item.quantity,
+        reviewed:!!byProduct[item.productId], existingRating:byProduct[item.productId]?.rating || 0,
+        existingReview:byProduct[item.productId]?.review || ""
+      })),
+      completed:order.items.every(item=>!!byProduct[item.productId])
+    };
+  }
+
+  async function submitReview(userId, orderId, productId, rating, review) {
+    const f = await READY;
+    const u = await currentUser(true);
+    if (u.uid !== String(userId)) throw makeError("Invalid customer account.");
+    rating = Number(rating); review=String(review||"").trim();
+    if (!Number.isFinite(rating) || rating<1 || rating>5) throw makeError("Please select a rating from 1 to 5 stars.");
+    if (review.length>1000) throw makeError("Review is too long. Please keep it under 1000 characters.");
+    const form = await getReviewForm(u.uid,orderId);
+    const item = form.items.find(i=>String(i.productId)===String(productId));
+    if (!item) throw makeError("That menu item was not part of this order.");
+    if (item.reviewed) throw makeError("You already reviewed this menu item.");
+    const id = "REV-" + Date.now() + "-" + Math.floor(Math.random()*10000);
+    await f.setDoc(f.doc(f.db,"reviews",id), {
+      reviewId:id, orderId:String(orderId), customerId:u.uid, productId:String(productId),
+      productName:item.productName, rating, review, customerName:form.customerName || "Customer",
+      submittedAt:isoNow(), status:"Published"
+    });
+    return {success:true,message:"Your review has been submitted.",reviewId:id};
+  }
+
+  async function getPublishedReviews() {
+    const f = await READY;
+    const list = await getCollection("reviews");
+    return list.filter(r=>String(r.status||"Published").toLowerCase()==="published")
+      .sort((a,b)=>String(b.submittedAt||"").localeCompare(String(a.submittedAt||""))).slice(0,12)
+      .map(r=>({reviewId:r.reviewId||r.id,orderId:r.orderId,productId:r.productId,productName:r.productName,rating:r.rating,review:r.review,customerName:r.customerName,submittedAt:cleanTimestamp(r.submittedAt)}));
+  }
+
+  async function getNotifications(userId) {
+    const f = await READY;
+    const u = await currentUser(true);
+    if (u.uid !== String(userId)) throw makeError("Invalid customer account.");
+    const list = await getCollection("notifications");
+    return list.filter(n=>String(n.userId)===u.uid && !n.readAt)
+      .sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0))
+      .map(n=>({...n,notificationId:n.notificationId||n.id,createdAt:cleanTimestamp(n.createdAt),readAt:cleanTimestamp(n.readAt)}));
+  }
+
+  async function markNotificationRead(userId, notificationId) {
+    const f = await READY;
+    const u = await currentUser(true);
+    if (u.uid !== String(userId)) throw makeError("Invalid customer account.");
+    const ref = f.doc(f.db,"notifications",String(notificationId));
+    const snap=await f.getDoc(ref);
+    if (!snap.exists() || String(snap.data().userId)!==u.uid) throw makeError("Notification not found.");
+    await f.updateDoc(ref,{readAt:isoNow()});
+    return {success:true};
+  }
+
+  async function respondReceipt(userId, orderId, received, notificationId) {
+    const f = await READY;
+    const u = await currentUser(true);
+    if (u.uid !== String(userId)) throw makeError("Invalid customer account.");
+    const ref=f.doc(f.db,"orders",String(orderId));
+    const snap=await f.getDoc(ref);
+    if(!snap.exists() || String(snap.data().userId)!==u.uid) throw makeError("Order not found.");
+    const o=snap.data();
+    if(String(o.orderStatus)!=="Delivered") throw makeError("The order has not been marked as delivered yet.");
+    const now=isoNow();
+    await f.updateDoc(ref,{customerConfirmed:!!received,confirmedAt:received?now:"",closed:!!received});
+    if(notificationId) {
+      try { await markNotificationRead(u.uid,notificationId); } catch(e) {}
+    }
+    return {success:true,received:!!received,closed:!!received,contact:{phone:"09123456789",email:"Mckenzieramenhouse@gmail.com",facebook:"Mckenzie Ramen House"}};
+  }
+
+  async function getAdminProducts() {
+    await requireAdmin();
+    return {success:true,products:await getProducts()};
+  }
+
+  async function saveProduct(data) {
+    const f=await READY;
+    await requireAdmin();
+    data=data||{};
+    const name=String(data.name||"").trim(), category=String(data.category||"").trim();
+    const description=String(data.description||"").trim(), price=Number(data.price);
+    if(!name) throw makeError("Product name is required.");
+    if(!category) throw makeError("Product category is required.");
+    if(!Number.isFinite(price)||price<0) throw makeError("Please enter a valid product price.");
+    let image = String(data.imageUrl || data.image || "").trim();
+    if (image && image.startsWith("data:")) {
+      throw makeError("This standalone version uses an image URL. Upload the image to the GitHub images folder, then paste its URL here.");
+    }
+    const id=String(data.id||"").trim() || ("PROD-" + Date.now());
+    await f.setDoc(f.doc(f.db,"products",id),{
+      name,category,price,image,description,
+      available:data.available!==false,
+      bestSeller:!!data.bestSeller,newProduct:!!data.newProduct,
+      updatedAt:isoNow()
+    },{merge:true});
+    return {success:true,productId:id,products:await getProducts()};
+  }
+
+  async function deleteProduct(id) {
+    const f=await READY;
+    await requireAdmin();
+    id=String(id||"").trim();
+    if(!id) throw makeError("Product ID is required.");
+    await f.deleteDoc(f.doc(f.db,"products",id));
+    return {success:true,products:await getProducts()};
+  }
+
+  async function adminOrders() {
+    await requireAdmin();
+    const list=await getCollection("orders");
+    const orders=list.map(normalizeOrder);
+    const reviews=await getCollection("reviews");
+    const notes=await getCollection("notifications");
+    orders.forEach(o=>{
+      const rs=reviews.filter(r=>String(r.orderId)===o.orderId);
+      const productIds=new Set(rs.map(r=>String(r.productId)));
+      o.reviewTotal=o.items.length;
+      o.reviewedCount=o.items.filter(i=>productIds.has(String(i.productId))).length;
+      o.reviewCompleted=o.reviewTotal>0 && o.reviewedCount>=o.reviewTotal;
+      o.reviewRequested=notes.some(n=>String(n.orderId)===o.orderId && n.type==="REVIEW_REQUEST");
+    });
+    return {success:true,orders:orders.sort((a,b)=>String(b.orderedAt).localeCompare(String(a.orderedAt)))};
+  }
+
+  async function updateOrderItemStatus(orderId,index,status) {
+    const f=await READY; await requireAdmin();
+    const ref=f.doc(f.db,"orders",String(orderId)); const snap=await f.getDoc(ref);
+    if(!snap.exists()) throw makeError("Order not found.");
+    const o=snap.data();
+    if(o.orderStatus==="Delivered" || o.closed) throw makeError("This order is already closed and can no longer be changed.");
+    const items=Array.isArray(o.items)?o.items.map(x=>({...x})):[];
+    const i=Number(index);
+    if(!items[i]) throw makeError("Order item not found.");
+    const current=String(items[i].itemStatus||"Preparing");
+    if(current==="Ready" && String(status)!=="Ready") return {success:true,order:normalizeOrder(o)};
+    items[i].itemStatus=String(status)==="Ready"?"Ready":"Preparing";
+    await f.updateDoc(ref,{items,updatedAt:isoNow()});
+    const fresh=(await f.getDoc(ref)).data();
+    return {success:true,order:normalizeOrder(fresh)};
+  }
+
+  async function updateOrderStatus(orderId,status) {
+    const f=await READY; await requireAdmin();
+    const ref=f.doc(f.db,"orders",String(orderId)); const snap=await f.getDoc(ref);
+    if(!snap.exists()) throw makeError("Order not found.");
+    const o=snap.data(), current=o.orderStatus==="Pending"?"Preparing":(o.orderStatus||"Preparing");
+    if(current==="Delivered" || o.closed) throw makeError("This order is already closed and can no longer be changed.");
+    let next=String(status||"");
+    if(next==="Ready") {
+      if(current!=="Preparing") throw makeError("Order must be in Preparing before it can be marked Ready.");
+      if(!Array.isArray(o.items)||!o.items.length||!o.items.every(i=>String(i.itemStatus||"Preparing")==="Ready")) {
+        throw makeError("All menu items must be Ready before the order can be moved On the Way.");
+      }
+      next="On the Way";
+    } else if(next==="On the Way" && current!=="Ready") {
+      // Kept for compatibility; admin UI normally jumps Ready -> On the Way.
+      throw makeError("Order must be Ready before it can be moved On the Way.");
+    } else if(next==="Delivered" && current!=="On the Way") {
+      throw makeError("Order must be On the Way before it can be marked Delivered.");
+    }
+    const patch={orderStatus:next,updatedAt:isoNow()};
+    if(next==="Delivered") { patch.deliveredAt=isoNow(); patch.customerConfirmed=false; patch.closed=false; }
+    await f.updateDoc(ref,patch);
+    if(next==="Delivered" && o.userId) {
+      const nid="NTF-"+Date.now()+"-"+Math.floor(Math.random()*10000);
+      await f.setDoc(f.doc(f.db,"notifications",nid),{
+        notificationId:nid,userId:o.userId,orderId:String(orderId),type:"RECEIPT_CONFIRMATION",
+        title:"🍜 Did you receive your food?",
+        message:"Your McKenzie Ramen House order was marked as Delivered. Did you receive your food?",
+        createdAt:isoNow(),readAt:""
       });
-
-      /* If Google's image proxy is slow, don't make the customer stare at the loader. */
-      setTimeout(function() {
-        if (!marked) {
-          marked = true;
-          markPageAssetReady_('brand');
-        }
-      }, 3500);
-    })
-    .withFailureHandler(function(error) {
-      console.error('Brand assets error:', error);
-      markPageAssetReady_('brand');
-    })
-    .getBrandAssets();
-}
-
-/* =========================================================
-   PRODUCTS
-========================================================= */
-
-function loadProducts() {
-
-  google.script.run
-
-    .withSuccessHandler(
-      function(products) {
-
-        try { localStorage.setItem('mckenzieProductsCache', JSON.stringify(products || [])); } catch (e) {}
-
-        const container =
-          document.getElementById(
-            "products"
-          );
-
-
-        container.innerHTML = "";
-        window.mckenzieProducts = {};
-
-        if (
-          !products ||
-          products.length === 0
-        ) {
-
-          container.innerHTML = `
-
-            <div class="loading">
-
-              No menu items available.
-
-            </div>
-
-          `;
-
-          return;
-
-        }
-
-
-        let productImagesPending = 0;
-        let productImagesFinished = 0;
-
-        function finishProductImages_() {
-          if (productImagesFinished >= productImagesPending) {
-            markPageAssetReady_('products');
-          }
-        }
-
-        products.forEach(
-          function(product, productIndex) {
-
-            if (product.id === undefined || product.id === null || product.id === "") product.id = productIndex;
-            // ALWAYS create a unique cart identity for this exact menu row.
-            product._cartKey = "product_" + String(product.id) + "__" + String(productIndex);
-            window.mckenzieProducts[product._cartKey] = product;
-
-            const card =
-              document.createElement(
-                "article"
-              );
-
-
-            card.className =
-              "product-card";
-
-
-            /* =========================================
-               IMAGE
-            ========================================= */
-
-            let imageHtml = "";
-
-
-            if (product.image) {
-
-              imageHtml = `
-
-                <img
-                  class="product-image"
-                  src="${escapeHtml(product.image)}"
-                  alt="${escapeHtml(product.name)}"
-                  loading="eager"
-                  onload="this.classList.add('image-ready');"
-                  onerror="this.classList.add('image-failed');this.nextElementSibling.style.display='flex';"
-                >
-
-                <div
-                  style="
-                    display:none;
-                    width:100%;
-                    height:100%;
-                    align-items:center;
-                    justify-content:center;
-                    color:#f4c45a;
-                    font-size:45px;
-                    background:#35140e;
-                  "
-                >
-                  🍜
-                </div>
-
-              `;
-
-            } else {
-
-              imageHtml = `
-
-                <div
-                  style="
-                    width:100%;
-                    height:100%;
-                    display:flex;
-                    align-items:center;
-                    justify-content:center;
-                    color:#f4c45a;
-                    font-size:45px;
-                    background:#35140e;
-                  "
-                >
-                  🍜
-                </div>
-
-              `;
-
-            }
-
-
-            /* =========================================
-               BADGE
-            ========================================= */
-
-            let badgeHtml = "";
-
-
-            if (
-              product.bestSeller === true
-            ) {
-
-              badgeHtml = `
-
-                <div class="product-badge best-seller">
-
-                  <span class="badge-icon">
-                    🏆
-                  </span>
-
-                  <span class="badge-text">
-                    BEST SELLER
-                  </span>
-
-                </div>
-
-              `;
-
-            }
-            else if (
-              product.newProduct === true
-            ) {
-
-              badgeHtml = `
-
-                <div class="product-badge new-product">
-
-                  <span class="badge-icon">
-                    ✨
-                  </span>
-
-                  <span class="badge-text">
-                    NEW
-                  </span>
-
-                </div>
-
-              `;
-
-            }
-
-
-            /* =========================================
-               CARD
-            ========================================= */
-
-            card.innerHTML = `
-
-              <div class="product-image-wrap">
-
-                ${badgeHtml}
-
-                ${imageHtml}
-
-                <div class="steam">
-
-                  <i></i>
-                  <i></i>
-                  <i></i>
-
-                </div>
-
-              </div>
-
-
-              <div class="product-content">
-
-                <span class="product-category">
-
-                  ${escapeHtml(
-                    product.category ||
-                    "RAMEN"
-                  )}
-
-                </span>
-
-
-                <h3 class="product-name">
-
-                  ${escapeHtml(
-                    product.name
-                  )}
-
-                </h3>
-
-
-                <p class="product-description">
-
-                  ${escapeHtml(
-                    product.description ||
-                    ""
-                  )}
-
-                </p>
-
-
-                <div class="product-bottom">
-
-                  <span class="price">
-                    ₱${formatPrice(product.price)}
-                  </span>
-
-                  ${product.available ? `
-                    <div class="add-cart-control" data-cart-control="${escapeHtml(String(product._cartKey))}">
-                      <button type="button" class="add-cart-plus" aria-label="Add ${escapeHtml(product.name)} to cart">+</button>
-                    </div>
-                  ` : `
-                    <span class="unavailable">Unavailable</span>
-                  `}
-
-                </div>
-
-              </div>
-
-            `;
-
-
-            container.appendChild(
-              card
-            );
-
-            const productImg = card.querySelector('.product-image');
-            if (productImg) {
-              productImagesPending++;
-              const finishOne = function() {
-                if (finishOne.done) return;
-                finishOne.done = true;
-                productImagesFinished++;
-                finishProductImages_();
-              };
-              productImg.addEventListener('load', finishOne, { once: true });
-              productImg.addEventListener('error', finishOne, { once: true });
-              if (productImg.complete) finishOne();
-            }
-
-            const cartControl = card.querySelector("[data-cart-control]");
-            if (cartControl) {
-              renderCartControls_(String(product._cartKey));
-            }
-
-          }
-        );
-
-        // Migrate any cart entries from the older Product-ID-only format
-        // after the complete product list is available.
-        normalizeCartItemsForCurrentProducts_();
-        saveCart_();
-        renderAllCartControls_();
-
-        if (productImagesPending === 0) {
-          markPageAssetReady_('products');
-        }
-
-      }
-    )
-
-    .withFailureHandler(
-      function(error) {
-
-        console.error(
-          "Products error:",
-          error
-        );
-
-
-        document.getElementById(
-          "products"
-        ).innerHTML = `
-
-          <div class="loading">
-
-            Unable to load the menu.
-
-          </div>
-
-        `;
-        markPageAssetReady_('products');
-
-      }
-    )
-
-    .getProducts();
-
-}
-
-/* Do not close the ramen loader early while product photos are still loading.
-   The global 12-second safety timeout is the only emergency fallback. */
-
-
-/* =========================================================
-   PRICE
-========================================================= */
-
-function formatPrice(price) {
-
-  const number =
-    Number(price);
-
-
-  if (
-    isNaN(number)
-  ) {
-
-    return price || "0.00";
-
-  }
-
-
-  return number.toFixed(2);
-
-}
-
-
-/* =========================================================
-   HTML ESCAPE
-========================================================= */
-
-function escapeHtml(value) {
-
-  return String(
-    value || ""
-  )
-
-    .replace(
-      /&/g,
-      "&amp;"
-    )
-
-    .replace(
-      /</g,
-      "&lt;"
-    )
-
-    .replace(
-      />/g,
-      "&gt;"
-    )
-
-    .replace(
-      /"/g,
-      "&quot;"
-    )
-
-    .replace(
-      /'/g,
-      "&#039;"
-    );
-
-}
-
-
-/* =========================================================
-   FALLING PETALS
-========================================================= */
-
-function createPetals() {
-
-  const container =
-    document.getElementById(
-      "petals"
-    );
-
-
-  for (
-    let i = 0;
-    i < 32;
-    i++
-  ) {
-
-    const petal =
-      document.createElement(
-        "span"
-      );
-
-
-    petal.className =
-      "petal";
-
-
-    petal.style.left =
-      Math.random() * 100 +
-      "%";
-
-
-    petal.style.animationDuration =
-      (
-        7 +
-        Math.random() * 8
-      ) +
-      "s";
-
-
-    petal.style.animationDelay =
-      (
-        -Math.random() * 12
-      ) +
-      "s";
-
-
-    petal.style.width =
-      (
-        8 +
-        Math.random() * 9
-      ) +
-      "px";
-
-
-    petal.style.height =
-      (
-        5 +
-        Math.random() * 5
-      ) +
-      "px";
-
-
-    petal.style.opacity =
-      (
-        .45 +
-        Math.random() * .45
-      );
-
-
-    container.appendChild(
-      petal
-    );
-
-  }
-
-}
-
-
-/* =========================================================
-   DO NOT AUTO-OPEN EMAIL VERIFICATION ON PAGE LOAD
-   OTP appears only after Create Account submits registration.
-========================================================= */
-try {
-  /* Clear only the stale display trigger; verification data itself is not used here. */
-  const pendingVerification = localStorage.getItem("mckenziePendingVerification");
-  if (pendingVerification) {
-    /* Leave stored data available for the active Create Account flow,
-       but never reopen the OTP modal just because the page was refreshed. */
-  }
-} catch (error) {}
-
-
-/* =========================================================
-   STICKY NAV + SAME-PAGE LOGO RELOAD
-========================================================= */
-(function initStickyNavigation_() {
-  const nav = document.getElementById("siteStickyNav");
-  if (!nav) return;
-
-  const links = Array.from(nav.querySelectorAll("a[data-section]"));
-  const sections = links.map(function(link) {
-    return document.getElementById(link.getAttribute("data-section"));
-  }).filter(Boolean);
-
-  function updateStickyNav_() {
-    const y = window.scrollY || window.pageYOffset || 0;
-    nav.classList.toggle("show", y > 170);
-
-    let current = "home";
-    const marker = y + 130;
-    sections.forEach(function(section) {
-      if (section.offsetTop <= marker) current = section.id;
-    });
-
-    links.forEach(function(link) {
-      link.classList.toggle(
-        "active",
-        link.getAttribute("data-section") === current
-      );
-    });
-  }
-
-  let ticking = false;
-  window.addEventListener("scroll", function() {
-    if (ticking) return;
-    ticking = true;
-    window.requestAnimationFrame(function() {
-      updateStickyNav_();
-      ticking = false;
-    });
-  }, { passive:true });
-
-  links.forEach(function(link) {
-    link.addEventListener("click", function() {
-      setTimeout(updateStickyNav_, 50);
-    });
-  });
-
-  updateStickyNav_();
-})();
-
-function goToHomeFromLogo_() {
-  const home = document.getElementById("home");
-  if (home) {
-    home.scrollIntoView({ behavior: "smooth", block: "start" });
-  } else {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }
-  setTimeout(function() {
-    try { history.replaceState(null, "", "#home"); } catch (e) {}
-    updateStickyNav_();
-  }, 450);
-}
-
-(function restoreSamePagePosition_() {
-  try {
-    const raw = sessionStorage.getItem("mckenzieReloadScrollY");
-    if (raw === null) return;
-    sessionStorage.removeItem("mckenzieReloadScrollY");
-    const y = Math.max(0, Number(raw) || 0);
-    window.addEventListener("load", function() {
-      setTimeout(function() {
-        window.scrollTo(0, y);
-      }, 100);
-    }, { once:true });
-  } catch (e) {}
-})();
-
-/* =========================================================
-   START
-========================================================= */
-
-createPetals();
-
-updateHeroAccountButton_();
-updateStickyCartButton_();
-
-/* Show the I9 ramen loader while the actual page assets finish loading. */
-startHomepageRamenLoader_();
-loadBrandAssets();
-loadProducts();
-
-</script>
-
-
-<style id="mckenzie-review-notify-style">
-#mckReviewNotifyModal{display:none;position:fixed;inset:0;z-index:999998;background:rgba(9,3,3,.72);align-items:center;justify-content:center;padding:20px}
-#mckReviewNotifyModal.show{display:flex}
-#mckReviewNotifyBox{width:min(480px,100%);background:#fffaf5;border:1px solid #ead8cf;border-radius:22px;padding:30px 24px;box-shadow:0 25px 80px rgba(0,0,0,.35);text-align:center}
-#mckReviewNotifyBox .rIcon{font-size:48px;margin-bottom:8px}
-#mckReviewNotifyBox h2{margin:0 0 10px;color:#6b111b;font-family:"Playfair Display",serif;font-size:30px}
-#mckReviewNotifyBox p{margin:0 auto 22px;color:#5b4a43;line-height:1.65;font-size:14px}
-#mckReviewNotifyActions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
-#mckReviewNotifyActions button{min-width:150px;padding:12px 18px;border-radius:12px;border:1px solid #a51620;font-weight:900;cursor:pointer}
-#mckReviewOpen{background:#a51620;color:#fff}
-#mckReviewLater{background:#fff;color:#8b1118}
-</style>
-<div id="mckReviewNotifyModal" aria-modal="true" role="dialog">
-  <div id="mckReviewNotifyBox">
-    <div class="rIcon">⭐</div>
-    <h2 id="mckReviewNotifyTitle">Your ramen review is ready!</h2>
-    <p id="mckReviewNotifyMessage">Your order has been delivered. Please share your rating and review for the menu items you received.</p>
-    <div id="mckReviewNotifyActions">
-      <button id="mckReviewOpen" type="button">⭐ Open Survey</button>
-      <button id="mckReviewLater" type="button">Later</button>
-    </div>
-  </div>
-</div>
-<script id="mckenzie-review-notify-script">
-(function(){
-  var API=(typeof MCKENZIE_ORDER_API_URL!=='undefined')?MCKENZIE_ORDER_API_URL:'';
-  var shown={};
-  var current=null;
-  var reviewPollBusy=false;
-  var reviewPollTimer=null;
-  function user(){try{return JSON.parse(localStorage.getItem('mckenzieUser')||'null')||{};}catch(e){return {};}}
-  function callApi(api,params,done){
-    if(window.google&&google.script&&google.script.run){
-      var runner=google.script.run.withSuccessHandler(function(v){done(v||{});}).withFailureHandler(function(e){done({success:false,error:e&&e.message?e.message:String(e)});});
-      if(api==='customerNotifications') runner.getCustomerNotifications(String(params.userId||''));
-      else if(api==='markCustomerNotificationRead') runner.markCustomerNotificationRead(String(params.userId||''),String(params.notificationId||''));
-      return;
     }
-    if(!API){done({success:false,error:'Customer API is unavailable.'});return;}
-    var cb='mckReviewCb_'+Date.now()+'_'+Math.floor(Math.random()*100000);
-    var sc=document.createElement('script');
-    var q=[];Object.keys(params||{}).forEach(function(k){q.push(encodeURIComponent(k)+'='+encodeURIComponent(params[k]));});
-    window[cb]=function(v){try{delete window[cb];}catch(e){}if(sc.parentNode)sc.parentNode.removeChild(sc);done(v||{});};
-    sc.onerror=function(){try{delete window[cb];}catch(e){}if(sc.parentNode)sc.parentNode.removeChild(sc);done({success:false,error:'Unable to reach the restaurant server.'});};
-    sc.src=API+'?api='+encodeURIComponent(api)+'&callback='+encodeURIComponent(cb)+'&'+q.join('&');
-    document.head.appendChild(sc);
+    return {success:true,order:normalizeOrder((await f.getDoc(ref)).data())};
   }
-  function openReview(n){
-    if(!n||current)return;
-    current=n;
-    var m=document.getElementById('mckReviewNotifyModal');if(!m)return;
-    document.getElementById('mckReviewNotifyTitle').textContent=n.title||'Your ramen review is ready!';
-    document.getElementById('mckReviewNotifyMessage').textContent=n.message||'Please share your rating and review.';
-    m.classList.add('show');document.body.style.overflow='hidden';
-  }
-  function closeReview(){var m=document.getElementById('mckReviewNotifyModal');if(m)m.classList.remove('show');document.body.style.overflow='';current=null;}
-  function markRead(){
-    if(!current)return;var u=user();
-    callApi('markCustomerNotificationRead',{userId:u.userId||'',notificationId:current.notificationId||''},function(){});
-  }
-  function pollReview(){
-    var u=user();
-    if(current||reviewPollBusy)return;
-    if(!u.userId){scheduleReviewPoll_();return;}
-    reviewPollBusy=true;
-    callApi('customerNotifications',{userId:u.userId,_ts:Date.now()},function(v){
-      reviewPollBusy=false;
-      if(!v||!v.success||!Array.isArray(v.notifications)){scheduleReviewPoll_();return;}
-      var n=v.notifications.find(function(x){return x.type==='REVIEW_REQUEST'&&!shown[String(x.notificationId||'')];});
-      if(n){shown[String(n.notificationId||'')]=true;openReview(n);}
-      scheduleReviewPoll_();
-    });
-  }
-  function scheduleReviewPoll_(){
-    clearTimeout(reviewPollTimer);
-    reviewPollTimer=setTimeout(pollReview,500);
-  }
-  document.addEventListener('DOMContentLoaded',function(){
-    var openBtn=document.getElementById('mckReviewOpen');
-    var laterBtn=document.getElementById('mckReviewLater');
-    if(openBtn)openBtn.onclick=function(){if(current){var id=current.orderId||'';markRead();closeReview();openRatingPage_(id);}};
-    if(laterBtn)laterBtn.onclick=function(){markRead();closeReview();};
-    pollReview();
-  });
-})();
-</script>
 
-<style id="mckenzie-inline-survey-style">
-.mck-inline-survey-content{flex:1;overflow:auto;background:linear-gradient(180deg,#fffaf5,#f7e7db);padding:22px}
-.mck-survey-wrap{max-width:820px;margin:0 auto}.mck-survey-loading{text-align:center;padding:50px;color:#806c65;font-size:13px}.mck-survey-error{background:#fff0f0;color:#a51620;border:1px solid #edc3c3;border-radius:11px;padding:13px;font-size:12px}.mck-survey-success{text-align:center;background:#eaf7ed;color:#1e713a;border:1px solid #cce7d3;border-radius:13px;padding:15px;font-size:12px;font-weight:800}.mck-survey-order{font-weight:900;color:#60151f;font-size:14px;margin-bottom:4px}.mck-survey-meta{font-size:11px;color:#806c65}.mck-survey-item{border:1px solid #ead4c9;border-radius:15px;padding:17px;margin-top:14px;background:#fff}.mck-survey-item-name{font-weight:900;color:#4f201c;font-size:15px}.mck-survey-qty{font-size:10px;color:#806c65;margin-top:3px}.mck-survey-label{font-size:10px;font-weight:900;color:#806c65;text-transform:uppercase;letter-spacing:.5px;margin-top:12px}.mck-survey-stars{display:flex;gap:3px;margin:8px 0}.mck-survey-star{border:0;background:transparent;color:#cdbdb5;font-size:29px;cursor:pointer;padding:0 3px;line-height:1}.mck-survey-star.active{color:#e9ad35}.mck-survey-review{width:100%;min-height:88px;resize:vertical;border:1px solid #ead4c9;border-radius:11px;padding:11px 12px;margin-top:7px;outline:none;font:inherit;font-size:12px}.mck-survey-submit-row{display:flex;justify-content:flex-end;margin-top:12px}.mck-survey-submit{border:0;border-radius:11px;padding:11px 17px;background:#a51620;color:#fff;font-weight:900;cursor:pointer}.mck-survey-submit:disabled{opacity:.55;cursor:wait}.mck-survey-reviewed{background:#e9f7ed;border:1px solid #c9e7d2;color:#23733e;border-radius:10px;padding:10px;font-size:11px;font-weight:800;margin-top:10px}
-@media(max-width:600px){.mck-inline-survey-content{padding:15px}.mck-survey-submit-row{justify-content:stretch}.mck-survey-submit{width:100%}}
-</style>
-<script id="mckenzie-inline-survey-script">
-(function(){
-  var surveyForm=null, surveyOrderId='', surveyBusy=false;
-  function surveyUser(){try{return JSON.parse(localStorage.getItem('mckenzieUser')||localStorage.getItem('mckenzie_user')||'null')||{};}catch(e){return {};}}
-  function surveyEsc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m];});}
-  function surveyCall(api,params,done){
-    if(window.google&&google.script&&google.script.run){
-      var runner=google.script.run.withSuccessHandler(function(v){done(v||{});}).withFailureHandler(function(e){done({success:false,error:e&&e.message?e.message:String(e)});});
-      if(api==='getCustomerReviewForm') runner.getCustomerReviewForm(String(params.userId||''),String(params.orderId||''));
-      else if(api==='submitCustomerReview') runner.submitCustomerReview(String(params.userId||''),String(params.orderId||''),String(params.productId||''),Number(params.rating||0),String(params.review||''));
-      return;
-    }
-    var apiBase=(typeof MCKENZIE_ORDER_API_URL!=='undefined')?MCKENZIE_ORDER_API_URL:'';
-    if(!apiBase){done({success:false,error:'Customer API is unavailable.'});return;}
-    var cb='mckSurveyApi_'+Date.now()+'_'+Math.floor(Math.random()*100000),sc=document.createElement('script');
-    var q=[];Object.keys(params||{}).forEach(function(k){q.push(encodeURIComponent(k)+'='+encodeURIComponent(params[k]));});
-    window[cb]=function(v){try{delete window[cb];}catch(e){}if(sc.parentNode)sc.parentNode.removeChild(sc);done(v||{});};
-    sc.onerror=function(){try{delete window[cb];}catch(e){}if(sc.parentNode)sc.parentNode.removeChild(sc);done({success:false,error:'Unable to reach the restaurant server.'});};
-    sc.src=apiBase+'?api='+encodeURIComponent(api)+'&callback='+encodeURIComponent(cb)+'&'+q.join('&');
-    document.head.appendChild(sc);
+  async function adminReviews() {
+    await requireAdmin();
+    const reviews=await getCollection("reviews");
+    const published=reviews.filter(r=>String(r.status||"Published").toLowerCase()==="published");
+    const avg=published.length ? published.reduce((s,r)=>s+Number(r.rating||0),0)/published.length : 0;
+    return {success:true,reviews:reviews.sort((a,b)=>String(b.submittedAt||"").localeCompare(String(a.submittedAt||""))).map(r=>({
+      reviewId:r.reviewId||r.id,orderId:r.orderId,customerId:r.customerId,productId:r.productId,
+      productName:r.productName,rating:r.rating,review:r.review,customerName:r.customerName,
+      submittedAt:cleanTimestamp(r.submittedAt),status:r.status||"Published"
+    })),stats:{total:reviews.length,published:published.length,hidden:reviews.length-published.length,average:Math.round(avg*10)/10}};
   }
-  function surveyMessage(msg,cls){var c=document.getElementById('mckSurveyContent');if(c)c.innerHTML='<div class="mck-survey-wrap"><div class="'+cls+'">'+surveyEsc(msg)+'</div></div>';}
-  window.loadInlineSurvey_=function(orderId){
-    surveyOrderId=String(orderId||'').trim();var u=surveyUser();
-    if(!u.userId){surveyMessage('Please log in to review your order.','mck-survey-error');return;}
-    surveyMessage('Loading your order…','mck-survey-loading');
-    surveyCall('getCustomerReviewForm',{userId:u.userId,orderId:surveyOrderId},function(v){surveyForm=v;if(!v||!v.success){surveyMessage(v&&v.error?v.error:'Unable to load the review form.','mck-survey-error');return;}renderSurvey_();});
+
+  async function updateReviewStatus(id,status) {
+    const f=await READY; await requireAdmin();
+    if(!["Published","Hidden"].includes(String(status))) throw makeError("Invalid review status.");
+    const ref=f.doc(f.db,"reviews",String(id)); const snap=await f.getDoc(ref);
+    if(!snap.exists()) throw makeError("Review not found.");
+    await f.updateDoc(ref,{status:String(status)});
+    return {success:true,status:String(status)};
+  }
+
+  async function notifyCustomerReview(orderId,forceResend) {
+    const f=await READY; await requireAdmin();
+    const orderSnap=await f.getDoc(f.doc(f.db,"orders",String(orderId)));
+    if(!orderSnap.exists()) throw makeError("Order not found.");
+    const order=orderSnap.data();
+    if(order.orderStatus!=="Delivered") throw makeError("The customer can only be notified after the order is Delivered.");
+    if(!order.customerConfirmed) throw makeError("Wait for the customer to confirm that the order was received before sending the review request.");
+    const reviews=await getCollection("reviews");
+    const complete=(Array.isArray(order.items)?order.items:[]).every(item=>reviews.some(r=>String(r.orderId)===String(orderId)&&String(r.productId)===String(item.productId)));
+    if(complete) return {success:true,sent:false,completed:true,message:"Customer has already reviewed this order."};
+    const notes=await getCollection("notifications");
+    const existing=notes.find(n=>String(n.orderId)===String(orderId)&&n.type==="REVIEW_REQUEST"&&!n.readAt);
+    if(existing && !forceResend) return {success:true,sent:false,alreadyNotified:true,notificationId:existing.notificationId||existing.id,message:"Review notification is already waiting for the customer."};
+    if(forceResend && existing) await f.updateDoc(f.doc(f.db,"notifications",existing.id),{readAt:isoNow()});
+    const nid="NTF-"+Date.now()+"-"+Math.floor(Math.random()*10000);
+    await f.setDoc(f.doc(f.db,"notifications",nid),{
+      notificationId:nid,userId:String(order.userId),orderId:String(orderId),type:"REVIEW_REQUEST",
+      title:"🍜 Your ramen review is ready!",
+      message:"Your order has been delivered. Please share your rating and review for the menu items you received.",
+      createdAt:isoNow(),readAt:""
+    });
+    return {success:true,sent:true,resent:!!forceResend,notificationId:nid,message:forceResend?"Review resent to the customer.":"Review notification sent to the customer."};
+  }
+
+  async function psgc(url) {
+    const r=await fetch(url,{headers:{Accept:"application/json"}});
+    if(!r.ok) throw makeError("Unable to load Philippine location data.");
+    return r.json();
+  }
+
+  async function dispatch(name,args) {
+    args=args||[];
+    switch(name) {
+      case "loginUser": return loginUser(args[0],args[1]);
+      case "requestEmailVerification": return createAccount(args[0],args[1],args[2],args[3],args[4]);
+      case "verifyEmailCode": return verifyEmailCode(args[0],args[1]);
+      case "getUserProfile": return getProfile(args[0]);
+      case "updateUserProfile": return saveProfile(args[0]);
+      case "getCheckoutCustomerById": return getProfile(args[0]);
+      case "getCustomerAddresses": return addresses(args[0]);
+      case "saveCustomerAddress": return saveAddress(args[0]);
+      case "setDefaultCustomerAddress": return setDefaultAddress(args[0],args[1]);
+      case "getProducts": return getProducts();
+      case "getBrandAssets": return getBrandAssets();
+      case "getRamenLoadingImage": return getRamenLoadingImage();
+      case "recordCompletedCustomerOrder": return saveOrder(args[0],args[1]);
+      case "recordOrder": return saveOrder(args[0],args[1]);
+      case "getCustomerOrderHistory": return getOrdersForUser(args[0]);
+      case "getCustomerPaymentHistory": return (await getOrdersForUser(args[0])).map(o=>({orderId:o.orderId,total:o.total,paymentMethod:o.paymentMethod,paymentStatus:o.paymentStatus,orderStatus:o.orderStatus,orderedAt:o.orderedAt}));
+      case "confirmCustomerOrderReceived": return respondReceipt(args[0],args[1],true,"");
+      case "respondCustomerReceipt": return respondReceipt(args[0],args[1],String(args[2]).toLowerCase()==="true",args[3]);
+      case "getCustomerReviewForm": return getReviewForm(args[0],args[1]);
+      case "submitCustomerReview": return submitReview(args[0],args[1],args[2],args[3],args[4]);
+      case "getPublishedReviews": return getPublishedReviews();
+      case "getCustomerNotifications": return getNotifications(args[0]);
+      case "markCustomerNotificationRead": return markNotificationRead(args[0],args[1]);
+      case "requestPasswordResetOtp": return sendPasswordReset(args[0]);
+      case "requestPasswordResetOtpForUser": {
+        const p=await getProfile(args[0]); return sendPasswordReset(p.email);
+      }
+      case "resetPasswordWithOtp": throw makeError("Please use the password-reset link sent to your email.");
+      case "changePassword": return changePassword(args[0],args[1],args[2]);
+      case "getAddressRegions": return psgc("https://psgc.cloud/api/regions");
+      case "getAddressProvinces": return psgc("https://psgc.cloud/api/regions/"+encodeURIComponent(args[0])+"/provinces");
+      case "getAddressCities": return psgc("https://psgc.cloud/api/provinces/"+encodeURIComponent(args[0])+"/cities-municipalities");
+      case "getAddressBarangays": return psgc("https://psgc.cloud/api/cities-municipalities/"+encodeURIComponent(args[0])+"/barangays");
+      case "adminLogin": {
+        const f=await READY;
+        const cred=await f.signInWithEmailAndPassword(f.auth,String(args[0]||"").trim().toLowerCase(),String(args[1]||""));
+        if (!(await isAdmin())) { await f.signOut(f.auth); throw makeError("This Firebase account is not configured as the McKenzie admin."); }
+        return {success:true,token:await cred.user.getIdToken(),email:cred.user.email};
+      }
+      case "adminGetBrandAssets": return getBrandAssets();
+      case "adminSaveBrandAsset": return adminSaveBrandAsset(args[0], args[1]);
+      case "adminGetProducts": return getAdminProducts();
+      case "adminSaveProduct": return saveProduct(args[0]);
+      case "adminDeleteProduct": return deleteProduct(args[1]);
+      case "adminGetOrders": return adminOrders();
+      case "adminUpdateOrderItemStatus": return updateOrderItemStatus(args[1],args[2],args[3]);
+      case "adminUpdateOrderStatus": return updateOrderStatus(args[1],args[2]);
+      case "adminGetReviews": return adminReviews();
+      case "adminUpdateReviewStatus": return updateReviewStatus(args[1],args[2]);
+      case "adminNotifyCustomerReview": return notifyCustomerReview(args[1],args[2]);
+      default: throw makeError("Standalone backend function not implemented: " + name);
+    }
+  }
+
+  // Immediate browser-compatible replacement for google.script.run.
+  // Existing UI calls are queued until Firebase modules finish loading.
+  const runner = {
+    _success: null, _failure: null,
+    withSuccessHandler(fn){ this._success=fn; return this; },
+    withFailureHandler(fn){ this._failure=fn; return this; }
   };
-  function renderSurvey_(){
-    var c=document.getElementById('mckSurveyContent');if(!c||!surveyForm)return;
-    if(surveyForm.completed){c.innerHTML='<div class="mck-survey-wrap"><div class="mck-survey-success">✓ Thank you! You have already reviewed every menu item in order <b>#'+surveyEsc(surveyForm.orderId)+'</b>.</div></div>';return;}
-    var remaining=(surveyForm.items||[]).filter(function(i){return !i.reviewed;});
-    var html='<div class="mck-survey-wrap"><div class="mck-survey-order">Order #'+surveyEsc(surveyForm.orderId)+'</div><div class="mck-survey-meta">Customer: '+surveyEsc(surveyForm.customerName||'Customer')+' · Share your experience with the menu items you received.</div>';
-    remaining.forEach(function(item,idx){html+='<div class="mck-survey-item"><div class="mck-survey-item-name">'+surveyEsc(item.productName)+'</div><div class="mck-survey-qty">Quantity: '+Number(item.quantity||0)+'</div><div class="mck-survey-label">Your rating</div><div class="mck-survey-stars" id="mckSurveyStars_'+idx+'">'+[1,2,3,4,5].map(function(n){return '<button type="button" class="mck-survey-star" data-rating="'+n+'">★</button>';}).join('')+'</div><input type="hidden" id="mckSurveyRating_'+idx+'" value="0"><div class="mck-survey-label">Your review (optional)</div><textarea class="mck-survey-review" id="mckSurveyReview_'+idx+'" maxlength="1000" placeholder="Tell us about this menu item..."></textarea><div class="mck-survey-submit-row"><button class="mck-survey-submit" id="mckSurveySubmit_'+idx+'" type="button">Submit Review</button></div></div>';});
-    html+='</div>';c.innerHTML=html;
-    remaining.forEach(function(item,idx){document.querySelectorAll('#mckSurveyStars_'+idx+' .mck-survey-star').forEach(function(b){b.onclick=function(){var n=Number(b.dataset.rating);document.getElementById('mckSurveyRating_'+idx).value=n;document.querySelectorAll('#mckSurveyStars_'+idx+' .mck-survey-star').forEach(function(x){x.classList.toggle('active',Number(x.dataset.rating)<=n);});};});document.getElementById('mckSurveySubmit_'+idx).onclick=function(){submitSurveyItem_(idx,item);};});
-  }
-  function submitSurveyItem_(idx,item){
-    if(surveyBusy)return;var u=surveyUser(),rating=Number(document.getElementById('mckSurveyRating_'+idx).value||0),review=document.getElementById('mckSurveyReview_'+idx).value||'',btn=document.getElementById('mckSurveySubmit_'+idx);
-    if(rating<1||rating>5){alert('Please select a rating from 1 to 5 stars.');return;}
-    surveyBusy=true;if(btn){btn.disabled=true;btn.textContent='Submitting…';}
-    surveyCall('submitCustomerReview',{userId:u.userId,orderId:surveyOrderId,productId:item.productId,rating:rating,review:review},function(v){surveyBusy=false;if(!v||!v.success){if(btn){btn.disabled=false;btn.textContent='Submit Review';}alert(v&&v.error?v.error:'Unable to submit the review.');return;}loadInlineSurvey_(surveyOrderId);});
-  }
-})();
-</script>
-<style id="mckenzie-survey-modal-style">
-#mckSurveyModal{display:none;position:fixed;inset:0;z-index:1000000;background:rgba(9,3,3,.76);align-items:center;justify-content:center;padding:18px}
-#mckSurveyModal.show{display:flex}
-#mckSurveyBox{width:min(920px,100%);height:min(88vh,820px);background:#fffaf5;border:1px solid #ead8cf;border-radius:24px;box-shadow:0 30px 100px rgba(0,0,0,.42);overflow:hidden;display:flex;flex-direction:column}
-#mckSurveyHead{flex:0 0 auto;padding:17px 20px;background:#130807;color:#fff;display:flex;align-items:center;justify-content:space-between;gap:15px}
-#mckSurveyHead .survey-brand{font-size:10px;letter-spacing:3px;font-weight:900;color:#e9ad35}
-#mckSurveyHead h2{margin:3px 0 0;font-family:"Playfair Display",serif;font-size:25px;color:#fff}
-#mckSurveyClose{border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:#fff;width:38px;height:38px;border-radius:50%;font-size:21px;cursor:pointer}
-#mckSurveyFrame{width:100%;height:100%;border:0;background:#fff7ed;display:block}
-@media(max-width:600px){#mckSurveyModal{padding:0}#mckSurveyBox{width:100%;height:100%;border-radius:0}#mckSurveyHead{padding:14px 16px}#mckSurveyHead h2{font-size:21px}}
-</style>
-<div id="mckSurveyModal" aria-modal="true" role="dialog" aria-label="Share your experience">
-  <div id="mckSurveyBox">
-    <div id="mckSurveyHead">
-      <div><div class="survey-brand">✦ MCKENZIE RAMEN HOUSE ✦</div><h2>Share Your Experience</h2></div>
-      <button id="mckSurveyClose" type="button" aria-label="Close survey">×</button>
-    </div>
-    <iframe id="mckSurveyFrame" title="Share Your Experience" src="about:blank"></iframe>
-  </div>
-</div>
-<script>
-document.addEventListener('DOMContentLoaded',function(){
-  var b=document.getElementById('mckSurveyClose');
-  if(b)b.onclick=closeSurveyModal_;
-  var m=document.getElementById('mckSurveyModal');
-  if(m)m.addEventListener('click',function(e){if(e.target===m)closeSurveyModal_();});
-});
-</script>
 
-<style id="mckenzie-receipt-confirm-style">
-#mckReceiptModal{display:none;position:fixed;inset:0;z-index:999999;background:rgba(9,3,3,.72);align-items:center;justify-content:center;padding:20px}
-#mckReceiptModal.show{display:flex}
-#mckReceiptBox{width:min(480px,100%);background:#fffaf5;border:1px solid #ead8cf;border-radius:22px;padding:30px 24px;box-shadow:0 25px 80px rgba(0,0,0,.35);text-align:center}
-#mckReceiptBox .rIcon{font-size:48px;margin-bottom:8px}
-#mckReceiptBox h2{margin:0 0 10px;color:#6b111b;font-family:"Playfair Display",serif;font-size:30px}
-#mckReceiptBox p{margin:0 auto 22px;color:#5b4a43;line-height:1.65;font-size:14px}
-#mckReceiptActions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
-#mckReceiptActions button{min-width:150px;padding:12px 18px;border-radius:12px;border:1px solid #a51620;font-weight:900;cursor:pointer}
-#mckReceiptYes{background:#a51620;color:#fff}
-#mckReceiptNo{background:#fff;color:#8b1118}
-#mckReceiptContact{display:none;margin-top:18px;text-align:left;background:#fff;border:1px solid #ead8cf;border-radius:14px;padding:15px;font-size:13px;line-height:1.7;color:#4d3731}
-#mckReceiptContact strong{color:#6b111b}
-</style>
-<div id="mckReceiptModal" aria-modal="true" role="dialog">
-  <div id="mckReceiptBox">
-    <div class="rIcon">🍜</div>
-    <h2 id="mckReceiptTitle">Did you receive your food?</h2>
-    <p id="mckReceiptMessage">Your McKenzie Ramen House order was marked as Delivered. Did you receive your food?</p>
-    <div id="mckReceiptOrder" style="display:none;margin:-8px auto 18px;padding:10px 12px;border:1px solid #ead8cf;border-radius:12px;background:#fff;max-width:390px;text-align:left;font-size:12px;color:#4d3731;"></div>
-    <div id="mckReceiptActions">
-      <button id="mckReceiptYes" type="button">Yes, I received it</button>
-      <button id="mckReceiptNo" type="button">No, I did not</button>
-    </div>
-    <div id="mckReceiptContact">
-      <strong>Please contact McKenzie Ramen House:</strong><br>
-      📞 09123456789<br>
-      📧 Mckenzieramenhouse@gmail.com<br>
-      📘 Facebook: Mckenzie Ramen House
-    </div>
-  </div>
-</div>
-<script id="mckenzie-receipt-confirm-script">
-(function(){
-  var API = (typeof MCKENZIE_ORDER_API_URL !== 'undefined') ? MCKENZIE_ORDER_API_URL : '';
-  var shown = {};
-  var busy = false;
-  var receiptPollBusy = false;
-  var receiptPollTimer = null;
-  function user(){ try{return JSON.parse(localStorage.getItem('mckenzieUser')||'null')||{};}catch(e){return {};} }
-  function callApi(api, params, done){
-    if(window.google&&google.script&&google.script.run){
-      var runner=google.script.run.withSuccessHandler(function(v){done(v||{});}).withFailureHandler(function(e){done({success:false,error:e&&e.message?e.message:String(e)});});
-      if(api==='customerNotifications') runner.getCustomerNotifications(String(params.userId||''));
-      else if(api==='respondCustomerReceipt') runner.respondCustomerReceipt(String(params.userId||''),String(params.orderId||''),String(params.received||'').toLowerCase()==='true',String(params.notificationId||''));
-      return;
+  window.google = window.google || {};
+  window.google.script = window.google.script || {};
+  window.google.script.run = new Proxy(runner, {
+    get(target, prop) {
+      if (prop in target) return target[prop];
+      return function () {
+        const args = Array.from(arguments);
+        const ok = target._success, fail = target._failure;
+        // Reset handlers per invocation, matching google.script.run's behavior.
+        target._success = null; target._failure = null;
+        READY.then(()=>dispatch(String(prop),args))
+          .then(v=>{ if(ok) ok(v); })
+          .catch(e=>{ if(fail) fail(e); else console.error(e); });
+        return target;
+      };
     }
-    if(!API){done({success:false,error:'Customer API is unavailable.'});return;}
-    var cb='mckReceiptCb_'+Date.now()+'_'+Math.floor(Math.random()*100000);
-    var s=document.createElement('script');
-    var q=[];Object.keys(params||{}).forEach(function(k){q.push(encodeURIComponent(k)+'='+encodeURIComponent(params[k]));});
-    window[cb]=function(v){try{delete window[cb];}catch(e){}if(s.parentNode)s.parentNode.removeChild(s);done(v||{});};
-    s.onerror=function(){try{delete window[cb];}catch(e){}if(s.parentNode)s.parentNode.removeChild(s);done({success:false,error:'Unable to reach the restaurant server.'});};
-    s.src=API+'?api='+encodeURIComponent(api)+'&callback='+encodeURIComponent(cb)+'&'+q.join('&');
-    document.head.appendChild(s);
-  }
-  function open(n){
-    if(!n || busy)return;
-    var modal=document.getElementById('mckReceiptModal'); if(!modal)return;
-    modal.dataset.orderId=String(n.orderId||''); modal.dataset.notificationId=String(n.notificationId||'');
-    document.getElementById('mckReceiptTitle').textContent=n.title||'Did you receive your food?';
-    document.getElementById('mckReceiptMessage').textContent=n.message||'Your order was marked Delivered. Did you receive your food?';
-    var orderBox=document.getElementById('mckReceiptOrder');
-    if(orderBox){orderBox.innerHTML='<strong style="color:#6b111b;">Order #'+String(n.orderId||'').replace(/[&<>"']/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m];})+'</strong><br><span style="color:#806c65;">This is the order that will be reviewed if you confirm receipt.</span>';orderBox.style.display=n.orderId?'block':'none';}
-    document.getElementById('mckReceiptActions').style.display='flex';
-    document.getElementById('mckReceiptContact').style.display='none';
-    modal.classList.add('show'); document.body.style.overflow='hidden';
-  }
-  function respond(received){
-    var modal=document.getElementById('mckReceiptModal'); if(!modal)return;
-    var orderId=modal.dataset.orderId||'', notificationId=modal.dataset.notificationId||'', u=user();
-    if(!u.userId || !orderId)return;
-    busy=true;
-    document.querySelectorAll('#mckReceiptActions button').forEach(function(b){b.disabled=true;});
-    callApi('respondCustomerReceipt',{userId:u.userId,orderId:orderId,received:received?'true':'false',notificationId:notificationId},function(v){
-      busy=false;
-      if(!v || !v.success){document.querySelectorAll('#mckReceiptActions button').forEach(function(b){b.disabled=false;});alert((v&&v.error)||'Unable to save your response. Please try again.');return;}
-      if(received){
-        modal.classList.remove('show'); document.body.style.overflow='';
-        openRatingPage_(orderId);
-      }else{
-        document.getElementById('mckReceiptActions').style.display='none';
-        document.getElementById('mckReceiptTitle').textContent='We are sorry about that.';
-        document.getElementById('mckReceiptMessage').textContent='Please contact McKenzie Ramen House so we can help you with your order.';
-        document.getElementById('mckReceiptContact').style.display='block';
-        setTimeout(function(){modal.classList.remove('show');document.body.style.overflow='';},12000);
-      }
-    });
-  }
-  function poll(){
-    var u=user(); if(receiptPollBusy)return;
-    if(!u.userId){scheduleReceiptPoll_();return;}
-    receiptPollBusy=true;
-    callApi('customerNotifications',{userId:u.userId,_ts:Date.now()},function(v){
-      receiptPollBusy=false;
-      if(!v||!v.success||!Array.isArray(v.notifications)){scheduleReceiptPoll_();return;}
-      var n=v.notifications.find(function(x){return x.type==='RECEIPT_CONFIRMATION' && !shown[String(x.notificationId||'')];});
-      if(n){shown[String(n.notificationId||'')]=true;open(n);}
-      scheduleReceiptPoll_();
-    });
-  }
-  function scheduleReceiptPoll_(){
-    clearTimeout(receiptPollTimer);
-    receiptPollTimer=setTimeout(poll,300);
-  }
-  document.addEventListener('DOMContentLoaded',function(){
-    document.getElementById('mckReceiptYes').onclick=function(){respond(true);};
-    document.getElementById('mckReceiptNo').onclick=function(){respond(false);};
-    poll();
   });
-})();
-</script>
-</body>
-</html>
 
-const EMBEDDED_CONFIG = {
-  apiKey: "AIzaSyDnLMhAhkAw1JMlbTxN4u8vB6poip5dt94",
-  authDomain: "mckenzie-ramen-house.firebaseapp.com",
-  projectId: "mckenzie-ramen-house",
-  storageBucket: "mckenzie-ramen-house.firebasestorage.app",
-  messagingSenderId: "1048288418639",
-  appId: "1:1048288418639:web:9ed8075e210934ffc8033a",
-  measurementId: "G-ERQF1B1W74"
-};
+  window.dispatchEvent(new Event("mckenzie-firebase-ready"));
+})();
