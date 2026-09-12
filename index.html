@@ -4052,11 +4052,26 @@ function showEmailVerifiedSuccess_(user, profile) {
   const message=document.getElementById("mckEmailVerifiedMessage");
   const proceed=document.getElementById("mckEmailVerifiedOrderButton");
   if(!modal)return;
+
+  /* IMPORTANT: the verification gate must disappear completely before the
+     congratulations popup is shown. Otherwise the old verification popup
+     remains behind it and makes the flow look stuck. */
+  closeEmailVerificationModal();
+
   const fullName=String((profile&&profile.fullName)||"").trim();
   const firstName=fullName?fullName.split(/\s+/)[0]:"";
-  if(message)message.textContent=firstName?"Congratulations, "+firstName+"! Your email has been successfully verified. Please proceed to login.":"Your email has been successfully verified. Please proceed to login.";
+  if(message)message.textContent=firstName
+    ?"Congratulations, "+firstName+"! Your email has been successfully verified. Please proceed to login."
+    :"Congratulations! Your email has been successfully verified. Please proceed to login.";
   if(proceed){proceed.textContent="Proceed to Login";proceed.onclick=function(){proceedToLoginFromVerifiedSuccess_();};}
-  try{localStorage.removeItem("mckenziePendingVerification");}catch(e){}
+  try{
+    localStorage.removeItem("mckenziePendingVerification");
+    localStorage.setItem("mckenzieEmailVerifiedJustNow","true");
+  }catch(e){}
+  modal.classList.remove("show");
+  /* Force a clean front-layer render so the congratulations card is always
+     above the old gate/overlay, even on browsers restoring the page quickly. */
+  void modal.offsetWidth;
   modal.classList.add("show");
   document.body.style.overflow="hidden";
 }
@@ -4077,19 +4092,45 @@ function proceedToLoginFromVerification_(){
   openLoginModal();
 }
 
-async function checkEmailVerificationReturn_(){
+let __mckenzieVerificationReturnChecking_ = false;
+async function checkEmailVerificationReturn_(attempt){
+  if(__mckenzieVerificationReturnChecking_) return;
+  __mckenzieVerificationReturnChecking_ = true;
+  const tryNo=Number(attempt||0);
   let pending=null;
   try{pending=JSON.parse(localStorage.getItem("mckenziePendingVerification")||"null");}catch(e){}
-  if(!pending||!pending.userId)return;
+  if(!pending||!pending.userId){__mckenzieVerificationReturnChecking_=false;return;}
+
   try{
     const firebaseAuth=await mckenzieWithTimeout_(getMcKenzieCustomerAuthDirect_(),12000,"Verification service is taking too long to load.");
     const user=await waitForFirebaseCustomerAuthReady_(firebaseAuth);
-    if(!user||user.uid!==String(pending.userId))return;
+
+    /* Firebase can restore the auth session a fraction of a second after the
+       GitHub page loads. Retry automatically instead of making the customer
+       click the verification button again. */
+    if(!user||user.uid!==String(pending.userId)){
+      __mckenzieVerificationReturnChecking_=false;
+      if(tryNo<12) setTimeout(function(){checkEmailVerificationReturn_(tryNo+1);},700);
+      return;
+    }
+
     await mckenzieWithTimeout_(user.reload(),12000,"Verification check took too long. Please try again.");
-    if(!firebaseAuth.auth.currentUser.emailVerified)return;
-    const profile=await markCustomerEmailVerified_(firebaseAuth,firebaseAuth.auth.currentUser);
-    showEmailVerifiedSuccess_(firebaseAuth.auth.currentUser,profile);
-  }catch(error){console.warn("Unable to check email verification status:",error);}
+    const freshUser=firebaseAuth.auth.currentUser;
+    if(!freshUser||!freshUser.emailVerified){
+      __mckenzieVerificationReturnChecking_=false;
+      if(tryNo<12) setTimeout(function(){checkEmailVerificationReturn_(tryNo+1);},700);
+      return;
+    }
+
+    const profile=await markCustomerEmailVerified_(firebaseAuth,freshUser);
+    showEmailVerifiedSuccess_(freshUser,profile);
+  }catch(error){
+    console.warn("Unable to check email verification status:",error);
+    __mckenzieVerificationReturnChecking_=false;
+    if(tryNo<12) setTimeout(function(){checkEmailVerificationReturn_(tryNo+1);},900);
+    return;
+  }
+  __mckenzieVerificationReturnChecking_=false;
 }
 
 
@@ -7258,7 +7299,7 @@ function startCustomerFirebase_() {
        by the independent REST binder below. Do not block the page on the
        legacy Apps Script compatibility layer. */
     loadBrandAssets();
-    setTimeout(function() { checkEmailVerificationReturn_(); }, 250);
+    setTimeout(function() { checkEmailVerificationReturn_(0); }, 250);
   } catch (error) {
     console.error("Customer Firebase startup error:", error);
     applyDefaultBrandAssets_();
