@@ -220,6 +220,11 @@ button,input,select,textarea{font:inherit}
 .centered-update-card p{margin:7px 0 0;color:#756965;font-size:13px;line-height:1.5}
 .centered-update-card .update-ok{margin-top:18px;border:0;background:#b91e35;color:#fff;padding:10px 24px;border-radius:10px;font-weight:800;cursor:pointer}
 </style>
+
+<style id="mckenzie-admin-category-style">
+.category-filter{padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:#fff;min-width:170px;font-weight:700;color:#60151f}
+</style>
+
 </head>
 <body>
 
@@ -287,7 +292,7 @@ button,input,select,textarea{font:inherit}
   </div>
 
   <section class="panel">
-    <div class="toolbar"><strong>Menu Products</strong><input class="search" id="search" placeholder="Search products..." oninput="render()"></div>
+    <div class="toolbar"><strong>Menu Products</strong><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:flex-end"><select class="category-filter" id="categoryFilter" onchange="render()"><option value="All">All Categories</option><option value="Ramen">Ramen</option><option value="Side Dishes">Side Dishes</option><option value="Drinks">Drinks</option><option value="Dessert">Dessert</option><option value="Rice Meal">Rice Meal</option><option value="Promotion">Promotion</option><option value="Coming Soon">Coming Soon</option></select><input class="search" id="search" placeholder="Search products..." oninput="render()"></div></div>
     <div class="products" id="products"></div>
   </section>
 
@@ -367,7 +372,7 @@ button,input,select,textarea{font:inherit}
   <div class="form">
     <div class="field"><label>Product Name *</label><input id="name" placeholder="e.g. Tonkotsu Ramen"></div>
     <div class="field"><label>Price *</label><input id="price" type="number" min="0" step="0.01" placeholder="329"></div>
-    <div class="field"><label>Category *</label><select id="category"><option>Ramen</option><option>Rice Meals</option><option>Side Dishes</option><option>Drinks</option><option>Desserts</option><option>Promos</option></select></div>
+    <div class="field"><label>Category *</label><select id="category"><option value="Ramen">Ramen</option><option value="Side Dishes">Side Dishes</option><option value="Drinks">Drinks</option><option value="Dessert">Dessert</option><option value="Rice Meal">Rice Meal</option><option value="Promotion">Promotion</option><option value="Coming Soon">Coming Soon</option></select></div>
     <div class="field"><label>Status</label><select id="available"><option value="true">Available</option><option value="false">Unavailable</option></select></div>
     <div class="field full"><label>Product Photo <span id="productPhotoRequired" style="color:#a51620">*</span></label>
       <label class="upload" for="image"><strong>📷 Choose Product Photo</strong><small id="productPhotoHint">JPG, PNG, WEBP · Required for a new product. For edits, keep the existing photo or use × to remove/replace it.</small><input id="image" type="file" accept="image/png,image/jpeg,image/webp" hidden onchange="previewImage(event)"></label>
@@ -567,8 +572,9 @@ async function login(){
   }
 })();
 
-function loadProducts(){run('adminGetProducts',[token],function(v,e){if(e||!v||!v.success){if(token)alert(e||'Unable to load products.');return;}products=(v.products||[]).map(function(p){p.available=(p.available===true || p.available==='true' || p.available===1 || p.available==='1');return p;});render();});}
-function render(){const q=document.getElementById('search').value.toLowerCase();const list=products.filter(p=>(p.name+' '+p.category).toLowerCase().includes(q));document.getElementById('total').textContent=products.length;document.getElementById('available').textContent=products.filter(p=>p.available).length;document.getElementById('best').textContent=products.filter(p=>p.bestSeller).length;document.getElementById('new').textContent=products.filter(p=>p.newProduct).length;document.getElementById('products').innerHTML=list.length?list.map(p=>`<article class="product"><img src="${p.image||''}" onerror="this.style.visibility='hidden'" alt=""><div class="pbody">${p.bestSeller?'<span class="badge">BEST SELLER</span>':''}${p.newProduct?'<span class="badge">NEW</span>':''}<h3>${esc(p.name)}</h3><div class="price">₱${Number(p.price||0).toLocaleString()}</div><div class="meta">${esc(p.category)} · ${p.available?'Available':'Unavailable'}</div><div class="actions"><button class="edit" onclick="editProduct('${esc(p.id)}')">Edit</button><button class="del" onclick="deleteProduct('${esc(p.id)}')">Delete</button></div></div></article>`).join(''):'<div class="empty">No products found.</div>'; }
+function normalizeAdminCategory_(value){const raw=String(value||'').trim().toLowerCase();if(!raw)return 'Coming Soon';if(raw==='ramen')return 'Ramen';if(raw==='side dish'||raw==='side dishes'||raw==='sidedishes')return 'Side Dishes';if(raw==='drink'||raw==='drinks')return 'Drinks';if(raw==='dessert'||raw==='desserts')return 'Dessert';if(raw==='rice meal'||raw==='rice meals'||raw==='ricemeal'||raw==='rice-meal')return 'Rice Meal';if(raw==='promotion'||raw==='promotions'||raw==='promo'||raw==='promos')return 'Promotion';return 'Coming Soon';}
+function loadProducts(){run('adminGetProducts',[token],function(v,e){if(e||!v||!v.success){if(token)alert(e||'Unable to load products.');return;}products=(v.products||[]).map(function(p){p.category=normalizeAdminCategory_(p.category);p.available=(p.available===true || p.available==='true' || p.available===1 || p.available==='1');return p;});render();});}
+function render(){const q=document.getElementById('search').value.toLowerCase();const selected=String(document.getElementById('categoryFilter')?.value||'All');const list=products.filter(p=>{p.category=normalizeAdminCategory_(p.category);return (selected==='All'||p.category===selected)&&(p.name+' '+p.category).toLowerCase().includes(q);});document.getElementById('total').textContent=products.length;document.getElementById('available').textContent=products.filter(p=>p.available).length;document.getElementById('best').textContent=products.filter(p=>p.bestSeller).length;document.getElementById('new').textContent=products.filter(p=>p.newProduct).length;document.getElementById('products').innerHTML=list.length?list.map(p=>`<article class="product"><img src="${p.image||''}" onerror="this.style.visibility='hidden'" alt=""><div class="pbody">${p.bestSeller?'<span class="badge">BEST SELLER</span>':''}${p.newProduct?'<span class="badge">NEW</span>':''}<h3>${esc(p.name)}</h3><div class="price">₱${Number(p.price||0).toLocaleString()}</div><div class="meta">${esc(p.category)} · ${p.available?'Available':'Unavailable'}</div><div class="actions"><button class="edit" onclick="editProduct('${esc(p.id)}')">Edit</button><button class="del" onclick="deleteProduct('${esc(p.id)}')">Delete</button></div></div></article>`).join(''):'<div class="empty">No products found.</div>'; }
 function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
 function escAttr(s){return String(s??'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");}
 function setProductPreview(src){
@@ -583,7 +589,7 @@ function openModal(p=null){
   document.getElementById('productId').value=p.id||'';
   document.getElementById('name').value=p.name||'';
   document.getElementById('price').value=p.price??'';
-  document.getElementById('category').value=p.category||'Ramen';
+  document.getElementById('category').value=normalizeAdminCategory_(p.category);
   document.getElementById('available').value=p.available?'true':'false';
   document.getElementById('description').value=p.description||'';
   document.getElementById('bestSeller').checked=!!p.bestSeller;
