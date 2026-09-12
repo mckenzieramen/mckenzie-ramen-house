@@ -3826,7 +3826,7 @@ async function submitCreateAccountPopup(event) {
     const verificationReturnUrl = window.location.origin + window.location.pathname;
     await firebaseAuth.sendEmailVerification(user, {
       url: verificationReturnUrl,
-      handleCodeInApp: false
+      handleCodeInApp: true
     });
 
     hideLoginRamenLoader_();
@@ -3928,6 +3928,7 @@ async function getMcKenzieCustomerAuthDirect_() {
       signOut: authMod.signOut,
       deleteUser: authMod.deleteUser,
       onAuthStateChanged: authMod.onAuthStateChanged,
+      applyActionCode: authMod.applyActionCode,
       setDoc: fsMod.setDoc,
       getDoc: fsMod.getDoc,
       runTransaction: fsMod.runTransaction,
@@ -4177,6 +4178,60 @@ function proceedToLoginFromVerification_(){
 }
 
 let __mckenzieVerificationReturnChecking_ = false;
+async function processEmailVerificationAction_() {
+  const params = new URLSearchParams(window.location.search || "");
+  const mode = String(params.get("mode") || "").trim();
+  const oobCode = String(params.get("oobCode") || "").trim();
+  if (mode !== "verifyEmail" || !oobCode) return false;
+
+  try {
+    const firebaseAuth = await mckenzieWithTimeout_(getMcKenzieCustomerAuthDirect_(), 12000, "Verification service is taking too long to load.");
+    let actionApplied = false;
+    try {
+      await mckenzieWithTimeout_(firebaseAuth.applyActionCode(firebaseAuth.auth, oobCode), 12000, "Email verification is taking too long to complete.");
+      actionApplied = true;
+    } catch (actionError) {
+      /* If the link was already consumed, accept it when Firebase confirms the
+         currently restored account is already verified. */
+      const current = firebaseAuth.auth.currentUser;
+      if (!current) throw actionError;
+      try { await current.reload(); } catch (e) {}
+      if (!firebaseAuth.auth.currentUser || !firebaseAuth.auth.currentUser.emailVerified) throw actionError;
+      actionApplied = true;
+    }
+
+    if (!actionApplied) return false;
+
+    const user = firebaseAuth.auth.currentUser;
+    let profile = getSavedUser_() || {};
+    if (user) {
+      try { await user.reload(); } catch (e) {}
+      const fresh = firebaseAuth.auth.currentUser;
+      if (fresh && fresh.emailVerified) {
+        profile = await markCustomerEmailVerified_(firebaseAuth, fresh);
+      }
+    }
+
+    try {
+      localStorage.removeItem("mckenziePendingVerification");
+      localStorage.setItem("mckenzieEmailVerifiedJustNow", "true");
+    } catch (e) {}
+
+    /* Remove the action-code parameters so refreshing the congratulations page
+       cannot try to consume the same verification link again. */
+    try {
+      const cleanUrl = window.location.origin + window.location.pathname + (window.location.hash || "");
+      window.history.replaceState({}, document.title, cleanUrl);
+    } catch (e) {}
+
+    showEmailVerifiedSuccess_(user, profile);
+    return true;
+  } catch (error) {
+    console.warn("Email verification action failed:", error);
+    return false;
+  }
+}
+
 async function checkEmailVerificationReturn_(attempt){
   if(__mckenzieVerificationReturnChecking_) return;
   __mckenzieVerificationReturnChecking_ = true;
@@ -7391,7 +7446,10 @@ function startCustomerFirebase_() {
        by the independent REST binder below. Do not block the page on the
        legacy Apps Script compatibility layer. */
     loadBrandAssets();
-    setTimeout(function() { checkEmailVerificationReturn_(0); }, 250);
+    (async function(){
+      const handled = await processEmailVerificationAction_();
+      if (!handled) setTimeout(function() { checkEmailVerificationReturn_(0); }, 250);
+    })();
   } catch (error) {
     console.error("Customer Firebase startup error:", error);
     applyDefaultBrandAssets_();
