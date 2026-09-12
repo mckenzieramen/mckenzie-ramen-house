@@ -3947,6 +3947,85 @@ async function getMcKenzieCustomerAuthDirect_() {
   return __mckenzieCustomerAuthDirectPromise;
 }
 
+
+function isCustomerEmailVerified_() {
+  try {
+    const user = getSavedUser_() || {};
+    return user.emailVerified === true || String(user.status || "").toUpperCase() === "ACTIVE";
+  } catch (e) {
+    return false;
+  }
+}
+
+async function requireVerifiedCustomer_(messageText) {
+  if (!isLoggedIn_()) return false;
+  if (isCustomerEmailVerified_()) return true;
+
+  let email = "";
+  try {
+    const saved = getSavedUser_() || {};
+    email = saved.email || "";
+  } catch (e) {}
+
+  try {
+    const firebaseAuth = await getMcKenzieCustomerAuthDirect_();
+    const firebaseUser = firebaseAuth.auth.currentUser;
+    if (firebaseUser) {
+      await firebaseUser.reload();
+      if (firebaseAuth.auth.currentUser && firebaseAuth.auth.currentUser.emailVerified) {
+        let profile = getSavedUser_() || {};
+        try {
+          const snap = await firebaseAuth.getDoc(
+            firebaseAuth.doc(firebaseAuth.db, "users", firebaseUser.uid)
+          );
+          if (snap.exists()) profile = Object.assign({}, profile, snap.data() || {});
+        } catch (e) {}
+
+        try {
+          await firebaseAuth.setDoc(
+            firebaseAuth.doc(firebaseAuth.db, "users", firebaseUser.uid),
+            {
+              status: "ACTIVE",
+              emailVerified: true,
+              emailVerifiedAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString()
+            },
+            { merge: true }
+          );
+        } catch (e) {}
+
+        try {
+          localStorage.setItem(
+            "mckenzieUser",
+            JSON.stringify(Object.assign({}, profile, {
+              userId: firebaseUser.uid,
+              email: firebaseUser.email || profile.email || "",
+              status: "ACTIVE",
+              emailVerified: true
+            }))
+          );
+        } catch (e) {}
+
+        showEmailVerifiedSuccess_(
+          firebaseAuth.auth.currentUser,
+          Object.assign({}, profile, {status:"ACTIVE", emailVerified:true})
+        );
+        return true;
+      }
+    }
+  } catch (e) {}
+
+  openEmailVerificationModal_(email);
+  const message = document.getElementById("verificationMessage");
+  if (message) {
+    message.style.color = "#a51620";
+    message.textContent =
+      messageText ||
+      "You should verify your account to proceed. Please open the verification link in your email first.";
+  }
+  return false;
+}
+
 /* =========================================================
    FIREBASE EMAIL-LINK VERIFICATION
 ========================================================= */
