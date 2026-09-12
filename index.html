@@ -3631,7 +3631,6 @@ body.quick-loading {
 
 <script>
 // Apps Script backend used by the customer site when this page is hosted on GitHub Pages.
-const MCKENZIE_ORDER_API_URL = "https://script.google.com/macros/s/AKfycbxHuXpTYPCSQ_Uj1-LqC7jAjGEcbQ8uKvwX3tmy_ZqOb_bvdFgvQ-IwTjumY713SuF8Hw/exec";
 
 /* =========================================================
    GITHUB CUSTOMER BRAND ASSETS
@@ -5056,19 +5055,9 @@ function confirmPlaceOrder_() {
     })
   };
 
-  /*
-   * ORDER FLOW BASED ON THE WORKING CUSTOMER -> RESTAURANT -> ADMIN FLOW:
-   * GitHub customer page sends the completed order to the existing Apps Script
-   * recordCompletedCustomerOrder() endpoint. That function writes the order to
-   * the restaurant Orders sheet, which is the same source used by Admin Orders.
-   *
-   * Do NOT use Firebase auth.currentUser here. The customer UI already has the
-   * authenticated Customer ID in payload.userId, and the restaurant order API
-   * is the canonical order receiver for the Admin workflow.
-   */
   function finishSuccessfulOrderSave_(result) {
     if (!result || !result.success) {
-      failOrderSave_(result || {message:"The restaurant system rejected the order."});
+      failOrderSave_(result || {message:"Firebase rejected the order."});
       return;
     }
 
@@ -5089,50 +5078,23 @@ function confirmPlaceOrder_() {
   }
 
   function failOrderSave_(error) {
-    console.error("Unable to create restaurant order record:", error);
+    console.error("Unable to create Firebase order record:", error);
     if (yes) { yes.disabled = false; yes.textContent = "Yes, Place Order"; }
     if (message) {
-      message.textContent = "Unable to save your order to the restaurant system.";
+      message.textContent = "Unable to save your order.";
       message.style.color = "#a51620";
     }
     alert(
-      "Your order was NOT sent to the restaurant system.\n\n" +
+      "Your order was NOT saved.\n\n" +
       (error && (error.message || error.error) ? (error.message || error.error) : "Please try again.")
     );
   }
 
-  const callbackName = "mckenzieOrderCallback_" + Date.now() + "_" + Math.floor(Math.random() * 100000);
-  const script = document.createElement("script");
-  let settled = false;
-
-  function cleanup() {
-    try { delete window[callbackName]; } catch (e) {}
-    if (script.parentNode) script.parentNode.removeChild(script);
-  }
-
-  window[callbackName] = function(result) {
-    if (settled) return;
-    settled = true;
-    cleanup();
-    if (result && result.success) finishSuccessfulOrderSave_(result);
-    else failOrderSave_(result || { message: "The restaurant server rejected the order." });
-  };
-
-  script.onerror = function() {
-    if (settled) return;
-    settled = true;
-    cleanup();
-    failOrderSave_({ message: "The restaurant server could not be reached." });
-  };
-
-  const encodedPayload = encodeURIComponent(JSON.stringify(payload));
-  script.src = MCKENZIE_ORDER_API_URL +
-    "?api=recordOrder" +
-    "&orderId=" + encodeURIComponent(orderId) +
-    "&payload=" + encodedPayload +
-    "&callback=" + encodeURIComponent(callbackName);
-
-  document.head.appendChild(script);
+  // GITHUB + FIREBASE ONLY.
+  // The order is written directly to Firestore /orders/{orderId}.
+  customerSaveOrderDirect_(orderId, payload)
+    .then(finishSuccessfulOrderSave_)
+    .catch(failOrderSave_);
 }
 
 function renderAllCartControls_() {
@@ -5287,7 +5249,8 @@ async function customerConfirmReceiptDirect_(orderId) {
 async function customerSaveOrderDirect_(orderId,payload) {
   var uid=customerCurrentUserId_();
   return customerFirebaseWithTimeout_(async function(f){
-    var u=f.auth.currentUser;if(!u||String(u.uid)!==uid) throw new Error("Please log in again.");
+    var u=await waitForFirebaseCustomerAuthReady_(f);
+    if(!u||String(u.uid)!==uid) throw new Error("Your Firebase login session is not ready. Please log in again and try once more.");
     var cleanItems=(payload.items||[]).map(function(item){return {productId:String(item.id||item.productId||""),productName:String(item.name||item.productName||"Ramen item"),price:Number(item.price||0),quantity:Number(item.quantity||0),subtotal:Number(item.price||0)*Number(item.quantity||0),itemStatus:"Preparing"};}).filter(function(x){return x.quantity>0;});
     if(!cleanItems.length) throw new Error("The order contains no items.");
     var total=cleanItems.reduce(function(sum,it){return sum+it.subtotal;},0);
