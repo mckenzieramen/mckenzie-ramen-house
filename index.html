@@ -5178,7 +5178,14 @@ function confirmPlaceOrder_() {
     alert("Your order was NOT saved.\n\n" + (error && (error.message || error.error) ? (error.message || error.error) : "Please try again."));
   }
 
-  saveOrderGitHubFirebaseOnly_(orderId, payload).then(finishSuccessfulOrderSave_).catch(failOrderSave_);
+  // First order: persist the checkout address before the order is written.
+  // Later orders already have a saved address and skip this step.
+  saveFirstCheckoutAddressIfNeeded_()
+    .then(function(){
+      return saveOrderGitHubFirebaseOnly_(orderId, payload);
+    })
+    .then(finishSuccessfulOrderSave_)
+    .catch(failOrderSave_);
 }
 
 function renderAllCartControls_() {
@@ -5765,8 +5772,10 @@ function applyCheckoutAddress_(address) {
     if (!el) return;
     const key = id === "checkoutHouseUnit" ? "houseUnit" : id === "checkoutStreet" ? "street" : "additionalInstruction";
     el.value = address[key] || "";
-    el.disabled = true;
-    el.classList.add("checkout-saved-field");
+    // Saved address fields stay locked between orders, but delivery
+    // instructions belong to the individual order and may be changed.
+    el.disabled = id !== "checkoutAdditionalInstruction";
+    el.classList.toggle("checkout-saved-field", id !== "checkoutAdditionalInstruction");
   });
   loadAddressChain_("checkout", {
     region: address.region || "", province: address.province || "",
@@ -5902,9 +5911,28 @@ function saveNewAddress_() {
     const ref = f.doc(f.db, "addresses", "MRH-ADDR-" + Date.now() + "-" + Math.random().toString(36).slice(2,8));
     const existingQ = f.query(f.collection(f.db, "addresses"), f.where("userId", "==", uid));
     const existingSnap = await f.getDocs(existingQ);
-    const isDefault = existingSnap.empty;
+
+    // "Save & Set as Default" means the newly added address becomes the
+    // address used automatically on the next checkout. Clear the old
+    // default first, then save the new address as the default.
+    const updates = [];
+    existingSnap.docs.forEach(function(docSnap) {
+      const data = docSnap.data() || {};
+      if (data.isDefault) {
+        updates.push(f.updateDoc(
+          f.doc(f.db, "addresses", docSnap.id),
+          { isDefault: false, updatedAt: new Date().toISOString() }
+        ));
+      }
+    });
+    await Promise.all(updates);
+
     await f.setDoc(ref, Object.assign({
-      addressId: ref.id, userId: uid, isDefault: isDefault, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()
+      addressId: ref.id,
+      userId: uid,
+      isDefault: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     }, payload));
     return true;
   }, "Unable to save your address right now.")
@@ -5924,37 +5952,70 @@ function saveNewAddress_() {
   });
 }
 
-function saveFirstCheckoutAddressIfNeeded_(done) {
+function saveFirstCheckoutAddressIfNeeded_() {
   const userId = getCurrentCustomerId_();
-  if (!userId || checkoutAddresses_.length) { if (typeof done === "function") done(); return; }
+
+  // If this customer already has a saved address, never create another one
+  // automatically. The existing saved address will be used for this order.
+  if (!userId || checkoutAddresses_.length) return Promise.resolve(true);
 
   const payload = getCheckoutAddressPayloadFromFields_("checkout");
   payload.label = "Home";
 
-  customerFirebaseWithTimeout_(async function(f) {
+  return customerFirebaseWithTimeout_(async function(f) {
     const uid = String(f.auth.currentUser && f.auth.currentUser.uid || userId);
     if (uid !== String(userId)) throw new Error("Please log in again.");
-    const required = [payload.region,payload.province,payload.city,payload.barangay,payload.houseUnit,payload.street];
-    if (required.some(function(v){ return !String(v || "").trim(); })) throw new Error("Please complete your delivery address.");
-    const q = f.query(f.collection(f.db,"addresses"),f.where("userId","==",uid));
+
+    const required = [
+      payload.region, payload.province, payload.city,
+      payload.barangay, payload.houseUnit, payload.street
+    ];
+    if (required.some(function(v){ return !String(v || "").trim(); })) {
+      throw new Error("Please complete your delivery address.");
+    }
+
+    const q = f.query(
+      f.collection(f.db, "addresses"),
+      f.where("userId", "==", uid)
+    );
     const existing = await f.getDocs(q);
-    const ref = f.doc(f.db,"addresses","MRH-ADDR-" + Date.now() + "-" + Math.random().toString(36).slice(2,8));
-    await f.setDoc(ref,Object.assign({addressId:ref.id,userId:uid,isDefault:existing.empty,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()},payload));
+
+    // Another tab/request may have saved the address while checkout was open.
+    // In that case, keep the existing address and do not create a duplicate.
+    if (!existing.empty) return true;
+
+    const ref = f.doc(
+      f.db,
+      "addresses",
+      "MRH-ADDR-" + Date.now() + "-" + Math.random().toString(36).slice(2,8)
+    );
+
+    await f.setDoc(ref, Object.assign({
+      addressId: ref.id,
+      userId: uid,
+      isDefault: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    }, payload));
+
     return true;
   }, "Unable to save your delivery address right now.")
   .then(function(){
     return customerFirebaseWithTimeout_(async function(f){
-      const q=f.query(f.collection(f.db,"addresses"),f.where("userId","==",userId));
-      const snap=await f.getDocs(q);
-      return snap.docs.map(function(d){return Object.assign({addressId:d.id},d.data()||{});});
+      const q = f.query(
+        f.collection(f.db, "addresses"),
+        f.where("userId", "==", userId)
+      );
+      const snap = await f.getDocs(q);
+      return snap.docs.map(function(d){
+        return Object.assign({addressId:d.id}, d.data() || {});
+      });
     }, "Unable to reload your delivery address right now.");
   })
   .then(function(addresses){
-    checkoutAddresses_=Array.isArray(addresses)?addresses:[]; renderCheckoutAddressOptions_();
-    if (typeof done === "function") done();
-  })
-  .catch(function(error){
-    showCheckoutMessage_(error&&error.message?error.message:"Unable to save your delivery address. Please try again.",true);
+    checkoutAddresses_ = Array.isArray(addresses) ? addresses : [];
+    renderCheckoutAddressOptions_();
+    return true;
   });
 }
 
@@ -8060,7 +8121,7 @@ document.addEventListener('DOMContentLoaded',function(){
     clearTimeout(receiptPollTimer);
     receiptPollTimer=setTimeout(poll,300);
   }
-  document.addEventListener('DOMContentLoaded',function(){
+  document.addEventListener('DOMContentLoaded',function(){cccc
     document.getElementById('mckReceiptYes').onclick=function(){respond(true);};
     document.getElementById('mckReceiptNo').onclick=function(){respond(false);};
     poll();
@@ -8068,4 +8129,4 @@ document.addEventListener('DOMContentLoaded',function(){
 })();
 </script>
 </body>
-</html>
+</html>c
