@@ -403,21 +403,7 @@ let audioCtx=null; let adminToastTimer=null;
 function run(name,args,onSuccess){
   args=Array.isArray(args)?args:[]; onSuccess=typeof onSuccess==='function'?onSuccess:function(){};
 
-  // Order list must come from the same restaurant backend that receives
-  // customer orders. The customer order API writes to the Orders sheet;
-  // this read path returns that exact data to the GitHub Admin page.
-  if(name==='adminGetOrders'){
-    const apiBase='https://script.google.com/macros/s/AKfycbxHuXpTYPCSQ_Uj1-LqC7jAjGEcbQ8uKvwX3tmy_ZqOb_bvdFgvQ-IwTjumY713SuF8Hw/exec';
-    const callback='mckAdminOrders_'+Date.now()+'_'+Math.floor(Math.random()*100000);
-    const script=document.createElement('script');
-    let settled=false;
-    function cleanup(){try{delete window[callback];}catch(e){}if(script.parentNode)script.parentNode.removeChild(script);}
-    window[callback]=function(v){if(settled)return;settled=true;cleanup();onSuccess(v||{},null);};
-    script.onerror=function(){if(settled)return;settled=true;cleanup();onSuccess(null,'Unable to reach the restaurant order server.');};
-    script.src=apiBase+'?api=adminGetOrders&token='+encodeURIComponent(String(args[0]||token||''))+'&callback='+encodeURIComponent(callback)+'&_ts='+Date.now();
-    document.head.appendChild(script);
-    return;
-  }
+  // GITHUB + FIREBASE ONLY. Orders are read directly from Firestore.
 
   if(window.MckenzieFirebaseReady){
     window.MckenzieFirebaseReady.then(function(){
