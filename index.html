@@ -2515,7 +2515,7 @@ body.quick-loading {
 .verification-resend { width:100%; margin-top:10px; padding:11px 14px; border:1px solid #b51b25; border-radius:12px; background:transparent; color:#a51620; font-size:13px; font-weight:800; cursor:pointer; }
 .verification-resend:disabled { opacity:.55; cursor:wait; }
 .verification-message { min-height:20px; margin-top:12px; color:#a51620; font-size:12px; text-align:center; line-height:1.45; }
-.verification-timer { margin-top:8px; color:#8a6d65; font-size:11px; }
+.verification-timer { margin-top:8px; color:#8a6d65; font-size:11px; }.verification-change-email{width:100%;margin-top:9px;padding:11px 14px;border:0;border-radius:12px;background:#f5e7dc;color:#7b1520;font-size:13px;font-weight:800;cursor:pointer}.verification-proceed{width:100%;margin-top:10px;padding:13px 18px;border:0;border-radius:12px;background:linear-gradient(135deg,#198754,#126b42);color:#fff;font-size:14px;font-weight:900;cursor:pointer}.verification-proceed.hidden{display:none}.verification-change-box{margin-top:13px;padding:13px;border:1px solid #e6c5b7;border-radius:12px;background:#fff}.verification-change-box label{display:block;margin-bottom:6px;color:#5f080c;font-size:11px;font-weight:800;text-align:left}.verification-change-box input{width:100%;padding:11px 12px;border:1px solid #d8b8b0;border-radius:10px;font:inherit;outline:none}.verification-change-actions{display:grid;grid-template-columns:1fr 1.35fr;gap:8px;margin-top:9px}.verification-change-actions button{padding:10px 9px;border-radius:10px;font:inherit;font-size:11px;font-weight:900;cursor:pointer}.verification-change-cancel{border:1px solid #d8b8b0;background:#fff;color:#6f1b22}.verification-change-submit{border:0;background:#a51620;color:#fff}
 #mckEmailVerifiedModal { display:none; position:fixed; inset:0; z-index:1000001; background:rgba(9,3,3,.74); align-items:center; justify-content:center; padding:20px; }
 #mckEmailVerifiedModal.show { display:flex; }
 #mckEmailVerifiedCard { position:relative; width:min(450px,94vw); padding:36px 30px 30px; background:#fffaf3; border:2px solid #e9ad35; border-radius:24px; box-shadow:0 25px 70px rgba(0,0,0,.4); text-align:center; animation:loginModalIn .25s ease both; }
@@ -3219,15 +3219,22 @@ body.quick-loading {
   <div class="verification-card">
     <button type="button" class="verification-close" aria-label="Close email verification" onclick="closeEmailVerificationModal()">×</button>
     <div class="verification-kicker">MCKENZIE RAMEN HOUSE</div>
-    <h2 id="emailVerificationTitle">Verify Your Account</h2>
-    <p>
-      Open your email to verify your account. We sent a verification link to
-      <span id="verificationEmail" class="verification-email"></span>.
-    </p>
-    <p id="verificationMessage" class="verification-message" aria-live="polite">
-      Open your email and click the verification link to verify your account.
-    </p>
-    <button type="button" id="verificationSubmit" class="verification-submit" onclick="checkEmailVerificationNow_()">I’ll Verify My Email</button>
+    <h2 id="emailVerificationTitle">Verify Your Email</h2>
+    <p>We sent a verification email to <span id="verificationEmail" class="verification-email"></span>. Please open the email and click the verification link.</p>
+    <p id="verificationMessage" class="verification-message" aria-live="polite">Please check your inbox or spam folder.</p>
+    <button type="button" id="verificationSubmit" class="verification-submit" onclick="checkEmailVerificationNow_()">I’ve Verified My Email</button>
+    <button type="button" id="verificationResend" class="verification-resend" onclick="resendVerificationEmail_()">Resend Verification Email</button>
+    <button type="button" id="verificationChangeEmail" class="verification-change-email" onclick="showChangeVerificationEmail_()">Change Email</button>
+    <button type="button" id="verificationProceedLogin" class="verification-proceed hidden" onclick="proceedToLoginFromVerification_()">Proceed to Login</button>
+    <div id="changeVerificationEmailBox" class="verification-change-box" style="display:none;">
+      <label for="verificationNewEmail">New Email Address</label>
+      <input id="verificationNewEmail" type="email" autocomplete="email" placeholder="Enter your new email address">
+      <div class="verification-change-actions">
+        <button type="button" class="verification-change-cancel" onclick="hideChangeVerificationEmail_()">Cancel</button>
+        <button type="button" id="verificationChangeSubmit" class="verification-change-submit" onclick="changeVerificationEmail_()">Change Email &amp; Send</button>
+      </div>
+    </div>
+    <div id="verificationTimer" class="verification-timer"></div>
   </div>
 </div>
 
@@ -3839,6 +3846,8 @@ async function getMcKenzieCustomerAuthDirect_() {
       createUserWithEmailAndPassword: authMod.createUserWithEmailAndPassword,
       signInWithEmailAndPassword: authMod.signInWithEmailAndPassword,
       sendEmailVerification: authMod.sendEmailVerification,
+      updateEmail: authMod.updateEmail,
+      signOut: authMod.signOut,
       setDoc: fsMod.setDoc,
       getDoc: fsMod.getDoc,
       doc: fsMod.doc
@@ -3858,258 +3867,172 @@ function openEmailVerificationModal_(email) {
   const modal = document.getElementById("emailVerificationModal");
   const emailEl = document.getElementById("verificationEmail");
   const message = document.getElementById("verificationMessage");
+  const submit = document.getElementById("verificationSubmit");
+  const resend = document.getElementById("verificationResend");
+  const change = document.getElementById("verificationChangeEmail");
+  const proceed = document.getElementById("verificationProceedLogin");
   if (!modal) return;
-
   if (emailEl) emailEl.textContent = email || "your email";
-  if (message) {
-    message.style.color = "#a51620";
-    message.textContent = "Click the verification link in your email. After verification, return to McKenzie Ramen House and you will see your account confirmation automatically.";
-  }
-
+  if (message) { message.style.color = "#a51620"; message.textContent = "Please check your inbox or spam folder, then click the verification link."; }
+  if (submit) { submit.disabled=false; submit.style.display=""; submit.textContent="I’ve Verified My Email"; }
+  if (resend) { resend.disabled=false; resend.style.display=""; resend.textContent="Resend Verification Email"; }
+  if (change) change.style.display="";
+  if (proceed) proceed.classList.add("hidden");
+  hideChangeVerificationEmail_();
   modal.classList.add("show");
   document.body.style.overflow = "hidden";
-}
-
-async function checkEmailVerificationNow_() {
-  const message = document.getElementById("verificationMessage");
-  const button = document.getElementById("verificationSubmit");
-  if (button) {
-    button.disabled = true;
-    button.textContent = "Checking...";
-  }
-  if (message) {
-    message.style.color = "#a51620";
-    message.textContent = "Checking your email verification status...";
-  }
-
-  try {
-    const firebaseAuth = await getMcKenzieCustomerAuthDirect_();
-    const user = firebaseAuth.auth.currentUser;
-    if (!user) {
-      if (message) message.textContent = "Please sign in again, then verify your account to proceed.";
-      return;
-    }
-
-    await user.reload();
-    const freshUser = firebaseAuth.auth.currentUser;
-
-    if (!freshUser || !freshUser.emailVerified) {
-      if (message) {
-        message.style.color = "#a51620";
-        message.textContent = "You should verify your account to proceed. Please open your email and click the verification link first.";
-      }
-      return;
-    }
-
-    let profile = getSavedUser_() || {};
-    try {
-      const snap = await firebaseAuth.getDoc(firebaseAuth.doc(firebaseAuth.db, "users", freshUser.uid));
-      if (snap.exists()) profile = Object.assign({}, profile, snap.data() || {});
-    } catch (e) {}
-
-    try {
-      await firebaseAuth.setDoc(
-        firebaseAuth.doc(firebaseAuth.db, "users", freshUser.uid),
-        {
-          status: "ACTIVE",
-          emailVerified: true,
-          emailVerifiedAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        },
-        { merge: true }
-      );
-    } catch (e) {}
-
-    showEmailVerifiedSuccess_(freshUser, Object.assign({}, profile, {
-      status: "ACTIVE",
-      emailVerified: true
-    }));
-  } catch (error) {
-    console.warn("Verification status check failed:", error);
-    if (message) {
-      message.style.color = "#a51620";
-      message.textContent = "You should verify your account to proceed. Please click the verification link in your email first.";
-    }
-  } finally {
-    if (button) {
-      button.disabled = false;
-      button.textContent = "I’ll Verify My Email";
-    }
-  }
-}
-
-function isCustomerEmailVerified_() {
-  try {
-    const user = getSavedUser_() || {};
-    return user.emailVerified === true || String(user.status || "").toUpperCase() === "ACTIVE";
-  } catch (e) {
-    return false;
-  }
-}
-
-async function requireVerifiedCustomer_(messageText) {
-  if (!isLoggedIn_()) return false;
-  if (isCustomerEmailVerified_()) return true;
-
-  let email = "";
-  try {
-    const saved = getSavedUser_() || {};
-    email = saved.email || "";
-  } catch (e) {}
-
-  try {
-    const firebaseAuth = await getMcKenzieCustomerAuthDirect_();
-    const firebaseUser = firebaseAuth.auth.currentUser;
-    if (firebaseUser) {
-      await firebaseUser.reload();
-      if (firebaseAuth.auth.currentUser && firebaseAuth.auth.currentUser.emailVerified) {
-        let profile = getSavedUser_() || {};
-        try {
-          const snap = await firebaseAuth.getDoc(firebaseAuth.doc(firebaseAuth.db, "users", firebaseUser.uid));
-          if (snap.exists()) profile = Object.assign({}, profile, snap.data() || {});
-        } catch (e) {}
-        try {
-          await firebaseAuth.setDoc(firebaseAuth.doc(firebaseAuth.db, "users", firebaseUser.uid), {
-            status: "ACTIVE",
-            emailVerified: true,
-            emailVerifiedAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          }, { merge: true });
-        } catch (e) {}
-        showEmailVerifiedSuccess_(firebaseAuth.auth.currentUser, Object.assign({}, profile, {status:"ACTIVE",emailVerified:true}));
-        return true;
-      }
-    }
-  } catch (e) {}
-
-  openEmailVerificationModal_(email);
-  const message = document.getElementById("verificationMessage");
-  if (message) {
-    message.style.color = "#a51620";
-    message.textContent = messageText || "You should verify your account to proceed. Please open your email and click the verification link first.";
-  }
-  return false;
 }
 
 function closeEmailVerificationModal() {
   const modal = document.getElementById("emailVerificationModal");
   if (modal) modal.classList.remove("show");
-  if (!document.getElementById("loginModal")?.classList.contains("show") &&
-      !document.getElementById("createAccountModal")?.classList.contains("show") &&
-      !document.getElementById("cartModal")?.classList.contains("show") &&
-      !document.getElementById("mckEmailVerifiedModal")?.classList.contains("show")) {
-    document.body.style.overflow = "";
-  }
+  if (!document.getElementById("loginModal")?.classList.contains("show") && !document.getElementById("createAccountModal")?.classList.contains("show") && !document.getElementById("cartModal")?.classList.contains("show")) document.body.style.overflow = "";
 }
 
 function handleVerificationOverlayClick(event) {
-  if (event.target && event.target.id === "emailVerificationModal") {
-    closeEmailVerificationModal();
-  }
+  if (event.target && event.target.id === "emailVerificationModal") closeEmailVerificationModal();
 }
 
-function showEmailVerifiedSuccess_(user, profile) {
-  const modal = document.getElementById("mckEmailVerifiedModal");
-  const message = document.getElementById("mckEmailVerifiedMessage");
-  if (!modal) return;
-
-  const fullName = String((profile && profile.fullName) || "").trim();
-  const firstName = fullName ? fullName.split(/\s+/)[0] : "";
-  if (message) {
-    message.textContent = firstName
-      ? "Congratulations, " + firstName + "! Your email has been successfully verified. You can now order."
-      : "Congratulations! Your email has been successfully verified. You can now order.";
-  }
-
-  try {
-    localStorage.setItem("mckenzieUser", JSON.stringify({
-      userId: user.uid,
-      fullName: (profile && profile.fullName) || "",
-      username: (profile && profile.username) || "",
-      email: user.email || (profile && profile.email) || "",
-      mobile: (profile && profile.mobile) || "",
-      houseUnit: (profile && profile.houseUnit) || "",
-      street: (profile && profile.street) || "",
-      barangay: (profile && profile.barangay) || "",
-      city: (profile && profile.city) || "",
-      province: (profile && profile.province) || "",
-      postalCode: (profile && profile.postalCode) || "",
-      country: (profile && profile.country) || "Philippines",
-      region: (profile && profile.region) || "",
-      additionalInstruction: (profile && profile.additionalInstruction) || "",
-      status: "ACTIVE",
-      emailVerified: true
-    }));
-    localStorage.setItem("mckenzieLoggedIn", "true");
-    localStorage.removeItem("mckenziePendingVerification");
-  } catch (error) {}
-
-  updateHeroAccountButton_();
-  loadCartForCurrentCustomer_();
-  closeEmailVerificationModal();
-  modal.classList.add("show");
-  document.body.style.overflow = "hidden";
-}
-
-function goOrderAfterEmailVerification_() {
-  const modal = document.getElementById("mckEmailVerifiedModal");
-  if (modal) modal.classList.remove("show");
-  document.body.style.overflow = "";
-
-  /* "Go & Order Now" takes the customer directly to the menu so they can
-     start adding ramen immediately after verification. */
-  const menu = document.getElementById("menu");
-  if (menu) {
-    setTimeout(function() {
-      menu.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 80);
-  }
-}
-
-async function checkEmailVerificationReturn_() {
-  let pending = null;
-  try {
-    pending = JSON.parse(localStorage.getItem("mckenziePendingVerification") || "null");
-  } catch (error) {}
-  if (!pending || !pending.userId) return;
-
+async function checkEmailVerificationNow_() {
+  const message = document.getElementById("verificationMessage");
+  const button = document.getElementById("verificationSubmit");
+  if (button) { button.disabled=true; button.textContent="Checking..."; }
+  if (message) { message.style.color="#a51620"; message.textContent="Checking your email verification status..."; }
   try {
     const firebaseAuth = await getMcKenzieCustomerAuthDirect_();
     const user = firebaseAuth.auth.currentUser;
-    if (!user || user.uid !== String(pending.userId)) return;
-
+    if (!user) throw new Error("Your verification session has expired. Please create the account again.");
     await user.reload();
-    if (!firebaseAuth.auth.currentUser.emailVerified) return;
-
-    let profile = {};
-    try {
-      const snap = await firebaseAuth.getDoc(firebaseAuth.doc(firebaseAuth.db, "users", user.uid));
-      if (snap.exists()) profile = snap.data() || {};
-    } catch (error) {}
-
-    /* The account becomes active only after Firebase confirms the email. */
-    try {
-      await firebaseAuth.setDoc(
-        firebaseAuth.doc(firebaseAuth.db, "users", user.uid),
-        {
-          status: "ACTIVE",
-          emailVerified: true,
-          emailVerifiedAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        },
-        { merge: true }
-      );
-      profile.status = "ACTIVE";
-      profile.emailVerified = true;
-    } catch (error) {
-      console.warn("Unable to update verified account status:", error);
+    const freshUser = firebaseAuth.auth.currentUser;
+    if (!freshUser || !freshUser.emailVerified) {
+      if (message) message.textContent="Your email is not verified yet. Please click the verification link in the email first.";
+      return;
     }
-
-    showEmailVerifiedSuccess_(firebaseAuth.auth.currentUser, profile);
+    await markCustomerEmailVerified_(firebaseAuth, freshUser);
+    showEmailVerifiedSuccess_(freshUser);
   } catch (error) {
-    console.warn("Unable to check email verification status:", error);
+    console.warn("Verification status check failed:", error);
+    if (message) message.textContent=error && error.message ? error.message : "Verification check failed. Please try again.";
+  } finally {
+    if (button) { button.disabled=false; button.textContent="I’ve Verified My Email"; }
   }
 }
+
+async function markCustomerEmailVerified_(firebaseAuth, user) {
+  let profile=getSavedUser_()||{};
+  try {
+    const snap=await firebaseAuth.getDoc(firebaseAuth.doc(firebaseAuth.db,"users",user.uid));
+    if(snap.exists()) profile=Object.assign({},profile,snap.data()||{});
+  } catch(e) {}
+  try {
+    await firebaseAuth.setDoc(firebaseAuth.doc(firebaseAuth.db,"users",user.uid),{status:"ACTIVE",emailVerified:true,emailVerifiedAt:new Date().toISOString(),updatedAt:new Date().toISOString()},{merge:true});
+  } catch(e) {}
+  return profile;
+}
+
+async function resendVerificationEmail_() {
+  const message=document.getElementById("verificationMessage");
+  const button=document.getElementById("verificationResend");
+  try {
+    const firebaseAuth=await getMcKenzieCustomerAuthDirect_();
+    const user=firebaseAuth.auth.currentUser;
+    if(!user) throw new Error("Your verification session has expired. Please create the account again.");
+    await user.reload();
+    if(firebaseAuth.auth.currentUser.emailVerified){ showEmailVerifiedSuccess_(firebaseAuth.auth.currentUser); return; }
+    if(button){button.disabled=true;button.textContent="Sending...";}
+    const returnUrl=window.location.origin+window.location.pathname;
+    await firebaseAuth.sendEmailVerification(firebaseAuth.auth.currentUser,{url:returnUrl,handleCodeInApp:false});
+    if(message){message.style.color="#198754";message.textContent="A new verification email has been sent. Please check your inbox or spam folder.";}
+  }catch(error){
+    if(message){message.style.color="#a51620";message.textContent=error&&error.message?error.message:"Unable to resend the verification email.";}
+  }finally{
+    if(button){button.disabled=false;button.textContent="Resend Verification Email";}
+  }
+}
+
+function showChangeVerificationEmail_(){
+  const box=document.getElementById("changeVerificationEmailBox");
+  const input=document.getElementById("verificationNewEmail");
+  if(box)box.style.display="block";
+  if(input){input.value="";setTimeout(function(){input.focus();},50);}
+}
+function hideChangeVerificationEmail_(){
+  const box=document.getElementById("changeVerificationEmailBox");
+  if(box)box.style.display="none";
+}
+
+async function changeVerificationEmail_(){
+  const input=document.getElementById("verificationNewEmail");
+  const button=document.getElementById("verificationChangeSubmit");
+  const message=document.getElementById("verificationMessage");
+  const emailEl=document.getElementById("verificationEmail");
+  const oldEmail=String(emailEl?.textContent||"").trim().toLowerCase();
+  const newEmail=String(input?.value||"").trim().toLowerCase();
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)){if(message){message.style.color="#a51620";message.textContent="Please enter a valid new email address.";}return;}
+  if(newEmail===oldEmail){if(message){message.style.color="#a51620";message.textContent="Please enter a different email address.";}return;}
+  try{
+    const firebaseAuth=await getMcKenzieCustomerAuthDirect_();
+    const user=firebaseAuth.auth.currentUser;
+    if(!user)throw new Error("Your verification session has expired. Please create the account again.");
+    if(button){button.disabled=true;button.textContent="Changing...";}
+    await firebaseAuth.updateEmail(user,newEmail);
+    await firebaseAuth.setDoc(firebaseAuth.doc(firebaseAuth.db,"users",user.uid),{email:newEmail,status:"PENDING_EMAIL_VERIFICATION",emailVerified:false,updatedAt:new Date().toISOString()},{merge:true});
+    await firebaseAuth.sendEmailVerification(user,{url:window.location.origin+window.location.pathname,handleCodeInApp:false});
+    try{localStorage.setItem("mckenziePendingVerification",JSON.stringify({userId:user.uid,email:newEmail}));}catch(e){}
+    if(emailEl)emailEl.textContent=newEmail;
+    hideChangeVerificationEmail_();
+    if(message){message.style.color="#198754";message.textContent="Email changed successfully. A new verification email has been sent to "+newEmail+".";}
+  }catch(error){
+    console.error("Change verification email failed:",error);
+    if(message){message.style.color="#a51620";message.textContent=error&&error.code==="auth/email-already-in-use"?"That email address is already registered. Please use another email.":(error&&error.message?error.message:"Unable to change your email address.");}
+  }finally{if(button){button.disabled=false;button.textContent="Change Email & Send";}}
+}
+
+function showEmailVerifiedSuccess_(user, profile) {
+  const modal=document.getElementById("mckEmailVerifiedModal");
+  const message=document.getElementById("mckEmailVerifiedMessage");
+  const proceed=document.getElementById("mckEmailVerifiedOrderButton");
+  if(!modal)return;
+  const fullName=String((profile&&profile.fullName)||"").trim();
+  const firstName=fullName?fullName.split(/\s+/)[0]:"";
+  if(message)message.textContent=firstName?"Congratulations, "+firstName+"! Your email has been successfully verified. Please proceed to login.":"Your email has been successfully verified. Please proceed to login.";
+  if(proceed){proceed.textContent="Proceed to Login";proceed.onclick=function(){proceedToLoginFromVerifiedSuccess_();};}
+  try{localStorage.removeItem("mckenziePendingVerification");}catch(e){}
+  modal.classList.add("show");
+  document.body.style.overflow="hidden";
+}
+
+async function proceedToLoginFromVerifiedSuccess_(){
+  try{const f=await getMcKenzieCustomerAuthDirect_();if(f.auth.currentUser)await f.signOut(f.auth);}catch(e){}
+  const modal=document.getElementById("mckEmailVerifiedModal");
+  if(modal)modal.classList.remove("show");
+  document.body.style.overflow="";
+  openLoginModal();
+  const loginMessage=document.getElementById("popupLoginMessage");
+  if(loginMessage){loginMessage.style.color="#198754";loginMessage.textContent="Your email is verified. Please log in to continue.";}
+}
+
+function proceedToLoginFromVerification_(){
+  const modal=document.getElementById("emailVerificationModal");
+  if(modal)modal.classList.remove("show");
+  openLoginModal();
+}
+
+async function checkEmailVerificationReturn_(){
+  let pending=null;
+  try{pending=JSON.parse(localStorage.getItem("mckenziePendingVerification")||"null");}catch(e){}
+  if(!pending||!pending.userId)return;
+  try{
+    const firebaseAuth=await getMcKenzieCustomerAuthDirect_();
+    const user=firebaseAuth.auth.currentUser;
+    if(!user||user.uid!==String(pending.userId))return;
+    await user.reload();
+    if(!firebaseAuth.auth.currentUser.emailVerified)return;
+    const profile=await markCustomerEmailVerified_(firebaseAuth,firebaseAuth.auth.currentUser);
+    showEmailVerifiedSuccess_(firebaseAuth.auth.currentUser,profile);
+  }catch(error){console.warn("Unable to check email verification status:",error);}
+}
+
 
 /* =========================================================
    LOGIN / CART STATE
