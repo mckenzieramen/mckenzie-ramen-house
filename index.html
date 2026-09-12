@@ -3936,6 +3936,7 @@ async function getMcKenzieCustomerAuthDirect_() {
       collection: fsMod.collection,
       query: fsMod.query,
       where: fsMod.where,
+      updateDoc: fsMod.updateDoc,
       doc: fsMod.doc
     };
   })().catch(function(error) {
@@ -5171,8 +5172,11 @@ async function customerGetOrdersDirect_() {
   return customerFirebaseWithTimeout_(async function(f){
     var u=f.auth.currentUser;
     if(!u || String(u.uid)!==uid) throw new Error("Please log in again.");
-    var snap=await f.getDocs(f.collection(f.db,"orders"));
-    return snap.docs.map(function(doc){var o=doc.data()||{};return {orderId:String(o.orderId||doc.id),userId:String(o.userId||""),customerName:o.customerName||o.fullName||"Customer",fullName:o.fullName||o.customerName||"Customer",email:o.email||u.email||"",mobile:o.mobile||"",items:Array.isArray(o.items)?o.items.map(function(it,idx){return {itemIndex:idx,productId:String(it.productId||it.id||""),productName:it.productName||it.name||"Ramen item",price:Number(it.price||0),quantity:Number(it.quantity||0),subtotal:Number(it.subtotal!=null?it.subtotal:Number(it.price||0)*Number(it.quantity||0)),itemStatus:String(it.itemStatus||"Preparing")};}):[],total:Number(o.total||0),paymentMethod:o.paymentMethod||"",paymentStatus:o.paymentStatus||"Pending",orderStatus:o.orderStatus==="Pending"?"Preparing":(o.orderStatus||"Preparing"),address:o.address||"",instruction:o.instruction||o.additionalInstruction||"",orderedAt:o.orderedAt&&o.orderedAt.toDate?o.orderedAt.toDate().toISOString():String(o.orderedAt||""),customerConfirmed:!!o.customerConfirmed,confirmedAt:o.confirmedAt&&o.confirmedAt.toDate?o.confirmedAt.toDate().toISOString():String(o.confirmedAt||""),deliveredAt:o.deliveredAt&&o.deliveredAt.toDate?o.deliveredAt.toDate().toISOString():String(o.deliveredAt||""),closed:!!o.closed,canRate:o.orderStatus==="Delivered"&&!!o.customerConfirmed};}).filter(function(o){return o.userId===uid;}).sort(function(a,b){return String(b.orderedAt).localeCompare(String(a.orderedAt));});
+    // Query ONLY this customer's orders. Do not read the entire orders collection:
+    // the Firestore rules intentionally block collection-wide customer reads.
+    var q=f.query(f.collection(f.db,"orders"),f.where("userId","==",uid));
+    var snap=await f.getDocs(q);
+    return snap.docs.map(function(doc){var o=doc.data()||{};return {orderId:String(o.orderId||doc.id),userId:String(o.userId||""),customerName:o.customerName||o.fullName||"Customer",fullName:o.fullName||o.customerName||"Customer",email:o.email||u.email||"",mobile:o.mobile||"",items:Array.isArray(o.items)?o.items.map(function(it,idx){return {itemIndex:idx,productId:String(it.productId||it.id||""),productName:it.productName||it.name||"Ramen item",price:Number(it.price||0),quantity:Number(it.quantity||0),subtotal:Number(it.subtotal!=null?it.subtotal:Number(it.price||0)*Number(it.quantity||0)),itemStatus:String(it.itemStatus||"Preparing")};}):[],total:Number(o.total||0),paymentMethod:o.paymentMethod||"",paymentStatus:o.paymentStatus||"Pending",orderStatus:o.orderStatus==="Pending"?"Preparing":(o.orderStatus||"Preparing"),address:o.address||"",instruction:o.instruction||o.additionalInstruction||"",orderedAt:o.orderedAt&&o.orderedAt.toDate?o.orderedAt.toDate().toISOString():String(o.orderedAt||""),customerConfirmed:!!o.customerConfirmed,confirmedAt:o.confirmedAt&&o.confirmedAt.toDate?o.confirmedAt.toDate().toISOString():String(o.confirmedAt||""),deliveredAt:o.deliveredAt&&o.deliveredAt.toDate?o.deliveredAt.toDate().toISOString():String(o.deliveredAt||""),closed:!!o.closed,canRate:o.orderStatus==="Delivered"&&!!o.customerConfirmed};}).sort(function(a,b){return String(b.orderedAt).localeCompare(String(a.orderedAt));});
   },"Unable to load your orders right now.");
 }
 
@@ -5565,14 +5569,23 @@ function renderCheckoutAddressOptions_() {
 function loadCheckoutAddresses_(user) {
   const userId = String((user && user.userId) || getCurrentCustomerId_()).trim();
   if (!userId) return;
-  google.script.run.withSuccessHandler(function(addresses) {
+  customerFirebaseWithTimeout_(async function(f) {
+    const q = f.query(f.collection(f.db, "addresses"), f.where("userId", "==", userId));
+    const snap = await f.getDocs(q);
+    return snap.docs.map(function(doc) {
+      const d = doc.data() || {};
+      return Object.assign({ addressId: doc.id }, d);
+    });
+  }, "Unable to load your saved addresses right now.")
+  .then(function(addresses) {
     checkoutAddresses_ = Array.isArray(addresses) ? addresses : [];
     renderCheckoutAddressOptions_();
-  }).withFailureHandler(function(error) {
+  })
+  .catch(function(error) {
     console.warn("Unable to load saved addresses:", error);
     checkoutAddresses_ = [];
     renderCheckoutAddressOptions_();
-  }).getCustomerAddresses(userId);
+  });
 }
 
 function checkoutAddressChanged_() {
@@ -5584,12 +5597,25 @@ function checkoutAddressChanged_() {
   if (!address) return;
   checkoutDefaultAddressId_ = addressId;
   applyCheckoutAddress_(address);
-  google.script.run.withSuccessHandler(function(updated) {
-    checkoutAddresses_ = Array.isArray(updated) ? updated : checkoutAddresses_;
-    renderCheckoutAddressOptions_();
-  }).withFailureHandler(function(error) {
+
+  customerFirebaseWithTimeout_(async function(f) {
+    const q = f.query(f.collection(f.db, "addresses"), f.where("userId", "==", userId));
+    const snap = await f.getDocs(q);
+    const updates = [];
+    snap.docs.forEach(function(docSnap) {
+      const data = docSnap.data() || {};
+      const shouldBeDefault = docSnap.id === addressId;
+      if (!!data.isDefault !== shouldBeDefault) {
+        updates.push(f.updateDoc(f.doc(f.db, "addresses", docSnap.id), { isDefault: shouldBeDefault, updatedAt: new Date().toISOString() }));
+      }
+    });
+    await Promise.all(updates);
+    return true;
+  }, "Unable to update your default address right now.")
+  .then(function() { return loadCheckoutAddresses_(getSavedUser_() || {}); })
+  .catch(function(error) {
     console.error("Unable to set default address:", error);
-  }).setDefaultCustomerAddress(userId, addressId);
+  });
 }
 
 function openAddAddressModal_() {
@@ -5622,45 +5648,67 @@ function saveNewAddress_() {
   if (!payload.label) payload.label = "Address " + (checkoutAddresses_.length + 1);
   const button=document.getElementById("addressSaveButton"), msg=document.getElementById("newAddressMessage");
   if(button){button.disabled=true;button.textContent="Saving...";} if(msg)msg.textContent="";
-  google.script.run.withSuccessHandler(function(addresses){
+
+  customerFirebaseWithTimeout_(async function(f) {
+    const uid = String(f.auth.currentUser && f.auth.currentUser.uid || userId);
+    if (uid !== String(userId)) throw new Error("Please log in again.");
+    const ref = f.doc(f.db, "addresses", "MRH-ADDR-" + Date.now() + "-" + Math.random().toString(36).slice(2,8));
+    const existingQ = f.query(f.collection(f.db, "addresses"), f.where("userId", "==", uid));
+    const existingSnap = await f.getDocs(existingQ);
+    const isDefault = existingSnap.empty;
+    await f.setDoc(ref, Object.assign({
+      addressId: ref.id, userId: uid, isDefault: isDefault, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()
+    }, payload));
+    return true;
+  }, "Unable to save your address right now.")
+  .then(function(){
+    return customerFirebaseWithTimeout_(async function(f) {
+      const q=f.query(f.collection(f.db,"addresses"),f.where("userId","==",userId));
+      const snap=await f.getDocs(q);
+      return snap.docs.map(function(d){return Object.assign({addressId:d.id},d.data()||{});});
+    }, "Unable to reload your addresses right now.");
+  })
+  .then(function(addresses){
     checkoutAddresses_=Array.isArray(addresses)?addresses:[]; renderCheckoutAddressOptions_(); closeAddAddressModal_();
-  }).withFailureHandler(function(error){
-    if(button){button.disabled=false;button.textContent="Save & Set as Default";} if(msg){msg.style.color="#a51620";msg.textContent=error&&error.message?error.message:"Unable to save address.";}
-  }).saveCustomerAddress(Object.assign({userId:userId,isDefault:true},payload));
+  })
+  .catch(function(error){
+    if(button){button.disabled=false;button.textContent="Save & Set as Default";}
+    if(msg){msg.style.color="#a51620";msg.textContent=error&&error.message?error.message:"Unable to save address.";}
+  });
 }
 
 function saveFirstCheckoutAddressIfNeeded_(done) {
   const userId = getCurrentCustomerId_();
-
-  // If the account already has a saved address, do not create another one.
-  if (!userId || checkoutAddresses_.length) {
-    if (typeof done === "function") done();
-    return;
-  }
+  if (!userId || checkoutAddresses_.length) { if (typeof done === "function") done(); return; }
 
   const payload = getCheckoutAddressPayloadFromFields_("checkout");
   payload.label = "Home";
 
-  google.script.run
-    .withSuccessHandler(function(addresses) {
-      checkoutAddresses_ = Array.isArray(addresses) ? addresses : [];
-      renderCheckoutAddressOptions_();
-
-      // Continue to the confirmation popup only after the first address
-      // has been successfully saved.
-      if (typeof done === "function") done();
-    })
-    .withFailureHandler(function(error) {
-      showCheckoutMessage_(
-        error && error.message
-          ? error.message
-          : "Unable to save your delivery address. Please try again.",
-        true
-      );
-    })
-    .saveCustomerAddress(
-      Object.assign({ userId: userId, isDefault: true }, payload)
-    );
+  customerFirebaseWithTimeout_(async function(f) {
+    const uid = String(f.auth.currentUser && f.auth.currentUser.uid || userId);
+    if (uid !== String(userId)) throw new Error("Please log in again.");
+    const required = [payload.region,payload.province,payload.city,payload.barangay,payload.houseUnit,payload.street];
+    if (required.some(function(v){ return !String(v || "").trim(); })) throw new Error("Please complete your delivery address.");
+    const q = f.query(f.collection(f.db,"addresses"),f.where("userId","==",uid));
+    const existing = await f.getDocs(q);
+    const ref = f.doc(f.db,"addresses","MRH-ADDR-" + Date.now() + "-" + Math.random().toString(36).slice(2,8));
+    await f.setDoc(ref,Object.assign({addressId:ref.id,userId:uid,isDefault:existing.empty,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()},payload));
+    return true;
+  }, "Unable to save your delivery address right now.")
+  .then(function(){
+    return customerFirebaseWithTimeout_(async function(f){
+      const q=f.query(f.collection(f.db,"addresses"),f.where("userId","==",userId));
+      const snap=await f.getDocs(q);
+      return snap.docs.map(function(d){return Object.assign({addressId:d.id},d.data()||{});});
+    }, "Unable to reload your delivery address right now.");
+  })
+  .then(function(addresses){
+    checkoutAddresses_=Array.isArray(addresses)?addresses:[]; renderCheckoutAddressOptions_();
+    if (typeof done === "function") done();
+  })
+  .catch(function(error){
+    showCheckoutMessage_(error&&error.message?error.message:"Unable to save your delivery address. Please try again.",true);
+  });
 }
 
 function openOrderHistory_() {
