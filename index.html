@@ -3227,7 +3227,7 @@ body.quick-loading {
     <p id="verificationMessage" class="verification-message" aria-live="polite">
       Open your email and click the verification link to verify your account.
     </p>
-    <button type="button" id="verificationSubmit" class="verification-submit" onclick="closeEmailVerificationModal()">I’ll Verify My Email</button>
+    <button type="button" id="verificationSubmit" class="verification-submit" onclick="checkEmailVerificationNow_()">I’ll Verify My Email</button>
   </div>
 </div>
 
@@ -3837,6 +3837,7 @@ async function getMcKenzieCustomerAuthDirect_() {
       auth: auth,
       db: db,
       createUserWithEmailAndPassword: authMod.createUserWithEmailAndPassword,
+      signInWithEmailAndPassword: authMod.signInWithEmailAndPassword,
       sendEmailVerification: authMod.sendEmailVerification,
       setDoc: fsMod.setDoc,
       getDoc: fsMod.getDoc,
@@ -3867,6 +3868,127 @@ function openEmailVerificationModal_(email) {
 
   modal.classList.add("show");
   document.body.style.overflow = "hidden";
+}
+
+async function checkEmailVerificationNow_() {
+  const message = document.getElementById("verificationMessage");
+  const button = document.getElementById("verificationSubmit");
+  if (button) {
+    button.disabled = true;
+    button.textContent = "Checking...";
+  }
+  if (message) {
+    message.style.color = "#a51620";
+    message.textContent = "Checking your email verification status...";
+  }
+
+  try {
+    const firebaseAuth = await getMcKenzieCustomerAuthDirect_();
+    const user = firebaseAuth.auth.currentUser;
+    if (!user) {
+      if (message) message.textContent = "Please sign in again, then verify your account to proceed.";
+      return;
+    }
+
+    await user.reload();
+    const freshUser = firebaseAuth.auth.currentUser;
+
+    if (!freshUser || !freshUser.emailVerified) {
+      if (message) {
+        message.style.color = "#a51620";
+        message.textContent = "You should verify your account to proceed. Please open your email and click the verification link first.";
+      }
+      return;
+    }
+
+    let profile = getSavedUser_() || {};
+    try {
+      const snap = await firebaseAuth.getDoc(firebaseAuth.doc(firebaseAuth.db, "users", freshUser.uid));
+      if (snap.exists()) profile = Object.assign({}, profile, snap.data() || {});
+    } catch (e) {}
+
+    try {
+      await firebaseAuth.setDoc(
+        firebaseAuth.doc(firebaseAuth.db, "users", freshUser.uid),
+        {
+          status: "ACTIVE",
+          emailVerified: true,
+          emailVerifiedAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        },
+        { merge: true }
+      );
+    } catch (e) {}
+
+    showEmailVerifiedSuccess_(freshUser, Object.assign({}, profile, {
+      status: "ACTIVE",
+      emailVerified: true
+    }));
+  } catch (error) {
+    console.warn("Verification status check failed:", error);
+    if (message) {
+      message.style.color = "#a51620";
+      message.textContent = "You should verify your account to proceed. Please click the verification link in your email first.";
+    }
+  } finally {
+    if (button) {
+      button.disabled = false;
+      button.textContent = "I’ll Verify My Email";
+    }
+  }
+}
+
+function isCustomerEmailVerified_() {
+  try {
+    const user = getSavedUser_() || {};
+    return user.emailVerified === true || String(user.status || "").toUpperCase() === "ACTIVE";
+  } catch (e) {
+    return false;
+  }
+}
+
+async function requireVerifiedCustomer_(messageText) {
+  if (!isLoggedIn_()) return false;
+  if (isCustomerEmailVerified_()) return true;
+
+  let email = "";
+  try {
+    const saved = getSavedUser_() || {};
+    email = saved.email || "";
+  } catch (e) {}
+
+  try {
+    const firebaseAuth = await getMcKenzieCustomerAuthDirect_();
+    const firebaseUser = firebaseAuth.auth.currentUser;
+    if (firebaseUser) {
+      await firebaseUser.reload();
+      if (firebaseAuth.auth.currentUser && firebaseAuth.auth.currentUser.emailVerified) {
+        let profile = getSavedUser_() || {};
+        try {
+          const snap = await firebaseAuth.getDoc(firebaseAuth.doc(firebaseAuth.db, "users", firebaseUser.uid));
+          if (snap.exists()) profile = Object.assign({}, profile, snap.data() || {});
+        } catch (e) {}
+        try {
+          await firebaseAuth.setDoc(firebaseAuth.doc(firebaseAuth.db, "users", firebaseUser.uid), {
+            status: "ACTIVE",
+            emailVerified: true,
+            emailVerifiedAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          }, { merge: true });
+        } catch (e) {}
+        showEmailVerifiedSuccess_(firebaseAuth.auth.currentUser, Object.assign({}, profile, {status:"ACTIVE",emailVerified:true}));
+        return true;
+      }
+    }
+  } catch (e) {}
+
+  openEmailVerificationModal_(email);
+  const message = document.getElementById("verificationMessage");
+  if (message) {
+    message.style.color = "#a51620";
+    message.textContent = messageText || "You should verify your account to proceed. Please open your email and click the verification link first.";
+  }
+  return false;
 }
 
 function closeEmailVerificationModal() {
@@ -3914,7 +4036,9 @@ function showEmailVerifiedSuccess_(user, profile) {
       postalCode: (profile && profile.postalCode) || "",
       country: (profile && profile.country) || "Philippines",
       region: (profile && profile.region) || "",
-      additionalInstruction: (profile && profile.additionalInstruction) || ""
+      additionalInstruction: (profile && profile.additionalInstruction) || "",
+      status: "ACTIVE",
+      emailVerified: true
     }));
     localStorage.setItem("mckenzieLoggedIn", "true");
     localStorage.removeItem("mckenziePendingVerification");
@@ -4070,8 +4194,9 @@ function updateStickyCartButton_() {
   button.setAttribute("aria-label", loggedIn ? "Open cart" : "Log in to use cart");
 }
 
-function handleStickyCartClick_() {
+async function handleStickyCartClick_() {
   if (isLoggedIn_()) {
+    if (!(await requireVerifiedCustomer_())) return;
     openCartSection_();
   } else {
     openLoginModal();
@@ -4113,7 +4238,7 @@ function updateHeroAccountButton_() {
 
   updateStickyCartButton_();
 }
-function handleHeroAccountButton() { if(isLoggedIn_()) openCartSection_(); else openLoginModal(); }
+async function handleHeroAccountButton() { if(isLoggedIn_()){ if (!(await requireVerifiedCustomer_())) return; openCartSection_(); } else openLoginModal(); }
 function getProductCartKey_(product) {
   if (!product) return "";
   // _cartKey is assigned from Product ID + product row index, so every
@@ -4156,8 +4281,9 @@ function getCartQuantity_(productKey) {
   const item = findCartItem_(productKey);
   return item ? Number(item.quantity || 0) : 0;
 }
-function addToCart_(product) {
+async function addToCart_(product) {
   if(!isLoggedIn_()){openLoginModal();return;}
+  if (!(await requireVerifiedCustomer_("You should verify your account to proceed. Please verify your email before adding items to your cart."))) return;
   if (!product) return;
 
   const cartKey = getProductCartKey_(product);
@@ -4214,7 +4340,8 @@ function renderCartControls_(productKey) {
   controls.querySelector(".qty-minus").onclick=function(){changeCartQuantity_(key,-1);};
   controls.querySelector(".qty-plus").onclick=function(){if(p)addToCart_(p);};
 }
-function openCartSection_(){
+async function openCartSection_(){
+  if (isLoggedIn_() && !(await requireVerifiedCustomer_())) return;
   // IMPORTANT: Use the current in-memory cart when opening the Cart.
   // The menu quantity controls and cartItems are the live source of truth.
   // Reloading localStorage here can restore an older snapshot and make the
@@ -4393,7 +4520,8 @@ function showCheckoutMessage_(text, error) {
   }
 }
 
-function placeOrder_() {
+async function placeOrder_() {
+  if (isLoggedIn_() && !(await requireVerifiedCustomer_("You should verify your account to proceed. Please verify your email before placing an order."))) return;
   // For address SELECT fields, validate the visible selected option as well as
   // the value. This prevents a valid saved/default address from being rejected
   // while the dependent address chain is finishing its background refresh.
@@ -5933,8 +6061,56 @@ function submitLoginPopup(event) {
   showLoginRamenLoader_();
 
   google.script.run
-    .withSuccessHandler(function(result) {
+    .withSuccessHandler(async function(result) {
       if (result && result.success) {
+        /* Firebase is the source of truth for email verification. The legacy
+           login check may validate the password, but an unverified customer
+           must not become an active logged-in customer. */
+        try {
+          const firebaseAuth = await getMcKenzieCustomerAuthDirect_();
+          const firebaseEmail = String(result.email || (/@/.test(identifier) ? identifier : "")).trim().toLowerCase();
+          if (!firebaseEmail) throw new Error("Unable to determine the account email.");
+          const firebaseCred = await firebaseAuth.signInWithEmailAndPassword(firebaseAuth.auth, firebaseEmail, password);
+          const firebaseUser = firebaseCred.user;
+          await firebaseUser.reload();
+
+          if (!firebaseUser.emailVerified) {
+            setLoggedInState_(false);
+            const pendingUser = {
+              userId: firebaseUser.uid,
+              fullName: result.fullName || "",
+              username: result.username || identifier,
+              email: firebaseUser.email || firebaseEmail,
+              mobile: result.mobile || "",
+              status: "PENDING_EMAIL_VERIFICATION",
+              emailVerified: false
+            };
+            try {
+              localStorage.setItem("mckenzieUser", JSON.stringify(pendingUser));
+              localStorage.setItem("mckenziePendingVerification", JSON.stringify({userId:firebaseUser.uid,email:firebaseUser.email || firebaseEmail}));
+            } catch (storageError) {}
+            closeLoginModal();
+            openEmailVerificationModal_(firebaseUser.email || firebaseEmail);
+            const verificationMessage = document.getElementById("verificationMessage");
+            if (verificationMessage) {
+              verificationMessage.style.color = "#a51620";
+              verificationMessage.textContent = "You should verify your account to proceed. Please open your email and click the verification link first.";
+            }
+            hideLoginRamenLoader_();
+            if (submitButton) { submitButton.disabled = false; submitButton.textContent = "Log In"; }
+            return;
+          }
+        } catch (verificationError) {
+          console.error("Firebase verification gate during login:", verificationError);
+          hideLoginRamenLoader_();
+          if (message) {
+            message.style.color = "#a51620";
+            message.textContent = "Unable to confirm your email verification status. Please try again.";
+          }
+          if (submitButton) { submitButton.disabled = false; submitButton.textContent = "Log In"; }
+          return;
+        }
+
         if (message) {
           message.style.color = "#198754";
           message.textContent = "Login successful!";
@@ -5965,7 +6141,9 @@ function submitLoginPopup(event) {
           postalCode: result.postalCode || "",
           country: result.country || "Philippines",
           region: result.region || "",
-          additionalInstruction: result.additionalInstruction || ""
+          additionalInstruction: result.additionalInstruction || "",
+          status: "ACTIVE",
+          emailVerified: true
         };
 
         try {
@@ -5988,6 +6166,8 @@ function submitLoginPopup(event) {
             finalUser.fullName = (profile && profile.fullName) || basicUser.fullName;
             finalUser.email = (profile && profile.email) || basicUser.email;
             finalUser.mobile = (profile && profile.mobile) || basicUser.mobile;
+            finalUser.status = "ACTIVE";
+            finalUser.emailVerified = true;
 
             try {
               localStorage.setItem("mckenzieUser", JSON.stringify(finalUser));
@@ -7073,6 +7253,16 @@ createPetals();
 
 updateHeroAccountButton_();
 updateStickyCartButton_();
+
+/* If an old browser session says the customer is logged in but the email was
+   never verified, immediately restore the verification gate. */
+try {
+  if (isLoggedIn_() && !isCustomerEmailVerified_()) {
+    setTimeout(function(){
+      requireVerifiedCustomer_("You should verify your account to proceed. Please open your email and click the verification link first.");
+    }, 500);
+  }
+} catch (e) {}
 
 /* Show the ramen loader immediately, then wait for Firebase bridge readiness
    before any legacy google.script.run call is made. This prevents
