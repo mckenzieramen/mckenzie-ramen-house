@@ -3219,15 +3219,15 @@ body.quick-loading {
   <div class="verification-card">
     <button type="button" class="verification-close" aria-label="Close email verification" onclick="closeEmailVerificationModal()">×</button>
     <div class="verification-kicker">MCKENZIE RAMEN HOUSE</div>
-    <h2 id="emailVerificationTitle">Check Your Email</h2>
+    <h2 id="emailVerificationTitle">Verify Your Account</h2>
     <p>
-      We sent a verification link to
+      Open your email to verify your account. We sent a verification link to
       <span id="verificationEmail" class="verification-email"></span>.
     </p>
     <p id="verificationMessage" class="verification-message" aria-live="polite">
       Open your email and click the verification link to verify your account.
     </p>
-    <button type="button" id="verificationSubmit" class="verification-submit" onclick="closeEmailVerificationModal()">Got It</button>
+    <button type="button" id="verificationSubmit" class="verification-submit" onclick="closeEmailVerificationModal()">I’ll Verify My Email</button>
   </div>
 </div>
 
@@ -3236,8 +3236,8 @@ body.quick-loading {
   <div id="mckEmailVerifiedCard">
     <div id="mckEmailVerifiedIcon">✓</div>
     <div class="verified-kicker">MCKENZIE RAMEN HOUSE</div>
-    <h2 id="mckEmailVerifiedTitle">Your Account Is Verified!</h2>
-    <p id="mckEmailVerifiedMessage">Your email has been successfully verified. Your account is ready to use.</p>
+    <h2 id="mckEmailVerifiedTitle">Congratulations!</h2>
+    <p id="mckEmailVerifiedMessage">Your account is verified. You can now order from McKenzie Ramen House.</p>
     <button type="button" id="mckEmailVerifiedOrderButton" onclick="goOrderAfterEmailVerification_()">Go &amp; Order Now</button>
   </div>
 </div>
@@ -3756,7 +3756,8 @@ async function submitCreateAccountPopup(event) {
         fullName: fullName,
         mobile: mobile,
         country: "Philippines",
-        status: "ACTIVE",
+        status: "PENDING_EMAIL_VERIFICATION",
+        emailVerified: false,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       },
@@ -3816,7 +3817,7 @@ async function getMcKenzieCustomerAuthDirect_() {
     const fsMod = await import("https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js");
 
     const cfg = {
-      apiKey: "AIzaSyDnLMhAw1kJMlbTN4u8vB6poip5dt94",
+      apiKey: "AIzaSyDnLMhAhkAw1JMlbTxN4u8vB6poip5dt94",
       authDomain: "mckenzie-ramen-house.firebaseapp.com",
       projectId: "mckenzie-ramen-house",
       storageBucket: "mckenzie-ramen-house.firebasestorage.app",
@@ -3861,7 +3862,7 @@ function openEmailVerificationModal_(email) {
   if (emailEl) emailEl.textContent = email || "your email";
   if (message) {
     message.style.color = "#a51620";
-    message.textContent = "Open your email and click the verification link. After verification, come back to McKenzie Ramen House and your account will be confirmed automatically.";
+    message.textContent = "Click the verification link in your email. After verification, return to McKenzie Ramen House and you will see your account confirmation automatically.";
   }
 
   modal.classList.add("show");
@@ -3894,8 +3895,8 @@ function showEmailVerifiedSuccess_(user, profile) {
   const firstName = fullName ? fullName.split(/\s+/)[0] : "";
   if (message) {
     message.textContent = firstName
-      ? "Welcome, " + firstName + "! Your email has been successfully verified. Your account is ready to order."
-      : "Your email has been successfully verified. Your account is ready to order.";
+      ? "Congratulations, " + firstName + "! Your email has been successfully verified. You can now order."
+      : "Congratulations! Your email has been successfully verified. You can now order.";
   }
 
   try {
@@ -3961,6 +3962,24 @@ async function checkEmailVerificationReturn_() {
       const snap = await firebaseAuth.getDoc(firebaseAuth.doc(firebaseAuth.db, "users", user.uid));
       if (snap.exists()) profile = snap.data() || {};
     } catch (error) {}
+
+    /* The account becomes active only after Firebase confirms the email. */
+    try {
+      await firebaseAuth.setDoc(
+        firebaseAuth.doc(firebaseAuth.db, "users", user.uid),
+        {
+          status: "ACTIVE",
+          emailVerified: true,
+          emailVerifiedAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        },
+        { merge: true }
+      );
+      profile.status = "ACTIVE";
+      profile.emailVerified = true;
+    } catch (error) {
+      console.warn("Unable to update verified account status:", error);
+    }
 
     showEmailVerifiedSuccess_(firebaseAuth.auth.currentUser, profile);
   } catch (error) {
