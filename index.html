@@ -5090,6 +5090,46 @@ function confirmPlaceOrder_() {
 
   async function saveCustomerOrderReliable_(orderId, payload) {
     const f = await getReliableCustomerFirebaseForOrder_();
+
+    // Firebase can restore LOCAL auth persistence a moment after the page/UI
+    // is already ready. Wait for that restoration before checking currentUser.
+    // This prevents a valid logged-in customer from being treated as logged out
+    // when clicking "Yes, Place Order".
+    try {
+      if (typeof f.auth.authStateReady === "function") {
+        await mckenzieWithTimeout_(
+          f.auth.authStateReady(),
+          8000,
+          "Firebase is still restoring your login session. Please wait a moment and try again."
+        );
+      } else if (!f.auth.currentUser && typeof f.onAuthStateChanged === "function") {
+        await new Promise(function(resolve) {
+          var done = false;
+          var unsubscribe = null;
+          var timer = setTimeout(function() {
+            if (done) return;
+            done = true;
+            try { if (unsubscribe) unsubscribe(); } catch (e) {}
+            resolve();
+          }, 5000);
+          try {
+            unsubscribe = f.onAuthStateChanged(f.auth, function() {
+              if (done) return;
+              done = true;
+              clearTimeout(timer);
+              try { if (unsubscribe) unsubscribe(); } catch (e) {}
+              resolve();
+            });
+          } catch (e) {
+            clearTimeout(timer);
+            resolve();
+          }
+        });
+      }
+    } catch (authReadyError) {
+      console.warn("Customer auth restoration check failed:", authReadyError);
+    }
+
     const u = f.auth && f.auth.currentUser;
 
     if (!u) throw new Error("Please log in again before placing your order.");
@@ -5367,8 +5407,6 @@ async function customerSaveOrderDirect_(orderId,payload) {
     if(!cleanItems.length) throw new Error("The order contains no items.");
     var total=cleanItems.reduce(function(sum,it){return sum+it.subtotal;},0);
     var ref=f.doc(f.db,"orders",String(orderId));
-    var existing=await f.getDoc(ref);
-    if(existing.exists()) return {success:true,orderId:String(orderId),duplicate:true};
     var address=[payload.houseUnit,payload.street,payload.barangay,payload.city,payload.province,payload.region].filter(Boolean).join(", ");
     await f.setDoc(ref,{orderId:String(orderId),userId:uid,customerName:String(payload.fullName||""),fullName:String(payload.fullName||""),email:u.email||String(payload.email||""),mobile:String(payload.mobile||""),items:cleanItems,total:total,paymentMethod:String(payload.paymentMethod||""),paymentStatus:"Pending",orderStatus:"Preparing",address:address,instruction:String(payload.additionalInstruction||""),orderedAt:new Date().toISOString(),customerConfirmed:false,confirmedAt:"",deliveredAt:"",closed:false});
     return {success:true,orderId:String(orderId),status:"Preparing"};
