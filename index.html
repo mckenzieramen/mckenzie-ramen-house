@@ -3674,7 +3674,7 @@ function switchCreateAccountToLogin() {
   openLoginModal();
 }
 
-function submitCreateAccountPopup(event) {
+async function submitCreateAccountPopup(event) {
   event.preventDefault();
   const fullName = String(document.getElementById("createFullName").value || "").trim();
   const email = String(document.getElementById("createEmail").value || "").trim().toLowerCase();
@@ -3721,11 +3721,29 @@ function submitCreateAccountPopup(event) {
   msg("");
   showLoginRamenLoader_();
 
-  /* GitHub + Firebase only. Firebase creates the account and sends the
-     standard verification LINK directly to the customer's email. */
-  if (!window.google || !google.script || typeof google.script.run !== "object") {
+  /* GitHub + Firebase only. Wait for the standalone Firebase bridge to
+     finish loading before calling its compatibility runner. */
+  try {
+    if (window.MckenzieFirebaseReady) {
+      await window.MckenzieFirebaseReady;
+    } else {
+      await new Promise(function(resolve, reject) {
+        var timer = setTimeout(function() {
+          reject(new Error("Firebase is still loading. Please refresh the page and try again."));
+        }, 12000);
+        window.addEventListener("mckenzie-firebase-ready", function() {
+          clearTimeout(timer);
+          resolve();
+        }, { once: true });
+      });
+    }
+    if (!window.google || !window.google.script || typeof window.google.script.run !== "object") {
+      throw new Error("Firebase connection is unavailable. Please refresh the page and try again.");
+    }
+  } catch (error) {
+    console.error("Firebase startup error:", error);
     hideLoginRamenLoader_();
-    msg("Firebase is still loading. Please wait a moment and try again.");
+    msg(error && error.message ? error.message : "Firebase connection is unavailable. Please refresh the page and try again.");
     button.disabled = false;
     button.textContent = "Create Account";
     return;
