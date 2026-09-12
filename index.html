@@ -5115,11 +5115,6 @@ function confirmPlaceOrder_() {
     }, 0);
 
     const ref = f.doc(f.db, "orders", String(orderId));
-    const existing = await f.getDoc(ref);
-
-    if (existing.exists()) {
-      return { success:true, orderId:String(orderId), duplicate:true };
-    }
 
     const address = [
       payload.houseUnit,
