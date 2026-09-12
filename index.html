@@ -2103,6 +2103,9 @@ body.quick-loading {
   cursor: pointer;
 }
 
+.login-remember { display:flex; align-items:center; gap:8px; margin:11px 0 2px; font-size:11px; color:#765f5a; user-select:none; }
+.login-remember input { width:15px; height:15px; accent-color:#a51620; cursor:pointer; }
+.login-remember label { cursor:pointer; }
 .login-submit {
   width: 100%;
   margin-top: 4px;
@@ -2742,7 +2745,9 @@ body.quick-loading {
         <input
           id="popupLoginIdentifier"
           type="text"
-          autocomplete="username"
+          autocomplete="off"
+          autocapitalize="none"
+          spellcheck="false"
           placeholder="Enter your username or email"
           required>
       </div>
@@ -2753,7 +2758,9 @@ body.quick-loading {
           <input
             id="popupLoginPassword"
             type="password"
-            autocomplete="current-password"
+            autocomplete="new-password"
+            data-lpignore="true"
+            data-1p-ignore="true"
             placeholder="Enter your password"
             required>
           <button
@@ -2763,6 +2770,11 @@ body.quick-loading {
             SHOW
           </button>
         </div>
+      </div>
+
+      <div class="login-remember">
+        <input type="checkbox" id="popupRememberMe">
+        <label for="popupRememberMe">Remember my username/email</label>
       </div>
 
       <button
@@ -3851,6 +3863,10 @@ async function getMcKenzieCustomerAuthDirect_() {
       onAuthStateChanged: authMod.onAuthStateChanged,
       setDoc: fsMod.setDoc,
       getDoc: fsMod.getDoc,
+      getDocs: fsMod.getDocs,
+      collection: fsMod.collection,
+      query: fsMod.query,
+      where: fsMod.where,
       doc: fsMod.doc
     };
   })().catch(function(error) {
@@ -5976,16 +5992,27 @@ function openLoginModal() {
   const modal = document.getElementById("loginModal");
   if (!modal) return;
 
+  const identifierField = document.getElementById("popupLoginIdentifier");
+  const passwordField = document.getElementById("popupLoginPassword");
+  const rememberBox = document.getElementById("popupRememberMe");
+  const message = document.getElementById("popupLoginMessage");
+
+  // Never carry a previous/admin browser autofill into the customer login.
+  // Only restore the customer username/email when the customer explicitly
+  // selected Remember me. Password is intentionally never stored in the site.
+  let rememberedIdentifier = "";
+  try { rememberedIdentifier = localStorage.getItem("mckenzieRememberedLogin") || ""; } catch (e) {}
+  if (identifierField) identifierField.value = rememberedIdentifier;
+  if (passwordField) { passwordField.value = ""; passwordField.type = "password"; }
+  if (rememberBox) rememberBox.checked = !!rememberedIdentifier;
+  if (message) message.textContent = "";
+
   modal.classList.add("show");
   document.body.style.overflow = "hidden";
 
-  const message = document.getElementById("popupLoginMessage");
-  if (message) message.textContent = "";
-
   setTimeout(function() {
-    const field = document.getElementById("popupLoginIdentifier");
-    if (field) field.focus();
-  }, 50);
+    if (identifierField) identifierField.focus();
+  }, 80);
 }
 
 function closeLoginModal() {
@@ -6059,198 +6086,109 @@ function showLoginSuccessToast_(firstName) {
   }, 3500);
 }
 
-function submitLoginPopup(event) {
+async function submitLoginPopup(event) {
   event.preventDefault();
 
-  const identifier = String(
-    document.getElementById("popupLoginIdentifier").value || ""
-  ).trim();
-  const password = String(
-    document.getElementById("popupLoginPassword").value || ""
-  );
+  const identifier = String(document.getElementById("popupLoginIdentifier").value || "").trim();
+  const password = String(document.getElementById("popupLoginPassword").value || "");
   const submitButton = document.getElementById("popupLoginSubmit");
   const message = document.getElementById("popupLoginMessage");
+  const rememberBox = document.getElementById("popupRememberMe");
 
   if (!identifier || !password) {
     if (message) message.textContent = "Please enter your username/email and password.";
     return;
   }
-
-  if (submitButton) {
-    submitButton.disabled = true;
-    submitButton.textContent = "Logging in...";
-  }
+  if (submitButton) { submitButton.disabled = true; submitButton.textContent = "Logging in..."; }
   if (message) message.textContent = "";
   showLoginRamenLoader_();
 
-  google.script.run
-    .withSuccessHandler(async function(result) {
-      if (result && result.success) {
-        /* Firebase is the source of truth for email verification. The legacy
-           login check may validate the password, but an unverified customer
-           must not become an active logged-in customer. */
-        try {
-          const firebaseAuth = await getMcKenzieCustomerAuthDirect_();
-          const firebaseEmail = String(result.email || (/@/.test(identifier) ? identifier : "")).trim().toLowerCase();
-          if (!firebaseEmail) throw new Error("Unable to determine the account email.");
-          const firebaseCred = await firebaseAuth.signInWithEmailAndPassword(firebaseAuth.auth, firebaseEmail, password);
-          const firebaseUser = firebaseCred.user;
-          await firebaseUser.reload();
+  try {
+    const firebaseAuth = await getMcKenzieCustomerAuthDirect_();
+    let firebaseEmail = identifier.toLowerCase();
+    let profile = {};
 
-          if (!firebaseUser.emailVerified) {
-            setLoggedInState_(false);
-            const pendingUser = {
-              userId: firebaseUser.uid,
-              fullName: result.fullName || "",
-              username: result.username || identifier,
-              email: firebaseUser.email || firebaseEmail,
-              mobile: result.mobile || "",
-              status: "PENDING_EMAIL_VERIFICATION",
-              emailVerified: false
-            };
-            try {
-              localStorage.setItem("mckenzieUser", JSON.stringify(pendingUser));
-              localStorage.setItem("mckenziePendingVerification", JSON.stringify({userId:firebaseUser.uid,email:firebaseUser.email || firebaseEmail}));
-            } catch (storageError) {}
-            closeLoginModal();
-            openEmailVerificationModal_(firebaseUser.email || firebaseEmail);
-            const verificationMessage = document.getElementById("verificationMessage");
-            if (verificationMessage) {
-              verificationMessage.style.color = "#a51620";
-              verificationMessage.textContent = "You should verify your account to proceed. Please open your email and click the verification link first.";
-            }
-            hideLoginRamenLoader_();
-            if (submitButton) { submitButton.disabled = false; submitButton.textContent = "Log In"; }
-            return;
-          }
-        } catch (verificationError) {
-          console.error("Firebase verification gate during login:", verificationError);
-          hideLoginRamenLoader_();
-          if (message) {
-            message.style.color = "#a51620";
-            message.textContent = "Unable to confirm your email verification status. Please try again.";
-          }
-          if (submitButton) { submitButton.disabled = false; submitButton.textContent = "Log In"; }
-          return;
-        }
+    // Username login: find the customer's email from Firestore first.
+    if (!/@/.test(identifier)) {
+      const q = firebaseAuth.query(
+        firebaseAuth.collection(firebaseAuth.db, "users"),
+        firebaseAuth.where("username", "==", identifier)
+      );
+      const snaps = await firebaseAuth.getDocs(q);
+      if (snaps.empty) throw new Error("Username not found. Please check your username.");
+      const first = snaps.docs[0];
+      profile = first.data() || {};
+      firebaseEmail = String(profile.email || "").trim().toLowerCase();
+      if (!firebaseEmail) throw new Error("This account does not have a valid email address.");
+    }
 
-        if (message) {
-          message.style.color = "#198754";
-          message.textContent = "Login successful!";
-        }
+    const cred = await firebaseAuth.signInWithEmailAndPassword(firebaseAuth.auth, firebaseEmail, password);
+    const firebaseUser = cred.user;
+    await firebaseUser.reload();
 
-        setLoggedInState_(true);
-
-        // Close the login popup as soon as the credentials are successfully
-        // validated. Do not wait for the background profile refresh.
-        closeLoginModal();
-
-        // Show a friendly success message on the homepage.
-        const welcomeName = String(result.fullName || result.username || identifier || "").trim();
-        const welcomeFirstName = welcomeName ? welcomeName.split(/\s+/)[0] : "";
-        showLoginSuccessToast_(welcomeFirstName);
-
-        const basicUser = {
-          userId: result.userId || "",
-          fullName: result.fullName || "",
-          username: result.username || identifier,
-          email: result.email || "",
-          mobile: result.mobile || "",
-          houseUnit: result.houseUnit || "",
-          street: result.street || "",
-          barangay: result.barangay || "",
-          city: result.city || "",
-          province: result.province || "",
-          postalCode: result.postalCode || "",
-          country: result.country || "Philippines",
-          region: result.region || "",
-          additionalInstruction: result.additionalInstruction || "",
-          status: "ACTIVE",
-          emailVerified: true
-        };
-
-        try {
-          localStorage.setItem("mckenzieUser", JSON.stringify(basicUser));
-        } catch (storageError) {
-          console.warn("Unable to save user details:", storageError);
-        }
-
-        // IMPORTANT: switch the in-memory cart to this exact customer's cart.
-        // This prevents the previous customer's cart from appearing after login.
-        loadCartForCurrentCustomer_();
-
-        // Refresh the complete profile from the Users sheet. This makes
-        // Checkout use the exact customer information for this account.
-        google.script.run
-          .withSuccessHandler(function(profile) {
-            const finalUser = Object.assign({}, basicUser, profile || {});
-            finalUser.userId = (profile && profile.userId) || basicUser.userId;
-            finalUser.username = (profile && profile.username) || basicUser.username;
-            finalUser.fullName = (profile && profile.fullName) || basicUser.fullName;
-            finalUser.email = (profile && profile.email) || basicUser.email;
-            finalUser.mobile = (profile && profile.mobile) || basicUser.mobile;
-            finalUser.status = "ACTIVE";
-            finalUser.emailVerified = true;
-
-            try {
-              localStorage.setItem("mckenzieUser", JSON.stringify(finalUser));
-            } catch (storageError) {
-              console.warn("Unable to refresh saved user details:", storageError);
-            }
-
-            // Switch the active cart to this exact customer's private cart.
-            loadCartForCurrentCustomer_();
-            updateAccountMenu_();
-            completeLoginRamenLoader_();
-
-            if (submitButton) {
-              submitButton.disabled = false;
-              submitButton.textContent = "Log In";
-            }
-          })
-          .withFailureHandler(function(profileError) {
-            // Login is already valid; if profile refresh fails, continue
-            // using the details returned by login.
-            console.warn("Unable to refresh profile after login:", profileError);
-            // Even if profile refresh fails, keep the cart isolated by Customer ID.
-            loadCartForCurrentCustomer_();
-            updateAccountMenu_();
-            completeLoginRamenLoader_();
-
-            if (submitButton) {
-              submitButton.disabled = false;
-              submitButton.textContent = "Log In";
-            }
-          })
-          .getUserProfile(basicUser.userId);
-      } else {
-        throw new Error("Unable to log in.");
-      }
-    })
-    .withFailureHandler(function(error) {
-      // IMPORTANT: an invalid login must NEVER leave the ramen loader stuck.
-      // Hide it first, then show the actual login error in the popup.
+    if (!firebaseUser.emailVerified) {
+      setLoggedInState_(false);
+      const pendingUser = Object.assign({}, profile, {
+        userId: firebaseUser.uid,
+        username: profile.username || identifier,
+        email: firebaseUser.email || firebaseEmail,
+        status: "PENDING_EMAIL_VERIFICATION",
+        emailVerified: false
+      });
+      try {
+        localStorage.setItem("mckenzieUser", JSON.stringify(pendingUser));
+        localStorage.setItem("mckenziePendingVerification", JSON.stringify({userId:firebaseUser.uid,email:firebaseUser.email || firebaseEmail}));
+      } catch (e) {}
       hideLoginRamenLoader_();
-      completeLoginRamenLoader_ = completeLoginRamenLoader_;
-      console.error("Login error:", error);
+      closeLoginModal();
+      openEmailVerificationModal_(firebaseUser.email || firebaseEmail);
+      const vm = document.getElementById("verificationMessage");
+      if (vm) { vm.style.color="#a51620"; vm.textContent="You should verify your account to proceed. Please open your email and click the verification link first."; }
+      if (submitButton) { submitButton.disabled=false; submitButton.textContent="Log In"; }
+      return;
+    }
 
-      const serverMessage = error && error.message ? String(error.message) : "";
-      let friendlyMessage = serverMessage;
-      if (!friendlyMessage || /Unable to log in/i.test(friendlyMessage)) {
-        friendlyMessage = "Incorrect username/email or password.";
-      }
+    // Fetch the complete customer profile after Firebase authentication.
+    try {
+      const snap = await firebaseAuth.getDoc(firebaseAuth.doc(firebaseAuth.db, "users", firebaseUser.uid));
+      if (snap.exists()) profile = Object.assign({}, profile, snap.data() || {});
+    } catch (e) {}
 
-      if (message) {
-        message.style.color = "#a51620";
-        message.textContent = friendlyMessage;
-      }
+    const basicUser = Object.assign({}, profile, {
+      userId: firebaseUser.uid,
+      fullName: profile.fullName || "",
+      username: profile.username || identifier,
+      email: firebaseUser.email || profile.email || firebaseEmail,
+      mobile: profile.mobile || "",
+      country: profile.country || "Philippines",
+      status: "ACTIVE",
+      emailVerified: true
+    });
 
-      if (submitButton) {
-        submitButton.disabled = false;
-        submitButton.textContent = "Log In";
-      }
-    })
-    .loginUser(identifier, password);
+    try {
+      if (rememberBox && rememberBox.checked) localStorage.setItem("mckenzieRememberedLogin", identifier);
+      else localStorage.removeItem("mckenzieRememberedLogin");
+    } catch (e) {}
+
+    try { localStorage.setItem("mckenzieUser", JSON.stringify(basicUser)); } catch (e) {}
+    setLoggedInState_(true);
+    loadCartForCurrentCustomer_();
+    updateAccountMenu_();
+    closeLoginModal();
+    const welcomeName = String(basicUser.fullName || basicUser.username || identifier).trim();
+    showLoginSuccessToast_(welcomeName ? welcomeName.split(/\s+/)[0] : "");
+    completeLoginRamenLoader_();
+
+  } catch (error) {
+    console.error("Login error:", error);
+    hideLoginRamenLoader_();
+    const raw = error && error.message ? String(error.message) : "";
+    let friendly = raw;
+    if (/auth\/(invalid-credential|invalid-login-credentials|wrong-password|user-not-found)/i.test(raw)) friendly = "Incorrect username/email or password.";
+    if (!friendly) friendly = "Incorrect username/email or password.";
+    if (message) { message.style.color="#a51620"; message.textContent=friendly; }
+    if (submitButton) { submitButton.disabled=false; submitButton.textContent="Log In"; }
+  }
 }
 
 document.addEventListener("keydown", function(event) {
