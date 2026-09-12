@@ -438,8 +438,6 @@
     if (!cleanItems.length) throw makeError("The order contains no items.");
     const total = cleanItems.reduce((s,i)=>s+i.subtotal,0);
     const ref = f.doc(f.db, "orders", String(orderId));
-    const existing = await f.getDoc(ref);
-    if (existing.exists()) return {success:true, orderId:String(orderId), duplicate:true};
     await f.setDoc(ref, {
       orderId:String(orderId), userId:u.uid, customerName:String(payload.fullName || ""),
       fullName:String(payload.fullName || ""), email:u.email || "", mobile:String(payload.mobile || ""),
