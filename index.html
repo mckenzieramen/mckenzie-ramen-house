@@ -5271,6 +5271,55 @@ function customerFirebaseWithTimeout_(work, message, ms) {
   });
 }
 
+async function customerWaitForAuthUser_(f, expectedUid) {
+  var uid = String(expectedUid || "").trim();
+  if (!f || !f.auth) throw new Error("Firebase is still initializing. Please try again.");
+
+  // The UI login state is stored locally, while Firebase may still be
+  // restoring the actual Auth session after a page/modal transition. Wait
+  // for that restoration before profile/history operations.
+  if (f.auth.currentUser) {
+    if (!uid || String(f.auth.currentUser.uid) === uid) return f.auth.currentUser;
+  }
+
+  if (typeof f.auth.authStateReady === "function") {
+    try { await f.auth.authStateReady(); } catch (e) {}
+  }
+  if (f.auth.currentUser) {
+    if (!uid || String(f.auth.currentUser.uid) === uid) return f.auth.currentUser;
+  }
+
+  if (typeof f.onAuthStateChanged === "function") {
+    var restored = await new Promise(function(resolve) {
+      var done = false;
+      var unsub = null;
+      var timer = setTimeout(function() {
+        if (done) return;
+        done = true;
+        try { if (unsub) unsub(); } catch (e) {}
+        resolve(null);
+      }, 7000);
+      try {
+        unsub = f.onAuthStateChanged(f.auth, function(user) {
+          if (done) return;
+          if (!user) return;
+          if (uid && String(user.uid) !== uid) return;
+          done = true;
+          clearTimeout(timer);
+          try { if (unsub) unsub(); } catch (e) {}
+          resolve(user);
+        });
+      } catch (e) {
+        clearTimeout(timer);
+        resolve(null);
+      }
+    });
+    if (restored) return restored;
+  }
+
+  throw new Error("Please log in again.");
+}
+
 function customerCurrentUserId_() {
   var saved = getSavedUser_() || {};
   return String(saved.userId || "").trim();
@@ -5280,8 +5329,7 @@ async function customerGetProfileDirect_() {
   var uid = customerCurrentUserId_();
   if(!uid) throw new Error("Please log in again.");
   return customerFirebaseWithTimeout_(async function(f){
-    var u=f.auth.currentUser;
-    if(!u || String(u.uid)!==uid) throw new Error("Please log in again.");
+    var u=await customerWaitForAuthUser_(f,uid);
     var snap=await f.getDoc(f.doc(f.db,"users",uid));
     var d=snap.exists()?snap.data():{};
     return {success:true,userId:uid,username:d.username||"",email:u.email||d.email||"",mobile:d.mobile||"",fullName:d.fullName||u.displayName||"",houseUnit:d.houseUnit||"",street:d.street||"",barangay:d.barangay||"",city:d.city||"",province:d.province||"",postalCode:d.postalCode||"",country:d.country||"Philippines",region:d.region||"",additionalInstruction:d.additionalInstruction||""};
@@ -5292,8 +5340,7 @@ async function customerSaveProfileDirect_(payload) {
   var uid=customerCurrentUserId_();
   if(!uid) throw new Error("Please log in again.");
   return customerFirebaseWithTimeout_(async function(f){
-    var u=f.auth.currentUser;
-    if(!u || String(u.uid)!==uid) throw new Error("Please log in again.");
+    var u=await customerWaitForAuthUser_(f,uid);
     await f.setDoc(f.doc(f.db,"users",uid),{
       username:String(payload.username||""),email:String(payload.email||u.email||"").trim().toLowerCase(),fullName:String(payload.fullName||"").trim(),mobile:String(payload.mobile||"").trim(),
       houseUnit:String(payload.houseUnit||"").trim(),street:String(payload.street||"").trim(),barangay:String(payload.barangay||"").trim(),city:String(payload.city||"").trim(),province:String(payload.province||"").trim(),postalCode:String(payload.postalCode||"").trim(),country:"Philippines",region:String(payload.region||"").trim(),additionalInstruction:String(payload.additionalInstruction||"").trim(),updatedAt:new Date().toISOString()
@@ -5308,8 +5355,7 @@ async function customerGetOrdersDirect_() {
   var uid=customerCurrentUserId_();
   if(!uid) throw new Error("Please log in again.");
   return customerFirebaseWithTimeout_(async function(f){
-    var u=f.auth.currentUser;
-    if(!u || String(u.uid)!==uid) throw new Error("Please log in again.");
+    var u=await customerWaitForAuthUser_(f,uid);
     // Query ONLY this customer's orders. Do not read the entire orders collection:
     // the Firestore rules intentionally block collection-wide customer reads.
     var q=f.query(f.collection(f.db,"orders"),f.where("userId","==",uid));
@@ -5321,7 +5367,7 @@ async function customerGetOrdersDirect_() {
 async function customerConfirmReceiptDirect_(orderId) {
   var uid=customerCurrentUserId_();
   return customerFirebaseWithTimeout_(async function(f){
-    var u=f.auth.currentUser;if(!u||String(u.uid)!==uid) throw new Error("Please log in again.");
+    var u=await customerWaitForAuthUser_(f,uid);
     var ref=f.doc(f.db,"orders",String(orderId)),snap=await f.getDoc(ref);
     if(!snap.exists()||String(snap.data().userId)!==uid) throw new Error("Order not found.");
     var o=snap.data();if(String(o.orderStatus)!=="Delivered") throw new Error("The order has not been marked as delivered yet.");
