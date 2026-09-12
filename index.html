@@ -3925,6 +3925,7 @@ async function getMcKenzieCustomerAuthDirect_() {
       signInWithEmailAndPassword: authMod.signInWithEmailAndPassword,
       sendEmailVerification: authMod.sendEmailVerification,
       updateEmail: authMod.updateEmail,
+      verifyBeforeUpdateEmail: authMod.verifyBeforeUpdateEmail,
       signOut: authMod.signOut,
       deleteUser: authMod.deleteUser,
       onAuthStateChanged: authMod.onAuthStateChanged,
@@ -3947,7 +3948,6 @@ async function getMcKenzieCustomerAuthDirect_() {
   return __mckenzieCustomerAuthDirectPromise;
 }
 
-
 function isCustomerEmailVerified_() {
   try {
     const user = getSavedUser_() || {};
@@ -3968,52 +3968,32 @@ async function requireVerifiedCustomer_(messageText) {
   } catch (e) {}
 
   try {
-    const firebaseAuth = await getMcKenzieCustomerAuthDirect_();
-    const firebaseUser = firebaseAuth.auth.currentUser;
+    const firebaseAuth = await mckenzieWithTimeout_(
+      getMcKenzieCustomerAuthDirect_(),
+      12000,
+      "Unable to load the verification service. Please try again."
+    );
+    const firebaseUser = await waitForFirebaseCustomerAuthReady_(firebaseAuth);
+
     if (firebaseUser) {
-      await firebaseUser.reload();
-      if (firebaseAuth.auth.currentUser && firebaseAuth.auth.currentUser.emailVerified) {
-        let profile = getSavedUser_() || {};
-        try {
-          const snap = await firebaseAuth.getDoc(
-            firebaseAuth.doc(firebaseAuth.db, "users", firebaseUser.uid)
-          );
-          if (snap.exists()) profile = Object.assign({}, profile, snap.data() || {});
-        } catch (e) {}
+      await mckenzieWithTimeout_(
+        firebaseUser.reload(),
+        12000,
+        "The verification check took too long. Please try again."
+      );
+      const freshUser = firebaseAuth.auth.currentUser;
 
-        try {
-          await firebaseAuth.setDoc(
-            firebaseAuth.doc(firebaseAuth.db, "users", firebaseUser.uid),
-            {
-              status: "ACTIVE",
-              emailVerified: true,
-              emailVerifiedAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString()
-            },
-            { merge: true }
-          );
-        } catch (e) {}
-
-        try {
-          localStorage.setItem(
-            "mckenzieUser",
-            JSON.stringify(Object.assign({}, profile, {
-              userId: firebaseUser.uid,
-              email: firebaseUser.email || profile.email || "",
-              status: "ACTIVE",
-              emailVerified: true
-            }))
-          );
-        } catch (e) {}
-
-        showEmailVerifiedSuccess_(
-          firebaseAuth.auth.currentUser,
-          Object.assign({}, profile, {status:"ACTIVE", emailVerified:true})
-        );
+      if (freshUser && freshUser.emailVerified) {
+        const profile = await markCustomerEmailVerified_(firebaseAuth, freshUser);
+        showEmailVerifiedSuccess_(freshUser, profile);
         return true;
       }
+
+      email = (freshUser && freshUser.email) || email;
     }
-  } catch (e) {}
+  } catch (e) {
+    console.warn("Verified customer gate check failed:", e);
+  }
 
   openEmailVerificationModal_(email);
   const message = document.getElementById("verificationMessage");
@@ -4148,27 +4128,84 @@ async function markCustomerEmailVerified_(firebaseAuth, user) {
     const snap=await firebaseAuth.getDoc(firebaseAuth.doc(firebaseAuth.db,"users",user.uid));
     if(snap.exists()) profile=Object.assign({},profile,snap.data()||{});
   } catch(e) {}
-  try {
-    await firebaseAuth.setDoc(firebaseAuth.doc(firebaseAuth.db,"users",user.uid),{status:"ACTIVE",emailVerified:true,emailVerifiedAt:new Date().toISOString(),updatedAt:new Date().toISOString()},{merge:true});
-  } catch(e) {}
-  return profile;
-}
 
+  const verifiedProfile=Object.assign({},profile,{
+    userId:user.uid,
+    email:user.email || profile.email || "",
+    status:"ACTIVE",
+    emailVerified:true,
+    emailVerifiedAt:new Date().toISOString(),
+    updatedAt:new Date().toISOString()
+  });
+
+  try {
+    await firebaseAuth.setDoc(
+      firebaseAuth.doc(firebaseAuth.db,"users",user.uid),
+      {
+        status:"ACTIVE",
+        email:user.email || profile.email || "",
+        emailVerified:true,
+        emailVerifiedAt:verifiedProfile.emailVerifiedAt,
+        updatedAt:verifiedProfile.updatedAt
+      },
+      {merge:true}
+    );
+  } catch(e) {}
+
+  try { localStorage.setItem("mckenzieUser",JSON.stringify(verifiedProfile)); } catch(e) {}
+  return verifiedProfile;
+}
 async function resendVerificationEmail_() {
   const message=document.getElementById("verificationMessage");
   const button=document.getElementById("verificationResend");
   try {
-    const firebaseAuth=await getMcKenzieCustomerAuthDirect_();
-    const user=firebaseAuth.auth.currentUser;
-    if(!user) throw new Error("Your verification session has expired. Please create the account again.");
-    await user.reload();
-    if(firebaseAuth.auth.currentUser.emailVerified){ showEmailVerifiedSuccess_(firebaseAuth.auth.currentUser); return; }
+    const firebaseAuth=await mckenzieWithTimeout_(getMcKenzieCustomerAuthDirect_(),12000,"Unable to load the verification service. Please try again.");
+    const user=await waitForFirebaseCustomerAuthReady_(firebaseAuth);
+    if(!user) throw new Error("Your verification session has expired. Please log in again to resend the verification email.");
+
+    await mckenzieWithTimeout_(user.reload(),12000,"The verification check took too long. Please try again.");
+    const freshUser=firebaseAuth.auth.currentUser;
+    if(!freshUser) throw new Error("Your verification session has expired. Please log in again.");
+
+    if(freshUser.emailVerified){
+      const profile=await markCustomerEmailVerified_(firebaseAuth,freshUser);
+      showEmailVerifiedSuccess_(freshUser,profile);
+      return;
+    }
+
     if(button){button.disabled=true;button.textContent="Sending...";}
+
     const returnUrl=window.location.origin+window.location.pathname;
-    await firebaseAuth.sendEmailVerification(firebaseAuth.auth.currentUser,{url:returnUrl,handleCodeInApp:false});
-    if(message){message.style.color="#198754";message.textContent="A new verification email has been sent. Please check your inbox or spam folder.";}
+    await mckenzieWithTimeout_(
+      firebaseAuth.sendEmailVerification(freshUser,{
+        url:returnUrl,
+        handleCodeInApp:true
+      }),
+      15000,
+      "Firebase could not send the verification email right now. Please try again."
+    );
+
+    try {
+      localStorage.setItem("mckenziePendingVerification",JSON.stringify({
+        userId:freshUser.uid,
+        email:freshUser.email || ""
+      }));
+    } catch(e) {}
+
+    if(message){
+      message.style.color="#198754";
+      message.textContent="A NEW verification email was sent to "+(freshUser.email || "your email")+". Please check Inbox, Spam, or Promotions.";
+    }
   }catch(error){
-    if(message){message.style.color="#a51620";message.textContent=error&&error.message?error.message:"Unable to resend the verification email.";}
+    console.error("Resend verification failed:",error);
+    if(message){
+      message.style.color="#a51620";
+      if(error && error.code==="auth/too-many-requests"){
+        message.textContent="Too many verification requests. Please wait a few minutes, then try again.";
+      }else{
+        message.textContent=error&&error.message?error.message:"Unable to send a new verification email.";
+      }
+    }
   }finally{
     if(button){button.disabled=false;button.textContent="Resend Verification Email";}
   }
@@ -4192,24 +4229,80 @@ async function changeVerificationEmail_(){
   const emailEl=document.getElementById("verificationEmail");
   const oldEmail=String(emailEl?.textContent||"").trim().toLowerCase();
   const newEmail=String(input?.value||"").trim().toLowerCase();
-  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)){if(message){message.style.color="#a51620";message.textContent="Please enter a valid new email address.";}return;}
-  if(newEmail===oldEmail){if(message){message.style.color="#a51620";message.textContent="Please enter a different email address.";}return;}
+
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)){
+    if(message){message.style.color="#a51620";message.textContent="Please enter a valid new email address.";}
+    return;
+  }
+  if(newEmail===oldEmail){
+    if(message){message.style.color="#a51620";message.textContent="Please enter a different email address.";}
+    return;
+  }
+
   try{
-    const firebaseAuth=await getMcKenzieCustomerAuthDirect_();
-    const user=firebaseAuth.auth.currentUser;
-    if(!user)throw new Error("Your verification session has expired. Please create the account again.");
-    if(button){button.disabled=true;button.textContent="Changing...";}
-    await firebaseAuth.updateEmail(user,newEmail);
-    await firebaseAuth.setDoc(firebaseAuth.doc(firebaseAuth.db,"users",user.uid),{email:newEmail,status:"PENDING_EMAIL_VERIFICATION",emailVerified:false,updatedAt:new Date().toISOString()},{merge:true});
-    await firebaseAuth.sendEmailVerification(user,{url:window.location.origin+window.location.pathname,handleCodeInApp:false});
-    try{localStorage.setItem("mckenziePendingVerification",JSON.stringify({userId:user.uid,email:newEmail}));}catch(e){}
-    if(emailEl)emailEl.textContent=newEmail;
+    const firebaseAuth=await mckenzieWithTimeout_(getMcKenzieCustomerAuthDirect_(),12000,"Unable to load the email service. Please try again.");
+    const user=await waitForFirebaseCustomerAuthReady_(firebaseAuth);
+    if(!user) throw new Error("Your verification session has expired. Please log in again before changing your email.");
+
+    await mckenzieWithTimeout_(user.reload(),12000,"The verification check took too long. Please try again.");
+    const freshUser=firebaseAuth.auth.currentUser;
+    if(!freshUser) throw new Error("Your verification session has expired. Please log in again.");
+
+    if(freshUser.emailVerified){
+      if(message){
+        message.style.color="#a51620";
+        message.textContent="This email is already verified. You can change your email from your account after logging in again.";
+      }
+      return;
+    }
+
+    if(button){button.disabled=true;button.textContent="Sending...";}
+
+    if(typeof firebaseAuth.verifyBeforeUpdateEmail!=="function"){
+      throw new Error("The email-change service is not available in this version of the page.");
+    }
+
+    const returnUrl=window.location.origin+window.location.pathname;
+    await mckenzieWithTimeout_(
+      firebaseAuth.verifyBeforeUpdateEmail(freshUser,newEmail,{
+        url:returnUrl,
+        handleCodeInApp:true
+      }),
+      15000,
+      "Firebase could not send the new email verification right now. Please try again."
+    );
+
+    try{
+      localStorage.setItem("mckenziePendingVerification",JSON.stringify({
+        userId:freshUser.uid,
+        email:newEmail,
+        type:"email-change"
+      }));
+    }catch(e){}
+
     hideChangeVerificationEmail_();
-    if(message){message.style.color="#198754";message.textContent="Email changed successfully. A new verification email has been sent to "+newEmail+".";}
+    if(input)input.value="";
+    if(message){
+      message.style.color="#198754";
+      message.textContent="A verification email for your NEW address was sent to "+newEmail+". Open that email to finish changing your email.";
+    }
   }catch(error){
     console.error("Change verification email failed:",error);
-    if(message){message.style.color="#a51620";message.textContent=error&&error.code==="auth/email-already-in-use"?"That email address is already registered. Please use another email.":(error&&error.message?error.message:"Unable to change your email address.");}
-  }finally{if(button){button.disabled=false;button.textContent="Change Email & Send";}}
+    if(message){
+      message.style.color="#a51620";
+      if(error && error.code==="auth/email-already-in-use"){
+        message.textContent="That email address is already registered. Please use another email.";
+      }else if(error && error.code==="auth/requires-recent-login"){
+        message.textContent="For security, please log in again first, then open Change Email and try again.";
+      }else if(error && error.code==="auth/too-many-requests"){
+        message.textContent="Too many requests. Please wait a few minutes, then try again.";
+      }else{
+        message.textContent=error&&error.message?error.message:"Unable to send the new email verification.";
+      }
+    }
+  }finally{
+    if(button){button.disabled=false;button.textContent="Change Email & Send";}
+  }
 }
 
 function showEmailVerifiedSuccess_(user, profile) {
@@ -4262,7 +4355,7 @@ async function processEmailVerificationAction_() {
   const params = new URLSearchParams(window.location.search || "");
   const mode = String(params.get("mode") || "").trim();
   const oobCode = String(params.get("oobCode") || "").trim();
-  if (mode !== "verifyEmail" || !oobCode) return false;
+  if (!["verifyEmail","verifyAndChangeEmail"].includes(mode) || !oobCode) return false;
 
   try {
     const firebaseAuth = await mckenzieWithTimeout_(getMcKenzieCustomerAuthDirect_(), 12000, "Verification service is taking too long to load.");
