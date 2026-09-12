@@ -2516,7 +2516,15 @@ body.quick-loading {
 .verification-resend:disabled { opacity:.55; cursor:wait; }
 .verification-message { min-height:20px; margin-top:12px; color:#a51620; font-size:12px; text-align:center; line-height:1.45; }
 .verification-timer { margin-top:8px; color:#8a6d65; font-size:11px; }
-@media(max-width:520px){ .verification-card{padding:30px 20px 24px}.verification-card h2{font-size:27px}.verification-code-input{font-size:21px;letter-spacing:6px} }
+#mckEmailVerifiedModal { display:none; position:fixed; inset:0; z-index:1000001; background:rgba(9,3,3,.74); align-items:center; justify-content:center; padding:20px; }
+#mckEmailVerifiedModal.show { display:flex; }
+#mckEmailVerifiedCard { position:relative; width:min(450px,94vw); padding:36px 30px 30px; background:#fffaf3; border:2px solid #e9ad35; border-radius:24px; box-shadow:0 25px 70px rgba(0,0,0,.4); text-align:center; animation:loginModalIn .25s ease both; }
+#mckEmailVerifiedIcon { width:70px; height:70px; margin:0 auto 14px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:#198754; color:#fff; font-size:38px; font-weight:900; box-shadow:0 10px 25px rgba(25,135,84,.25); }
+#mckEmailVerifiedCard .verified-kicker { margin-bottom:6px; color:#a51620; font-size:11px; font-weight:800; letter-spacing:2px; text-transform:uppercase; }
+#mckEmailVerifiedCard h2 { margin:0 0 10px; color:#3a0709; font-family:Georgia,serif; font-size:30px; }
+#mckEmailVerifiedCard p { margin:0 auto 22px; color:#765f5a; font-size:14px; line-height:1.6; max-width:360px; }
+#mckEmailVerifiedOrderButton { width:100%; padding:14px 18px; border:0; border-radius:12px; background:linear-gradient(135deg,#9f1118,#5f080c); color:#fff; font-size:14px; font-weight:800; cursor:pointer; box-shadow:0 8px 18px rgba(95,8,12,.22); }
+@media(max-width:520px){ .verification-card{padding:30px 20px 24px}.verification-card h2{font-size:27px}.verification-code-input{font-size:21px;letter-spacing:6px} #mckEmailVerifiedCard{padding:30px 20px 24px} #mckEmailVerifiedCard h2{font-size:27px} }
 
 
 /* =========================================================
@@ -3223,6 +3231,17 @@ body.quick-loading {
   </div>
 </div>
 
+<!-- EMAIL VERIFIED SUCCESS POPUP -->
+<div id="mckEmailVerifiedModal" role="dialog" aria-modal="true" aria-labelledby="mckEmailVerifiedTitle">
+  <div id="mckEmailVerifiedCard">
+    <div id="mckEmailVerifiedIcon">✓</div>
+    <div class="verified-kicker">MCKENZIE RAMEN HOUSE</div>
+    <h2 id="mckEmailVerifiedTitle">Your Account Is Verified!</h2>
+    <p id="mckEmailVerifiedMessage">Your email has been successfully verified. Your account is ready to use.</p>
+    <button type="button" id="mckEmailVerifiedOrderButton" onclick="goOrderAfterEmailVerification_()">Go &amp; Order Now</button>
+  </div>
+</div>
+
 <div
   class="petals"
   id="petals">
@@ -3721,64 +3740,113 @@ async function submitCreateAccountPopup(event) {
   msg("");
   showLoginRamenLoader_();
 
-  /* GitHub + Firebase only. Wait for the standalone Firebase bridge to
-     finish loading before calling its compatibility runner. */
+  /* GitHub + Firebase only. Create the account directly with the Firebase
+     browser SDK so this action never depends on Apps Script or a stale
+     google.script.run compatibility layer. */
   try {
-    if (window.MckenzieFirebaseReady) {
-      await window.MckenzieFirebaseReady;
-    } else {
-      await new Promise(function(resolve, reject) {
-        var timer = setTimeout(function() {
-          reject(new Error("Firebase is still loading. Please refresh the page and try again."));
-        }, 12000);
-        window.addEventListener("mckenzie-firebase-ready", function() {
-          clearTimeout(timer);
-          resolve();
-        }, { once: true });
-      });
-    }
-    if (!window.google || !window.google.script || typeof window.google.script.run !== "object") {
-      throw new Error("Firebase connection is unavailable. Please refresh the page and try again.");
-    }
-  } catch (error) {
-    console.error("Firebase startup error:", error);
+    const firebaseAuth = await getMcKenzieCustomerAuthDirect_();
+    const cred = await firebaseAuth.createUserWithEmailAndPassword(firebaseAuth.auth, email, password);
+    const user = cred.user;
+
+    await firebaseAuth.setDoc(
+      firebaseAuth.doc(firebaseAuth.db, "users", user.uid),
+      {
+        username: username,
+        email: user.email || email,
+        fullName: fullName,
+        mobile: mobile,
+        country: "Philippines",
+        status: "ACTIVE",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      },
+      { merge: true }
+    );
+
+    /* Send Firebase's standard verification LINK and configure Firebase to
+       return the customer to this exact McKenzie Ramen House page after the
+       link is successfully verified. */
+    const verificationReturnUrl = window.location.origin + window.location.pathname;
+    await firebaseAuth.sendEmailVerification(user, {
+      url: verificationReturnUrl,
+      handleCodeInApp: false
+    });
+
     hideLoginRamenLoader_();
-    msg(error && error.message ? error.message : "Firebase connection is unavailable. Please refresh the page and try again.");
+    try {
+      localStorage.setItem("mckenziePendingVerification", JSON.stringify({
+        userId: user.uid,
+        email: user.email || email
+      }));
+    } catch (error) {}
+    document.getElementById("createPassword").value = "";
+    document.getElementById("createConfirmPassword").value = "";
+    button.disabled = false;
+    button.textContent = "Create Account";
+    closeCreateAccountModal();
+    openEmailVerificationModal_(user.email || email);
+    return;
+  } catch (error) {
+    console.error("Direct Firebase create account error:", error);
+    hideLoginRamenLoader_();
+    let text = error && error.message ? error.message : "Unable to create the account. Please try again.";
+    if (error && error.code === "auth/email-already-in-use") {
+      text = "This email address is already registered. Please sign in instead.";
+    } else if (error && error.code === "auth/invalid-api-key") {
+      text = "Firebase configuration is invalid. Please refresh the page and try again.";
+    }
+    msg(text);
     button.disabled = false;
     button.textContent = "Create Account";
     return;
   }
+}
 
-  google.script.run
-    .withSuccessHandler(function(result) {
-      hideLoginRamenLoader_();
+/* =========================================================
+   DIRECT FIREBASE CUSTOMER AUTH FOR GITHUB PAGES
+   This is intentionally independent of google.script.run.
+========================================================= */
+let __mckenzieCustomerAuthDirectPromise = null;
+async function getMcKenzieCustomerAuthDirect_() {
+  if (__mckenzieCustomerAuthDirectPromise) return __mckenzieCustomerAuthDirectPromise;
 
-      if (result && result.success) {
-        try {
-          localStorage.removeItem("mckenziePendingVerification");
-        } catch (error) {}
+  __mckenzieCustomerAuthDirectPromise = (async function() {
+    const appMod = await import("https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js");
+    const authMod = await import("https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js");
+    const fsMod = await import("https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js");
 
-        document.getElementById("createPassword").value = "";
-        document.getElementById("createConfirmPassword").value = "";
-        button.disabled = false;
-        button.textContent = "Create Account";
-        closeCreateAccountModal();
-        openEmailVerificationModal_(result.email || email);
-        return;
-      }
+    const cfg = {
+      apiKey: "AIzaSyDnLMhAw1kJMlbTN4u8vB6poip5dt94",
+      authDomain: "mckenzie-ramen-house.firebaseapp.com",
+      projectId: "mckenzie-ramen-house",
+      storageBucket: "mckenzie-ramen-house.firebasestorage.app",
+      messagingSenderId: "1048288418639",
+      appId: "1:1048288418639:web:85e0148036179259c8033a",
+      measurementId: "G-C2KDRE88ZW"
+    };
 
-      msg(result && result.message ? result.message : "Unable to create the account. Please try again.");
-      button.disabled = false;
-      button.textContent = "Create Account";
-    })
-    .withFailureHandler(function(error) {
-      console.error("Create account error:", error);
-      hideLoginRamenLoader_();
-      msg(error && error.message ? error.message : "Unable to create the account. Please try again.");
-      button.disabled = false;
-      button.textContent = "Create Account";
-    })
-    .requestEmailVerification(fullName, email, username, password, mobile);
+    const apps = appMod.getApps();
+    let app = apps.find(function(a) { return a && a.name === "mckenzie-ramen-house"; });
+    if (!app) app = appMod.initializeApp(cfg, "mckenzie-ramen-house");
+
+    const auth = authMod.getAuth(app);
+    const db = fsMod.getFirestore(app);
+    return {
+      app: app,
+      auth: auth,
+      db: db,
+      createUserWithEmailAndPassword: authMod.createUserWithEmailAndPassword,
+      sendEmailVerification: authMod.sendEmailVerification,
+      setDoc: fsMod.setDoc,
+      getDoc: fsMod.getDoc,
+      doc: fsMod.doc
+    };
+  })().catch(function(error) {
+    __mckenzieCustomerAuthDirectPromise = null;
+    throw error;
+  });
+
+  return __mckenzieCustomerAuthDirectPromise;
 }
 
 /* =========================================================
@@ -3793,7 +3861,7 @@ function openEmailVerificationModal_(email) {
   if (emailEl) emailEl.textContent = email || "your email";
   if (message) {
     message.style.color = "#a51620";
-    message.textContent = "Open your email and click the verification link to verify your account.";
+    message.textContent = "Open your email and click the verification link. After verification, come back to McKenzie Ramen House and your account will be confirmed automatically.";
   }
 
   modal.classList.add("show");
@@ -3805,7 +3873,8 @@ function closeEmailVerificationModal() {
   if (modal) modal.classList.remove("show");
   if (!document.getElementById("loginModal")?.classList.contains("show") &&
       !document.getElementById("createAccountModal")?.classList.contains("show") &&
-      !document.getElementById("cartModal")?.classList.contains("show")) {
+      !document.getElementById("cartModal")?.classList.contains("show") &&
+      !document.getElementById("mckEmailVerifiedModal")?.classList.contains("show")) {
     document.body.style.overflow = "";
   }
 }
@@ -3813,6 +3882,89 @@ function closeEmailVerificationModal() {
 function handleVerificationOverlayClick(event) {
   if (event.target && event.target.id === "emailVerificationModal") {
     closeEmailVerificationModal();
+  }
+}
+
+function showEmailVerifiedSuccess_(user, profile) {
+  const modal = document.getElementById("mckEmailVerifiedModal");
+  const message = document.getElementById("mckEmailVerifiedMessage");
+  if (!modal) return;
+
+  const fullName = String((profile && profile.fullName) || "").trim();
+  const firstName = fullName ? fullName.split(/\s+/)[0] : "";
+  if (message) {
+    message.textContent = firstName
+      ? "Welcome, " + firstName + "! Your email has been successfully verified. Your account is ready to order."
+      : "Your email has been successfully verified. Your account is ready to order.";
+  }
+
+  try {
+    localStorage.setItem("mckenzieUser", JSON.stringify({
+      userId: user.uid,
+      fullName: (profile && profile.fullName) || "",
+      username: (profile && profile.username) || "",
+      email: user.email || (profile && profile.email) || "",
+      mobile: (profile && profile.mobile) || "",
+      houseUnit: (profile && profile.houseUnit) || "",
+      street: (profile && profile.street) || "",
+      barangay: (profile && profile.barangay) || "",
+      city: (profile && profile.city) || "",
+      province: (profile && profile.province) || "",
+      postalCode: (profile && profile.postalCode) || "",
+      country: (profile && profile.country) || "Philippines",
+      region: (profile && profile.region) || "",
+      additionalInstruction: (profile && profile.additionalInstruction) || ""
+    }));
+    localStorage.setItem("mckenzieLoggedIn", "true");
+    localStorage.removeItem("mckenziePendingVerification");
+  } catch (error) {}
+
+  updateHeroAccountButton_();
+  loadCartForCurrentCustomer_();
+  closeEmailVerificationModal();
+  modal.classList.add("show");
+  document.body.style.overflow = "hidden";
+}
+
+function goOrderAfterEmailVerification_() {
+  const modal = document.getElementById("mckEmailVerifiedModal");
+  if (modal) modal.classList.remove("show");
+  document.body.style.overflow = "";
+
+  /* "Go & Order Now" takes the customer directly to the menu so they can
+     start adding ramen immediately after verification. */
+  const menu = document.getElementById("menu");
+  if (menu) {
+    setTimeout(function() {
+      menu.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 80);
+  }
+}
+
+async function checkEmailVerificationReturn_() {
+  let pending = null;
+  try {
+    pending = JSON.parse(localStorage.getItem("mckenziePendingVerification") || "null");
+  } catch (error) {}
+  if (!pending || !pending.userId) return;
+
+  try {
+    const firebaseAuth = await getMcKenzieCustomerAuthDirect_();
+    const user = firebaseAuth.auth.currentUser;
+    if (!user || user.uid !== String(pending.userId)) return;
+
+    await user.reload();
+    if (!firebaseAuth.auth.currentUser.emailVerified) return;
+
+    let profile = {};
+    try {
+      const snap = await firebaseAuth.getDoc(firebaseAuth.doc(firebaseAuth.db, "users", user.uid));
+      if (snap.exists()) profile = snap.data() || {};
+    } catch (error) {}
+
+    showEmailVerifiedSuccess_(firebaseAuth.auth.currentUser, profile);
+  } catch (error) {
+    console.warn("Unable to check email verification status:", error);
   }
 }
 
@@ -6915,6 +7067,7 @@ function startCustomerFirebase_() {
        by the independent REST binder below. Do not block the page on the
        legacy Apps Script compatibility layer. */
     loadBrandAssets();
+    setTimeout(function() { checkEmailVerificationReturn_(); }, 250);
   } catch (error) {
     console.error("Customer Firebase startup error:", error);
     applyDefaultBrandAssets_();
