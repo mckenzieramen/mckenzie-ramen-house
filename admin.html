@@ -689,14 +689,34 @@ async function saveProduct(){
     // On edit, ALWAYS carry the existing image forward unless the owner
     // explicitly selected a replacement or removed the image. This prevents
     // the photo from disappearing when only text/price/category is edited.
+    let replacementImage=null;
     if(selectedImage){
-      data.image=await fileData(selectedImage);
+      replacementImage=await fileData(selectedImage);
+      // Do not rely on the generic adminSaveProduct merge to replace the photo.
+      // We apply the image field directly after the product metadata is saved.
+      data.image=undefined;
     }else if(removeProductImageFlag){
-      data.image='';
+      data.image=undefined;
     }else if(id && editing){
-      data.image=String(editing.image || editing.imageUrl || '').trim();
+      // Metadata-only edit: the Firebase backend preserves the existing photo.
+      data.image=undefined;
     }
+    delete data.image;
     await new Promise((resolve,reject)=>run('adminSaveProduct',[data],(v,e)=>e?reject(new Error(e)):(!v||!v.success)?reject(new Error('Unable to save product.')):resolve(v)));
+
+    // Explicit photo replacement/removal is written directly to the same
+    // Firestore product document so the selected replacement can never be
+    // silently ignored by the metadata save/merge path.
+    if(id && (replacementImage || removeProductImageFlag)){
+      const idToken=token||sessionStorage.getItem('mck_admin_token')||'';
+      if(!idToken)throw new Error('Admin session expired. Please log in again.');
+      const imageField=replacementImage
+        ? {stringValue:'data:image/jpeg;base64,'+String(replacementImage.base64||'')}
+        : {stringValue:''};
+      const url='https://firestore.googleapis.com/v1/projects/mckenzie-ramen-house/databases/(default)/documents/products/'+encodeURIComponent(String(id))+'?updateMask.fieldPaths=image';
+      const r=await fetch(url,{method:'PATCH',headers:{'Authorization':'Bearer '+idToken,'Content-Type':'application/json'},body:JSON.stringify({fields:{image:imageField}})});
+      if(!r.ok){let t=await r.text(),d={};try{d=JSON.parse(t)}catch(e){};throw new Error(d.error&&d.error.message?d.error.message:'Unable to save the new product photo.');}
+    }
     closeModal();
     loadProducts();
     showCenteredUpdate('Product Updated','The product was saved successfully.');
