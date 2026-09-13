@@ -69,6 +69,7 @@
     if (configuredUid && configuredUid !== "PASTE_ADMIN_USER_UID_HERE") {
       return u.uid === configuredUid;
     }
+    // Safety fallback: no UID configured means admin operations are disabled.
     return false;
   }
 
@@ -309,7 +310,13 @@
     const list = await getCollection("products");
     return list.filter(p => p.name).map(p => ({
       id:p.id, name:p.name, category:p.category || "Ramen", price:Number(p.price || 0),
-      image:p.image || "", description:p.description || "", available:p.available !== false,
+      image:p.image || p.imageUrl || "", description:p.description || "",
+      status:(String(p.status || "").trim().toLowerCase()==="sold out" ? "Sold Out" :
+              String(p.status || "").trim().toLowerCase()==="unavailable" ? "Unavailable" :
+              (p.available === false ? "Unavailable" : "Available")),
+      available:(String(p.status || "").trim().toLowerCase()==="sold out" ? false :
+                 String(p.status || "").trim().toLowerCase()==="unavailable" ? false :
+                 p.available !== false),
       bestSeller:!!p.bestSeller, newProduct:!!p.newProduct
     }));
   }
@@ -584,17 +591,35 @@
     if(!name) throw makeError("Product name is required.");
     if(!category) throw makeError("Product category is required.");
     if(!Number.isFinite(price)||price<0) throw makeError("Please enter a valid product price.");
-    let image = String(data.imageUrl || data.image || "").trim();
-    if (image && image.startsWith("data:")) {
-      throw makeError("This standalone version uses an image URL. Upload the image to the GitHub images folder, then paste its URL here.");
-    }
     const id=String(data.id||"").trim() || ("PROD-" + Date.now());
-    await f.setDoc(f.doc(f.db,"products",id),{
-      name,category,price,image,description,
-      available:data.available!==false,
+    const requestedStatus=String(data.status || "").trim();
+    const status = ["Available","Unavailable","Sold Out"].includes(requestedStatus)
+      ? requestedStatus
+      : (data.available===false ? "Unavailable" : "Available");
+    const metadata = {
+      name,category,price,description,
+      status,
+      available:status === "Available",
       bestSeller:!!data.bestSeller,newProduct:!!data.newProduct,
       updatedAt:isoNow()
-    },{merge:true});
+    };
+
+    // EXISTING PRODUCT: update ONLY metadata. Never write the image field here.
+    // This is the critical protection: editing price/status/description/labels/name/category
+    // cannot erase or rewrite the photo stored on this exact product document.
+    if (String(data.id||"").trim()) {
+      const ref = f.doc(f.db,"products",id);
+      const existing = await f.getDoc(ref);
+      if (!existing.exists()) throw makeError("Product not found.");
+      await f.updateDoc(ref, metadata);
+    } else {
+      const suppliedImage = String(data.imageUrl || data.image || "").trim();
+      if (!suppliedImage) throw makeError("A product photo is required for a new product.");
+      await f.setDoc(f.doc(f.db,"products",id), {
+        ...metadata,
+        image:suppliedImage
+      });
+    }
     return {success:true,productId:id,products:await getProducts()};
   }
 
