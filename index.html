@@ -2779,6 +2779,63 @@ body.quick-loading {
   .add-cart-control{width:100%;justify-content:flex-end}
 }
 </style>
+
+<style id="mobile-layout-request-fix">
+@media (max-width:700px){
+  /* One menu item per row on mobile to keep cards clean and readable. */
+  .menu-category-group .products{
+    grid-template-columns:1fr !important;
+    gap:14px !important;
+  }
+  .menu-category-group .product-card{
+    width:100% !important;
+    max-width:none !important;
+  }
+
+  /* Separate mobile cart and hamburger controls, same size. */
+  .mobile-site-nav-button{
+    left:auto !important;
+    right:12px !important;
+    top:9px !important;
+    width:44px !important;
+    height:44px !important;
+  }
+  .sticky-cart-button{
+    left:12px !important;
+    right:auto !important;
+    top:9px !important;
+    width:44px !important;
+    height:44px !important;
+  }
+  /* The older account hamburger is hidden on mobile so there is only one 3-line control. */
+  .account-menu-wrap{display:none !important;}
+
+  /* After scrolling: ramen logo left, cart + hamburger grouped on right. */
+  .site-sticky-logo{
+    display:block !important;
+    position:fixed !important;
+    left:10px !important;
+    top:7px !important;
+    width:44px !important;
+    height:44px !important;
+    z-index:1000002 !important;
+    object-fit:contain !important;
+    cursor:pointer !important;
+  }
+  body.mobile-top-scrolled .sticky-cart-button{
+    left:auto !important;
+    right:66px !important;
+    top:9px !important;
+  }
+  body.mobile-top-scrolled .mobile-site-nav-button{
+    right:12px !important;
+    top:9px !important;
+  }
+  body.mobile-top-scrolled .site-sticky-nav{
+    visibility:hidden !important;
+  }
+}
+</style>
 </head>
 
 
@@ -8355,5 +8412,21 @@ document.addEventListener('click',function(e){
 });
 </script>
 
+
+<script id="mobile-top-controls-fix">
+(function(){
+  function sync(){
+    if(window.innerWidth > 700){
+      document.body.classList.remove('mobile-top-scrolled');
+      return;
+    }
+    document.body.classList.toggle('mobile-top-scrolled', (window.scrollY || window.pageYOffset || 0) > 170);
+  }
+  window.addEventListener('scroll', sync, {passive:true});
+  window.addEventListener('resize', sync, {passive:true});
+  document.addEventListener('DOMContentLoaded', sync);
+  sync();
+})();
+</script>
 </body>
 </html>
