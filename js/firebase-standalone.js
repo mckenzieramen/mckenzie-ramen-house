@@ -66,11 +66,10 @@
     const u = f.auth.currentUser;
     if (!u) return false;
     const configuredUid = String(window.MCKENZIE_ADMIN_UID || "").trim();
-    if (configuredUid && configuredUid !== "PASTE_ADMIN_USER_UID_HERE") {
-      return u.uid === configuredUid;
-    }
-    // Safety fallback: no UID configured means admin operations are disabled.
-    return false;
+    const configuredEmail = "admin@mckenzieramenhouse.com";
+    const userEmail = String(u.email || "").trim().toLowerCase();
+    if (configuredUid && configuredUid !== "PASTE_ADMIN_USER_UID_HERE" && u.uid === configuredUid) return true;
+    return userEmail === configuredEmail;
   }
 
   async function requireAdmin() {
