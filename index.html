@@ -2782,14 +2782,29 @@ body.quick-loading {
 
 <style id="mobile-layout-request-fix">
 @media (max-width:700px){
-  /* One menu item per row on mobile to keep cards clean and readable. */
-  .menu-category-group .products{
-    grid-template-columns:1fr !important;
-    gap:14px !important;
-  }
-  .menu-category-group .product-card{
+  /* Mobile: categories stack vertically, and each category's dishes use one card per row. */
+  #products{
+    display:block !important;
     width:100% !important;
     max-width:none !important;
+  }
+  #products > .menu-category-group{
+    display:grid !important;
+    grid-template-columns:1fr !important;
+    width:100% !important;
+    max-width:none !important;
+    margin:0 0 28px !important;
+  }
+  #products > .menu-category-group > .product-card{
+    width:100% !important;
+    max-width:none !important;
+    min-width:0 !important;
+  }
+  #products > .menu-category-group > .menu-category-title,
+  #products > .menu-category-group > .menu-category-coming-soon{
+    grid-column:1 !important;
+    width:100% !important;
+    box-sizing:border-box !important;
   }
 
   /* Separate mobile cart and hamburger controls, same size. */
