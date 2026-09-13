@@ -1138,23 +1138,23 @@ button {
    PRODUCT IMAGE
 ========================================================= */
 
-.sold-out-stamp {
+ .sold-out-stamp {
   position: absolute;
   left: 50%;
   top: 50%;
-  transform: translate(-50%, -50%) rotate(-8deg);
-  width: 118px;
-  height: 118px;
+  transform: translate(-50%, -50%);
+  width: 116px;
+  height: 116px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   text-align: center;
-  background: rgba(150, 20, 35, .92);
-  border: 5px solid rgba(255,255,255,.92);
-  box-shadow: 0 7px 20px rgba(0,0,0,.35);
+  background: rgba(105,105,105,.92);
+  border: 5px solid rgba(255,255,255,.95);
+  box-shadow: 0 7px 20px rgba(0,0,0,.38);
   color: #fff;
-  font-size: 20px;
+  font-size: 18px;
   line-height: 1.05;
   font-weight: 900;
   letter-spacing: 1px;
@@ -1486,9 +1486,30 @@ button {
   color: #a04444;
 }
 
-.unavailable::before {
+ .unavailable::before {
   background: #a04444;
 }
+
+.product-status-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 800;
+}
+.product-status-label::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.product-status-label.status-available { color: #208b45; }
+.product-status-label.status-available::before { background: #20a052; }
+.product-status-label.status-unavailable { color: #a04444; }
+.product-status-label.status-unavailable::before { background: #a04444; }
+.product-status-label.status-sold-out { color: #666; }
+.product-status-label.status-sold-out::before { background: #777; }
 
 
 /* =========================================================
@@ -7377,7 +7398,7 @@ function loadProducts() {
 
             card.innerHTML = `
 
-              <div class="product-image-wrap ${String(product.status||'').toLowerCase()==='sold out' ? 'is-sold-out' : ''}">
+              <div class="product-image-wrap ${String(product.status||'').trim().toLowerCase()==='sold out' ? 'is-sold-out' : ''}">
 
                 ${badgeHtml}
 
@@ -7432,13 +7453,16 @@ function loadProducts() {
                     ₱${formatPrice(product.price)}
                   </span>
 
-                  ${(product.available && String(product.status||'Available') !== 'Sold Out') ? `
-                    <div class="add-cart-control" data-cart-control="${escapeHtml(String(product._cartKey))}">
-                      <button type="button" class="add-cart-plus" aria-label="Add ${escapeHtml(product.name)} to cart">+</button>
-                    </div>
-                  ` : `
-                    <span class="unavailable">Unavailable</span>
-                  `}
+                  ${(() => {
+                    const st = String(product.status || (product.available ? 'Available' : 'Unavailable')).trim().toLowerCase();
+                    if (st === 'sold out') {
+                      return '<span class="product-status-label status-sold-out">Sold Out</span>';
+                    }
+                    if (st === 'unavailable') {
+                      return '<span class="product-status-label status-unavailable">Unavailable</span>';
+                    }
+                    return `<div class="add-cart-control" data-cart-control="${escapeHtml(String(product._cartKey))}"><button type="button" class="add-cart-plus" aria-label="Add ${escapeHtml(product.name)} to cart">+</button><span class="product-status-label status-available">Available</span></div>`;
+                  })()}
 
                 </div>
 
@@ -7781,35 +7805,60 @@ function goToHomeFromLogo_() {
   }
 
   function readDirectProducts_(){
-    const url = 'https://firestore.googleapis.com/v1/projects/mckenzie-ramen-house/databases/(default)/documents/products';
-    return fetch(url, { method:'GET', cache:'no-store' })
-      .then(function(response){
-        if (!response.ok) throw new Error('Firestore products HTTP ' + response.status);
-        return response.json();
-      })
-      .then(function(payload){
-        const docs = Array.isArray(payload && payload.documents) ? payload.documents : [];
-        return docs.map(function(doc){
-          const f = doc.fields || {};
-          const rawId = String(doc.name || '').split('/').pop();
-          return {
-            id: rawId,
-            name: String(firestoreValue_(f.name) || '').trim(),
-            category: normalizeMenuCategory_(firestoreValue_(f.category)),
-            price: Number(firestoreValue_(f.price) || 0),
-            image: String(firestoreValue_(f.image) || ''),
-            description: String(firestoreValue_(f.description) || ''),
-            status: (String(firestoreValue_(f.status) || '').trim().toLowerCase()==='sold out' ? 'Sold Out' :
-                     String(firestoreValue_(f.status) || '').trim().toLowerCase()==='unavailable' ? 'Unavailable' :
-                     (firestoreValue_(f.available) === false ? 'Unavailable' : 'Available')),
-            available: (String(firestoreValue_(f.status) || '').trim().toLowerCase()==='available' ||
-                        (firestoreValue_(f.status) === null && normalizeProductAvailability_(f.available))),
-            bestSeller: !!firestoreValue_(f.bestSeller),
-            newProduct: !!firestoreValue_(f.newProduct)
-          };
-        }).filter(function(product){ return product.name; });
-      });
+    const baseUrl = 'https://firestore.googleapis.com/v1/projects/mckenzie-ramen-house/databases/(default)/documents/products';
+
+    function firestoreValue_(field){
+      if (!field) return null;
+      if (field.stringValue !== undefined) return field.stringValue;
+      if (field.booleanValue !== undefined) return field.booleanValue;
+      if (field.integerValue !== undefined) return Number(field.integerValue);
+      if (field.doubleValue !== undefined) return Number(field.doubleValue);
+      if (field.timestampValue !== undefined) return field.timestampValue;
+      if (field.nullValue !== undefined) return null;
+      return null;
+    }
+
+    function fetchPage_(pageToken, collected){
+      const url = pageToken ? baseUrl + '?pageToken=' + encodeURIComponent(pageToken) : baseUrl;
+      return fetch(url, { method:'GET', cache:'no-store' })
+        .then(function(response){
+          if (!response.ok) throw new Error('Firestore products HTTP ' + response.status);
+          return response.json();
+        })
+        .then(function(payload){
+          const docs = Array.isArray(payload && payload.documents) ? payload.documents : [];
+          docs.forEach(function(doc){
+            const f = doc.fields || {};
+            const rawId = String(doc.name || '').split('/').pop();
+            const rawStatus = String(firestoreValue_(f.status) || '').trim().toLowerCase();
+            let status = 'Available';
+            if (rawStatus === 'sold out') status = 'Sold Out';
+            else if (rawStatus === 'unavailable') status = 'Unavailable';
+            else if (rawStatus === 'available') status = 'Available';
+            else if (firestoreValue_(f.available) === false) status = 'Unavailable';
+            collected.push({
+              id: rawId,
+              name: String(firestoreValue_(f.name) || '').trim(),
+              category: normalizeMenuCategory_(firestoreValue_(f.category)),
+              price: Number(firestoreValue_(f.price) || 0),
+              image: String(firestoreValue_(f.image) || firestoreValue_(f.imageUrl) || ''),
+              description: String(firestoreValue_(f.description) || ''),
+              status: status,
+              available: status === 'Available',
+              bestSeller: !!firestoreValue_(f.bestSeller),
+              newProduct: !!firestoreValue_(f.newProduct)
+            });
+          });
+          const next = payload && payload.nextPageToken;
+          return next ? fetchPage_(next, collected) : collected;
+        });
+    }
+
+    return fetchPage_('', []).then(function(products){
+      return products.filter(function(product){ return product.name; });
+    });
   }
+
 
   function renderDirectProducts_(products){
     /* Reuse the original, already-designed product/card/cart renderer.
