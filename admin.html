@@ -373,7 +373,7 @@ button,input,select,textarea{font:inherit}
     <div class="field"><label>Product Name *</label><input id="name" placeholder="e.g. Tonkotsu Ramen"></div>
     <div class="field"><label>Price *</label><input id="price" type="number" min="0" step="0.01" placeholder="329"></div>
     <div class="field"><label>Category *</label><select id="category"><option value="Ramen">Ramen</option><option value="Side Dishes">Side Dishes</option><option value="Drinks">Drinks</option><option value="Dessert">Dessert</option><option value="Rice Meal">Rice Meal</option><option value="Promotion">Promotion</option><option value="Coming Soon">Coming Soon</option></select></div>
-    <div class="field"><label>Status</label><select id="available"><option value="true">Available</option><option value="false">Unavailable</option></select></div>
+    <div class="field"><label>Status</label><select id="available"><option value="Available">Available</option><option value="Unavailable">Unavailable</option><option value="Sold Out">Sold Out</option></select></div>
     <div class="field full"><label>Product Photo <span id="productPhotoRequired" style="color:#a51620">*</span></label>
       <label class="upload" for="image"><strong>📷 Choose Product Photo</strong><small id="productPhotoHint">JPG, PNG, WEBP · Required for a new product. For edits, keep the existing photo or use × to remove/replace it.</small><input id="image" type="file" accept="image/png,image/jpeg,image/webp" hidden onchange="previewImage(event)"></label>
       <div class="brand-preview-wrap"><img id="preview" class="preview"><button id="removeProductImageBtn" class="image-remove-btn" type="button" onclick="removeProductImage()" aria-label="Remove product photo" hidden>×</button></div>
@@ -570,8 +570,8 @@ async function login(){
 })();
 
 function normalizeAdminCategory_(value){const raw=String(value||'').trim().toLowerCase();if(!raw)return 'Coming Soon';if(raw==='ramen')return 'Ramen';if(raw==='side dish'||raw==='side dishes'||raw==='sidedishes')return 'Side Dishes';if(raw==='drink'||raw==='drinks')return 'Drinks';if(raw==='dessert'||raw==='desserts')return 'Dessert';if(raw==='rice meal'||raw==='rice meals'||raw==='ricemeal'||raw==='rice-meal')return 'Rice Meal';if(raw==='promotion'||raw==='promotions'||raw==='promo'||raw==='promos')return 'Promotion';return 'Coming Soon';}
-function loadProducts(){run('adminGetProducts',[token],function(v,e){if(e||!v||!v.success){if(token)alert(e||'Unable to load products.');return;}products=(v.products||[]).map(function(p){p.category=normalizeAdminCategory_(p.category);p.available=(p.available===true || p.available==='true' || p.available===1 || p.available==='1');return p;});render();});}
-function render(){const q=document.getElementById('search').value.toLowerCase();const selected=String(document.getElementById('categoryFilter')?.value||'All');const list=products.filter(p=>{p.category=normalizeAdminCategory_(p.category);return (selected==='All'||p.category===selected)&&(p.name+' '+p.category).toLowerCase().includes(q);});document.getElementById('total').textContent=products.length;document.getElementById('available').textContent=products.filter(p=>p.available).length;document.getElementById('best').textContent=products.filter(p=>p.bestSeller).length;document.getElementById('new').textContent=products.filter(p=>p.newProduct).length;document.getElementById('products').innerHTML=list.length?list.map(p=>`<article class="product"><img src="${p.image||''}" onerror="this.style.visibility='hidden'" alt=""><div class="pbody">${p.bestSeller?'<span class="badge">BEST SELLER</span>':''}${p.newProduct?'<span class="badge">NEW</span>':''}<h3>${esc(p.name)}</h3><div class="price">₱${Number(p.price||0).toLocaleString()}</div><div class="meta">${esc(p.category)} · ${p.available?'Available':'Unavailable'}</div><div class="actions"><button class="edit" onclick="editProduct('${esc(p.id)}')">Edit</button><button class="del" onclick="deleteProduct('${esc(p.id)}')">Delete</button></div></div></article>`).join(''):'<div class="empty">No products found.</div>'; }
+function loadProducts(){run('adminGetProducts',[token],function(v,e){if(e||!v||!v.success){if(token)alert(e||'Unable to load products.');return;}products=(v.products||[]).map(function(p){p.category=normalizeAdminCategory_(p.category);p.status=(String(p.status||'').toLowerCase()==='sold out'?'Sold Out':String(p.status||'').toLowerCase()==='unavailable'?'Unavailable':(p.available===false?'Unavailable':'Available'));p.available=p.status==='Available';return p;});render();});}
+function render(){const q=document.getElementById('search').value.toLowerCase();const selected=String(document.getElementById('categoryFilter')?.value||'All');const list=products.filter(p=>{p.category=normalizeAdminCategory_(p.category);return (selected==='All'||p.category===selected)&&(p.name+' '+p.category).toLowerCase().includes(q);});document.getElementById('total').textContent=products.length;document.getElementById('available').textContent=products.filter(p=>p.available).length;document.getElementById('best').textContent=products.filter(p=>p.bestSeller).length;document.getElementById('new').textContent=products.filter(p=>p.newProduct).length;document.getElementById('products').innerHTML=list.length?list.map(p=>`<article class="product"><img src="${p.image||''}" onerror="this.style.visibility='hidden'" alt=""><div class="pbody">${p.bestSeller?'<span class="badge">BEST SELLER</span>':''}${p.newProduct?'<span class="badge">NEW</span>':''}<h3>${esc(p.name)}</h3><div class="price">₱${Number(p.price||0).toLocaleString()}</div><div class="meta">${esc(p.category)} · ${esc(p.status || (p.available?'Available':'Unavailable'))}</div><div class="actions"><button class="edit" onclick="editProduct('${esc(p.id)}')">Edit</button><button class="del" onclick="deleteProduct('${esc(p.id)}')">Delete</button></div></div></article>`).join(''):'<div class="empty">No products found.</div>'; }
 function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
 function escAttr(s){return String(s??'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");}
 function setProductPreview(src){
@@ -587,7 +587,7 @@ function openModal(p=null){
   document.getElementById('name').value=p.name||'';
   document.getElementById('price').value=p.price??'';
   document.getElementById('category').value=normalizeAdminCategory_(p.category);
-  document.getElementById('available').value=p.available?'true':'false';
+  document.getElementById('available').value=p.status|| (p.available?'Available':'Unavailable');
   document.getElementById('description').value=p.description||'';
   document.getElementById('bestSeller').checked=!!p.bestSeller;
   document.getElementById('newProduct').checked=!!p.newProduct;
@@ -598,7 +598,7 @@ function openModal(p=null){
   const req=document.getElementById('productPhotoRequired');
   const hint=document.getElementById('productPhotoHint');
   if(req)req.style.display=p.id?'none':'inline';
-  if(hint)hint.textContent=p.id?'Existing photo loaded. You can keep it, replace it, or click × to remove it.':'JPG, PNG, WEBP · Required for a new product.';
+  if(hint)hint.textContent=p.id?'Existing photo loaded. It stays unless you choose a replacement or Remove Photo.':'JPG, PNG, WEBP · Required for a new product.';
   document.getElementById('saveMsg').textContent=p.image?'Current product photo is loaded. You can keep it, replace it, or click × to remove it.':'';
 }
 function closeModal(){document.getElementById('modal').classList.remove('open')}
@@ -681,7 +681,8 @@ async function saveProduct(){
       name,
       price:Number(price),
       category:document.getElementById('category').value,
-      available:document.getElementById('available').value==='true',
+      status:document.getElementById('available').value,
+      available:document.getElementById('available').value==='Available',
       description:document.getElementById('description').value.trim(),
       bestSeller:document.getElementById('bestSeller').checked,
       newProduct:document.getElementById('newProduct').checked
@@ -692,9 +693,14 @@ async function saveProduct(){
     let replacementImage=null;
     if(selectedImage){
       replacementImage=await fileData(selectedImage);
-      // Do not rely on the generic adminSaveProduct merge to replace the photo.
-      // We apply the image field directly after the product metadata is saved.
-      data.image=undefined;
+      // New product: send the compressed photo with the create request.
+      // Existing product: metadata save must never touch the image field; the
+      // replacement is written directly to the exact product document below.
+      if(!id){
+        data.image='data:image/jpeg;base64,'+String(replacementImage.base64||'');
+      }else{
+        data.image=undefined;
+      }
     }else if(removeProductImageFlag){
       data.image=undefined;
     }else if(id && editing){
