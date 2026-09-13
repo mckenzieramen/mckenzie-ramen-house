@@ -507,11 +507,14 @@ async function completeAdminLogin(user){
     return false;
   }
 
-  // Firebase Authentication already verified the credentials.
-  // Do not reject a valid Firebase sign-in because of a stale UID copied
-  // into the page. The Firebase bridge will use the signed-in session.
-  if(!adminUid || user.uid!==adminUid){
-    window.MCKENZIE_ADMIN_UID = user.uid;
+  // The configured Admin UID is the single source of truth.
+  // Never replace it with the currently signed-in UID; Firestore Rules
+  // must authorize the exact same UID.
+  if(!adminUid || adminUid === 'PASTE_ADMIN_USER_UID_HERE' || user.uid !== adminUid){
+    if(msg)msg.textContent='This Firebase account is not the configured McKenzie admin account.';
+    try{ await window.MckenzieFirebaseReady.then(f=>f.signOut(f.auth)); }catch(e){}
+    showLogin();
+    return false;
   }
 
   try{
