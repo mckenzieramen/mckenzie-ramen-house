@@ -2720,6 +2720,65 @@ body.quick-loading {
 .menu-category-coming-soon{grid-column:1/-1;min-height:150px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:28px 18px;border:1px dashed rgba(165,22,32,.28);border-radius:16px;background:linear-gradient(180deg,#fffaf5,#fff7ef);color:#7b2a31;text-align:center}.menu-category-coming-soon .coming-soon-icon{font-size:34px;line-height:1;margin-bottom:2px}.menu-category-coming-soon strong{font-family:'Cormorant Garamond',serif;font-size:28px;color:#60151f}.menu-category-coming-soon span{font-size:12px;color:#8b6862}@media(max-width:600px){.menu-category-filter{gap:7px}.menu-category-filter button{padding:8px 11px;font-size:12px}.menu-category-title{font-size:29px}}
 </style>
 
+<style id="responsive-mobile-final">
+/* MOBILE MENU + COMPACT MENU CARDS — preserve locked baseline */
+.mobile-site-nav-button,.mobile-site-nav-backdrop{display:none}
+@media (max-width:700px){
+  html,body{width:100%;min-width:0;overflow-x:hidden}
+  .mobile-site-nav-button{
+    display:flex;position:fixed;top:9px;left:12px;z-index:1000001;
+    width:44px;height:44px;border:2px solid rgba(233,173,53,.95);border-radius:50%;
+    background:rgba(58,7,9,.9);flex-direction:column;align-items:center;justify-content:center;gap:4px;
+    box-shadow:0 8px 22px rgba(0,0,0,.35);cursor:pointer
+  }
+  .mobile-site-nav-button span{display:block;width:19px;height:2px;background:#fff;border-radius:2px}
+  .mobile-site-nav-backdrop{position:fixed;inset:0;z-index:999997;background:rgba(20,5,4,.55);backdrop-filter:blur(2px)}
+  body.mobile-site-nav-open .mobile-site-nav-backdrop{display:block}
+  .site-sticky-nav{
+    left:10px;right:auto;top:62px;width:calc(100vw - 20px);height:auto;min-height:0;
+    padding:14px;border:1px solid rgba(233,173,53,.72);border-radius:16px;
+    transform:translateY(-18px);opacity:0;pointer-events:none;
+    justify-content:flex-start;box-shadow:0 18px 40px rgba(0,0,0,.32)
+  }
+  body.mobile-site-nav-open .site-sticky-nav{transform:translateY(0);opacity:1;pointer-events:auto}
+  .site-sticky-nav-inner{display:grid;grid-template-columns:1fr 1fr;gap:7px;width:100%}
+  .site-sticky-nav a{display:block;padding:11px 10px;border:1px solid rgba(255,255,255,.12);border-radius:10px;font-size:10px;letter-spacing:.7px;text-align:center;background:rgba(255,255,255,.04)}
+  .site-sticky-logo{display:none!important}
+  .sticky-cart-button{right:70px;top:9px;width:44px;height:44px}
+  .account-menu-wrap{right:14px!important;top:9px!important}
+  .account-menu-button{width:44px!important;height:44px!important}
+  .products{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    gap:12px!important;
+    width:100%;
+    max-width:none!important;
+  }
+  .product-card{min-width:0;border-radius:14px}
+  .product-image-wrap{height:175px!important}
+  .product-content{padding:12px!important}
+  .product-name{font-size:21px!important;line-height:1.05!important}
+  .product-description{font-size:10px!important;line-height:1.45!important}
+  .product-bottom{gap:6px!important;align-items:center}
+  .product-bottom .price{font-size:14px!important}
+  .product-status-label{font-size:9px!important;white-space:nowrap}
+  .add-cart-control{gap:5px!important;min-height:38px}
+  .add-cart-plus,.qty-minus,.qty-plus{
+    width:38px!important;height:38px!important;min-width:38px!important;
+    font-size:21px!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;
+    touch-action:manipulation;position:relative;z-index:5
+  }
+  .product-card button{touch-action:manipulation}
+}
+@media (max-width:420px){
+  .products{gap:9px!important}
+  .product-image-wrap{height:150px!important}
+  .product-content{padding:10px!important}
+  .product-name{font-size:18px!important}
+  .product-description{font-size:9px!important}
+  .product-bottom{flex-wrap:wrap}
+  .add-cart-control{width:100%;justify-content:flex-end}
+}
+</style>
 </head>
 
 
@@ -3331,6 +3390,8 @@ body.quick-loading {
 ======================================================= -->
 
 <!-- STICKY TOP NAVIGATION: appears after scrolling -->
+<button type="button" id="mobileSiteNavButton" class="mobile-site-nav-button" aria-label="Open site navigation" aria-expanded="false" onclick="toggleMobileSiteNav_()"><span></span><span></span><span></span></button>
+<div id="mobileSiteNavBackdrop" class="mobile-site-nav-backdrop" onclick="closeMobileSiteNav_()"></div>
 <div id="siteStickyNav" class="site-sticky-nav" aria-label="Site navigation">
   <img id="siteStickyLogo"
        class="site-sticky-logo"
@@ -8275,5 +8336,24 @@ document.addEventListener('DOMContentLoaded',function(){
   });
 })();
 </script>
+
+<script>
+function toggleMobileSiteNav_(){
+  document.body.classList.toggle('mobile-site-nav-open');
+  var b=document.getElementById('mobileSiteNavButton');
+  if(b)b.setAttribute('aria-expanded',document.body.classList.contains('mobile-site-nav-open')?'true':'false');
+}
+function closeMobileSiteNav_(){
+  document.body.classList.remove('mobile-site-nav-open');
+  var b=document.getElementById('mobileSiteNavButton');
+  if(b)b.setAttribute('aria-expanded','false');
+}
+document.addEventListener('click',function(e){
+  if(!document.body.classList.contains('mobile-site-nav-open')) return;
+  var link=e.target.closest&&e.target.closest('.site-sticky-nav a');
+  if(link) closeMobileSiteNav_();
+});
+</script>
+
 </body>
 </html>
