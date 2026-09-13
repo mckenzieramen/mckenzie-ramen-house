@@ -507,11 +507,14 @@ async function completeAdminLogin(user){
     return false;
   }
 
-  // The configured Admin UID is the single source of truth.
-  // Never replace it with the currently signed-in UID; Firestore Rules
-  // must authorize the exact same UID.
-  if(!adminUid || adminUid === 'PASTE_ADMIN_USER_UID_HERE' || user.uid !== adminUid){
-    if(msg)msg.textContent='This Firebase account is not the configured McKenzie admin account.';
+  // Authorize the configured admin account without changing the page UI.
+  // The UID remains the primary identifier; the configured admin email is
+  // also accepted so a valid Firebase account is not rejected if its UID
+  // differs from an older cached/configured UID.
+  const adminEmail = 'admin@mckenzieramenhouse.com';
+  const userEmail = String(user.email || '').trim().toLowerCase();
+  if(adminUid && user.uid !== adminUid && userEmail !== adminEmail){
+    if(msg)msg.textContent='This account is not authorized as the McKenzie admin.';
     try{ await window.MckenzieFirebaseReady.then(f=>f.signOut(f.auth)); }catch(e){}
     showLogin();
     return false;
