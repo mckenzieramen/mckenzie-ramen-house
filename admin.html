@@ -656,7 +656,7 @@ function fileData(file){return new Promise((resolve,reject)=>{
 async function clearProductImageInFirestore(id){
   const idToken=token||sessionStorage.getItem('mck_admin_token')||'';
   if(!idToken||!id)return;
-  const url='https://firestore.googleapis.com/v1/projects/mckenzie-ramen-house/databases/(default)/documents/products/'+encodeURIComponent(savedId)+'?updateMask.fieldPaths=image';
+  const url='https://firestore.googleapis.com/v1/projects/mckenzie-ramen-house/databases/(default)/documents/products/'+encodeURIComponent(id)+'?updateMask.fieldPaths=image';
   const r=await fetch(url,{method:'PATCH',headers:{'Authorization':'Bearer '+idToken,'Content-Type':'application/json'},body:JSON.stringify({fields:{image:{stringValue:''}}})});
   if(!r.ok){let t=await r.text();let d={};try{d=JSON.parse(t)}catch(e){};throw new Error(d.error&&d.error.message?d.error.message:'Unable to remove the product photo.')}
 }
