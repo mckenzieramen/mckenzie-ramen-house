@@ -47,6 +47,64 @@ button,input,select,textarea{font:inherit}
 .custom-confirm-ok{background:#b91e35;border:1px solid #b91e35;color:#fff}
 .custom-confirm-ok:hover{background:#8e1528}
 @keyframes confirmPop{from{opacity:0;transform:translateY(8px) scale(.98)}to{opacity:1;transform:none}}
+
+/* MOBILE RESPONSIVE ADMIN — preserve locked baseline functionality */
+.admin-mobile-menu-button,.admin-mobile-menu-backdrop{display:none}
+@media (max-width:700px){
+  html,body{width:100%;min-width:0;overflow-x:hidden}
+  body{overflow-y:auto}
+  .admin-mobile-menu-button{
+    display:flex;position:fixed;top:12px;left:12px;z-index:2147482000;
+    width:44px;height:44px;border:1px solid #e4ad32;border-radius:11px;
+    background:#130807;color:#fff;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+    box-shadow:0 8px 22px rgba(0,0,0,.25);cursor:pointer
+  }
+  .admin-mobile-menu-button span{display:block;width:21px;height:2px;background:#fff;border-radius:2px}
+  .admin-mobile-menu-backdrop{position:fixed;inset:0;z-index:2147481500;background:rgba(0,0,0,.48)}
+  body.admin-mobile-menu-open .admin-mobile-menu-backdrop{display:block}
+  .side{
+    display:block!important;width:260px;height:100vh;z-index:2147481800;
+    transform:translateX(-105%);transition:transform .24s ease;
+    box-shadow:12px 0 35px rgba(0,0,0,.28);
+  }
+  body.admin-mobile-menu-open .side{transform:translateX(0)}
+  .side .brand h2,.side .brand small,.side .nav span,.side .logout span{display:inline}
+  .side .nav{margin-top:25px}
+  .side .nav button{padding:13px 14px}
+  .main{margin:0;width:100%;padding:70px 12px 24px}
+  .top{gap:12px;align-items:center;margin-bottom:18px}
+  .top h1{font-size:30px;line-height:1.05}
+  .top p{font-size:10px}
+  .top .add{white-space:nowrap;padding:10px 12px;font-size:11px}
+  .stats{grid-template-columns:repeat(2,1fr);gap:9px;margin-bottom:14px}
+  .stat{padding:12px}.stat strong{font-size:21px}.stat span{font-size:10px}
+  .panel{padding:12px;border-radius:14px;overflow:visible}
+  .toolbar{gap:8px;margin-bottom:12px}
+  .toolbar>div{width:100%!important}
+  .category-filter,.toolbar .search{max-width:none!important;width:100%!important;font-size:11px;padding:9px 10px}
+  .products{
+    grid-template-columns:repeat(3,minmax(0,1fr))!important;
+    gap:9px!important;
+    width:100%;
+    overflow:visible!important;
+  }
+  .product{min-width:0;border-radius:11px}
+  .product img{height:105px}
+  .pbody{padding:9px}
+  .badge{font-size:7px;padding:3px 5px;margin-bottom:5px}
+  .pbody h3{font-size:18px;line-height:1.05;word-break:break-word}
+  .price{font-size:13px}
+  .meta{font-size:9px;margin:5px 0 8px;line-height:1.3}
+  .actions{gap:4px}
+  .actions button{padding:7px 3px;font-size:9px;border-radius:7px}
+  .box{width:calc(100vw - 24px);max-height:90vh;padding:17px}
+  .form{grid-template-columns:1fr}
+  .field.full{grid-column:auto}
+}
+@media (min-width:701px) and (max-width:950px){
+  .products{grid-template-columns:repeat(3,1fr)!important}
+}
+
 </style>
 
 <style id="review-notify-style">
@@ -227,6 +285,9 @@ button,input,select,textarea{font:inherit}
 
 </head>
 <body>
+<button type="button" id="adminMobileMenuButton" class="admin-mobile-menu-button" aria-label="Open admin menu" aria-expanded="false" onclick="toggleAdminMobileMenu_()"><span></span><span></span><span></span></button>
+<div id="adminMobileMenuBackdrop" class="admin-mobile-menu-backdrop" onclick="closeAdminMobileMenu_()"></div>
+
 
 <div id="adminToast" role="status" aria-live="polite">
   <div class="toast-icon">🔔</div>
@@ -1275,4 +1336,21 @@ async function logout(){
   new MutationObserver(scrub).observe(document.body,{subtree:true,childList:true});
   setInterval(scrub,500);
 })();
+</script>
+<script id="admin-mobile-nav-script">
+function toggleAdminMobileMenu_(){
+  document.body.classList.toggle('admin-mobile-menu-open');
+  var b=document.getElementById('adminMobileMenuButton');
+  if(b)b.setAttribute('aria-expanded',document.body.classList.contains('admin-mobile-menu-open')?'true':'false');
+}
+function closeAdminMobileMenu_(){
+  document.body.classList.remove('admin-mobile-menu-open');
+  var b=document.getElementById('adminMobileMenuButton');
+  if(b)b.setAttribute('aria-expanded','false');
+}
+document.addEventListener('click',function(e){
+  if(!document.body.classList.contains('admin-mobile-menu-open')) return;
+  var nav=e.target.closest&&e.target.closest('.side .nav button');
+  if(nav && !nav.classList.contains('logout')) closeAdminMobileMenu_();
+});
 </script>
