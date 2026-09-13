@@ -1094,48 +1094,20 @@ button {
 
 .products {
   position: relative;
+
   z-index: 15;
+
   max-width: 1180px;
+
   margin: auto;
+
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+
+  grid-template-columns:
+    repeat(4, 1fr);
+
   gap: 24px;
 }
-
-/* Category sections must occupy the full menu width.
-   Each category keeps a clean 4-card row and scrolls horizontally
-   when more items are available instead of squeezing cards. */
-#products > .menu-category-group {
-  grid-column: 1 / -1;
-  width: 100%;
-  min-width: 0;
-}
-
-#products > .menu-category-group > .products {
-  width: 100%;
-  max-width: 1180px;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-
-#products > .menu-category-group > .products:has(.product-card:nth-child(5)) {
-  display: flex;
-  overflow-x: auto;
-  overflow-y: hidden;
-  scroll-snap-type: x mandatory;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: thin;
-  padding: 4px 4px 14px;
-  gap: 18px;
-}
-
-#products > .menu-category-group > .products:has(.product-card:nth-child(5)) .product-card {
-  flex: 0 0 calc((100% - 54px) / 4);
-  min-width: 0;
-  scroll-snap-align: start;
-}
-
-#products > .menu-category-group > .products::-webkit-scrollbar { height: 7px; }
-#products > .menu-category-group > .products::-webkit-scrollbar-thumb { background: #d7aaa0; border-radius: 20px; }
 
 .product-card {
   position: relative;
@@ -1165,6 +1137,33 @@ button {
 /* =========================================================
    PRODUCT IMAGE
 ========================================================= */
+
+.sold-out-stamp {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%) rotate(-8deg);
+  width: 118px;
+  height: 118px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  background: rgba(150, 20, 35, .92);
+  border: 5px solid rgba(255,255,255,.92);
+  box-shadow: 0 7px 20px rgba(0,0,0,.35);
+  color: #fff;
+  font-size: 20px;
+  line-height: 1.05;
+  font-weight: 900;
+  letter-spacing: 1px;
+  z-index: 8;
+  pointer-events: none;
+}
+.product-image-wrap.is-sold-out .product-image {
+  filter: grayscale(.2) brightness(.68);
+}
 
 .product-image-wrap {
   position: relative;
@@ -1621,15 +1620,8 @@ button {
 @media (max-width: 1000px) {
 
   .products {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  #products > .menu-category-group > .products {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  #products > .menu-category-group > .products:has(.product-card:nth-child(5)) .product-card {
-    flex-basis: calc((100% - 18px) / 2);
+    grid-template-columns:
+      repeat(2, 1fr);
   }
 
   .sakura-decoration {
@@ -1646,26 +1638,6 @@ button {
 }
 
 @media (max-width: 700px) {
-
-  #products > .menu-category-group > .products {
-    display: flex;
-    overflow-x: auto;
-    overflow-y: hidden;
-    gap: 14px;
-    padding: 4px 4px 14px;
-    scroll-snap-type: x mandatory;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  #products > .menu-category-group > .products .product-card {
-    flex: 0 0 calc((100% - 14px) / 2);
-    min-width: 0;
-    scroll-snap-align: start;
-  }
-
-  #products > .menu-category-group > .products .menu-category-coming-soon {
-    flex: 0 0 100%;
-  }
 
   .hero {
     min-height: 700px;
@@ -7405,11 +7377,13 @@ function loadProducts() {
 
             card.innerHTML = `
 
-              <div class="product-image-wrap">
+              <div class="product-image-wrap ${String(product.status||'').toLowerCase()==='sold out' ? 'is-sold-out' : ''}">
 
                 ${badgeHtml}
 
                 ${imageHtml}
+
+                ${String(product.status||'').toLowerCase()==='sold out' ? '<div class="sold-out-stamp" aria-label="Sold Out"><span>SOLD<br>OUT</span></div>' : ''}
 
                 <div class="steam">
 
@@ -7458,7 +7432,7 @@ function loadProducts() {
                     ₱${formatPrice(product.price)}
                   </span>
 
-                  ${product.available ? `
+                  ${(product.available && String(product.status||'Available') !== 'Sold Out') ? `
                     <div class="add-cart-control" data-cart-control="${escapeHtml(String(product._cartKey))}">
                       <button type="button" class="add-cart-plus" aria-label="Add ${escapeHtml(product.name)} to cart">+</button>
                     </div>
@@ -7825,10 +7799,11 @@ function goToHomeFromLogo_() {
             price: Number(firestoreValue_(f.price) || 0),
             image: String(firestoreValue_(f.image) || ''),
             description: String(firestoreValue_(f.description) || ''),
-            available: normalizeProductAvailability_(
-              f.available !== undefined ? firestoreValue_(f.available) :
-              (f.status !== undefined ? firestoreValue_(f.status) : firestoreValue_(f.availability))
-            ),
+            status: (String(firestoreValue_(f.status) || '').trim().toLowerCase()==='sold out' ? 'Sold Out' :
+                     String(firestoreValue_(f.status) || '').trim().toLowerCase()==='unavailable' ? 'Unavailable' :
+                     (firestoreValue_(f.available) === false ? 'Unavailable' : 'Available')),
+            available: (String(firestoreValue_(f.status) || '').trim().toLowerCase()==='available' ||
+                        (firestoreValue_(f.status) === null && normalizeProductAvailability_(f.available))),
             bestSeller: !!firestoreValue_(f.bestSeller),
             newProduct: !!firestoreValue_(f.newProduct)
           };
