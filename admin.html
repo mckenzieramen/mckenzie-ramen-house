@@ -283,6 +283,14 @@ button,input,select,textarea{font:inherit}
 .category-filter{padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:#fff;min-width:170px;font-weight:700;color:#60151f}
 </style>
 
+<style id="mckenzie-order-notification-state-style">
+.order-card.order-closed-gray{background:#e8e8e8!important;border-color:#c8c8c8!important;color:#777;filter:grayscale(.7);opacity:.72;}
+.order-card.order-closed-gray .order-box{background:#e3e3e3!important;border-color:#ccc!important;}
+.order-card.order-new-notification{background:#fff0f0!important;border:2px solid #b91e35!important;box-shadow:0 0 0 3px rgba(185,30,53,.09),0 10px 24px rgba(185,30,53,.14);animation:mckAdminNewPulse 1.2s ease-in-out infinite;}
+@keyframes mckAdminNewPulse{0%,100%{box-shadow:0 0 0 3px rgba(185,30,53,.08),0 10px 24px rgba(185,30,53,.12)}50%{box-shadow:0 0 0 8px rgba(185,30,53,.13),0 12px 28px rgba(185,30,53,.18)}}
+.order-card.order-new-notification.mck-order-ready-read{animation:mckAdminNotificationFade .6s ease forwards;}
+@keyframes mckAdminNotificationFade{to{background:#fff;border-color:var(--line);box-shadow:none;filter:none;}}
+</style>
 </head>
 <body>
 <button type="button" id="adminMobileMenuButton" class="admin-mobile-menu-button" aria-label="Open admin menu" aria-expanded="false" onclick="toggleAdminMobileMenu_()"><span></span><span></span><span></span></button>
@@ -462,7 +470,7 @@ let token=sessionStorage.getItem('mck_admin_token')||'';
 let products=[]; let selectedImage=null; let editing=null; let removeProductImageFlag=false;
 let removeBrandLogoFlag=false; let removeBrandBackgroundFlag=false;
 let orders=[]; let reviews=[];
-let lastOrderIds=new Set(); let orderPollTimer=null; let firstOrderLoad=true;
+let lastOrderIds=new Set(); let orderPollTimer=null; let firstOrderLoad=true; let newOrderHighlightIds=new Set();
 const savingOrderItems=new Set(); const savingOrderStatuses=new Set();
 let audioCtx=null; let adminToastTimer=null;
 
@@ -1015,6 +1023,7 @@ function approveDeliveryConfirm(){
   if(id) updateOrderStatus(id,'Delivered',true);
 }
 function updateOrderStatus(orderId,status,confirmed){
+  const highlightId=String(orderId||'');
   const idx=orders.findIndex(function(x){return String(x.orderId)===String(orderId);});
   if(idx<0)return;
   const o=orders[idx];
@@ -1076,6 +1085,7 @@ function initAdminNotifications(){
       if (!firstOrderLoad) {
         const newOrders = latest.filter(function(o){ return !lastOrderIds.has(String(o.orderId||'')); });
         if (newOrders.length) {
+          newOrders.forEach(function(no){ newOrderHighlightIds.add(String(no.orderId||'')); });
           orders = latest;
           lastOrderIds = ids;
           showNewOrderNotification(newOrders);
