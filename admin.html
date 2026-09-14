@@ -291,6 +291,14 @@ button,input,select,textarea{font:inherit}
 .order-card.order-new-notification.mck-order-ready-read{animation:mckAdminNotificationFade .6s ease forwards;}
 @keyframes mckAdminNotificationFade{to{background:#fff;border-color:var(--line);box-shadow:none;filter:none;}}
 </style>
+
+<style id="mckenzie-admin-customer-chat-style">
+.order-card.order-closed-gray{background:#e8e8e8!important;border-color:#c8c8c8!important;color:#777!important;filter:grayscale(.72);opacity:.72;}
+.order-card.order-closed-gray .order-box{background:#e3e3e3!important;border-color:#ccc!important;}
+.order-card.order-new-notification{background:#fff0f0!important;border:2px solid #b91e35!important;box-shadow:0 0 0 3px rgba(185,30,53,.09),0 10px 24px rgba(185,30,53,.14);animation:mckAdminNewPulse 1.2s ease-in-out infinite;}
+.order-card.order-new-notification.mck-order-ready-read{animation:mckAdminNotificationFade .6s ease forwards;}
+.customer-chats{display:grid;gap:14px}.customer-chat-card{border:1px solid var(--line);border-radius:15px;background:#fff;padding:16px}.customer-chat-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.customer-chat-name{font-weight:900;color:#60151f}.customer-chat-meta{font-size:11px;color:var(--muted);margin-top:3px}.customer-chat-status{font-size:10px;font-weight:900;padding:6px 9px;border-radius:999px;background:#fff0c7;color:#8a5b00}.customer-chat-status.new{background:#fbe0e4;color:#9c182c}.customer-chat-messages{margin-top:12px;display:grid;gap:7px;max-height:260px;overflow:auto;padding:3px}.customer-chat-msg{max-width:78%;padding:9px 11px;border-radius:12px;font-size:12px;line-height:1.5}.customer-chat-msg.customer{justify-self:end;background:#fbe0e4;color:#5f1018}.customer-chat-msg.admin,.customer-chat-msg.ai{justify-self:start;background:#fff5df;color:#4d3731}.customer-chat-compose{display:flex;gap:8px;margin-top:10px}.customer-chat-compose textarea{flex:1;min-height:46px;resize:vertical;border:1px solid var(--line);border-radius:10px;padding:9px 10px}.customer-chat-compose button{border:0;background:var(--red);color:#fff;border-radius:10px;padding:9px 13px;font-weight:800;cursor:pointer}.customer-chat-empty{text-align:center;padding:45px;color:var(--muted)}
+</style>
 </head>
 <body>
 <button type="button" id="adminMobileMenuButton" class="admin-mobile-menu-button" aria-label="Open admin menu" aria-expanded="false" onclick="toggleAdminMobileMenu_()"><span></span><span></span><span></span></button>
@@ -340,7 +348,7 @@ button,input,select,textarea{font:inherit}
   <div class="nav">
     <button id="navProducts" class="active" onclick="showSection('products')">📦 <span>Products</span></button>
     <button id="navOrders" onclick="showSection('orders')">🧾 <span>Orders</span><b id="orderBadge" style="display:none;margin-left:auto;background:#b91e35;color:#fff;border-radius:999px;padding:2px 7px;font-size:10px">0</b></button>
-    <button onclick="alert('Customers module next.')">👥 <span>Customers</span></button>
+    <button id="navCustomers" onclick="showSection('customers')">👥 <span>Customers</span><b id="chatBadge" style="display:none;margin-left:auto;background:#b91e35;color:#fff;border-radius:999px;padding:2px 7px;font-size:10px">0</b></button>
     <button id="navReviews" onclick="showSection('reviews')">⭐ <span>Reviews</span><b id="reviewBadge" style="display:none;margin-left:auto;background:#b91e35;color:#fff;border-radius:999px;padding:2px 7px;font-size:10px">0</b></button>
     <button id="navSettings" onclick="showSection('settings')">⚙️ <span>Settings</span></button>
   </div>
@@ -470,7 +478,7 @@ let token=sessionStorage.getItem('mck_admin_token')||'';
 let products=[]; let selectedImage=null; let editing=null; let removeProductImageFlag=false;
 let removeBrandLogoFlag=false; let removeBrandBackgroundFlag=false;
 let orders=[]; let reviews=[];
-let lastOrderIds=new Set(); let orderPollTimer=null; let firstOrderLoad=true; let newOrderHighlightIds=new Set();
+let lastOrderIds=new Set(); let orderPollTimer=null; let firstOrderLoad=true; let newOrderHighlightIds=new Set(); let newOrderReadyFadeIds=new Set();
 const savingOrderItems=new Set(); const savingOrderStatuses=new Set();
 let audioCtx=null; let adminToastTimer=null;
 
@@ -808,7 +816,7 @@ async function saveProduct(){
 }
 function deleteProduct(id){if(!confirm('Delete this product?'))return;run('adminDeleteProduct',[token,id],function(v,e){if(e||!v||!v.success){alert(e||'Delete failed.');return}loadProducts();showCenteredUpdate('Product Updated','The product was deleted successfully.')})}
 
-function showSection(section){const productsPanel=document.querySelector('.main > .panel:not(#ordersSection):not(#reviewsSection):not(#settingsSection)'),productsStats=document.querySelector('.main > .stats'),productsTop=document.querySelector('.main > .top'),ordersSection=document.getElementById('ordersSection'),reviewsSection=document.getElementById('reviewsSection'),settingsSection=document.getElementById('settingsSection'),navProducts=document.getElementById('navProducts'),navOrders=document.getElementById('navOrders'),navReviews=document.getElementById('navReviews'),navSettings=document.getElementById('navSettings');const isOrders=section==='orders',isReviews=section==='reviews',isSettings=section==='settings';if(productsPanel)productsPanel.style.display=(isOrders||isReviews||isSettings)?'none':'';if(productsStats)productsStats.style.display=(isOrders||isReviews||isSettings)?'none':'';if(productsTop)productsTop.style.display=(isOrders||isReviews||isSettings)?'none':'';if(ordersSection)ordersSection.style.display=isOrders?'block':'none';if(reviewsSection)reviewsSection.style.display=isReviews?'block':'none';if(settingsSection)settingsSection.style.display=isSettings?'block':'none';if(navProducts)navProducts.classList.toggle('active',!isOrders&&!isReviews&&!isSettings);if(navOrders)navOrders.classList.toggle('active',isOrders);if(navReviews)navReviews.classList.toggle('active',isReviews);if(navSettings)navSettings.classList.toggle('active',isSettings);if(isOrders)loadOrders();if(isReviews)loadReviews();if(isSettings)loadBrandAssets();}
+function showSection(section){const productsPanel=document.querySelector('.main > .panel:not(#ordersSection):not(#reviewsSection):not(#settingsSection):not(#customersSection)'),productsStats=document.querySelector('.main > .stats'),productsTop=document.querySelector('.main > .top'),ordersSection=document.getElementById('ordersSection'),customersSection=document.getElementById('customersSection'),reviewsSection=document.getElementById('reviewsSection'),settingsSection=document.getElementById('settingsSection'),navProducts=document.getElementById('navProducts'),navOrders=document.getElementById('navOrders'),navCustomers=document.getElementById('navCustomers'),navReviews=document.getElementById('navReviews'),navSettings=document.getElementById('navSettings');const isOrders=section==='orders',isCustomers=section==='customers',isReviews=section==='reviews',isSettings=section==='settings';if(productsPanel)productsPanel.style.display=(isOrders||isCustomers||isReviews||isSettings)?'none':'';if(productsStats)productsStats.style.display=(isOrders||isCustomers||isReviews||isSettings)?'none':'';if(productsTop)productsTop.style.display=(isOrders||isCustomers||isReviews||isSettings)?'none':'';if(ordersSection)ordersSection.style.display=isOrders?'block':'none';if(customersSection)customersSection.style.display=isCustomers?'block':'none';if(reviewsSection)reviewsSection.style.display=isReviews?'block':'none';if(settingsSection)settingsSection.style.display=isSettings?'block':'none';if(navProducts)navProducts.classList.toggle('active',!isOrders&&!isCustomers&&!isReviews&&!isSettings);if(navOrders)navOrders.classList.toggle('active',isOrders);if(navCustomers)navCustomers.classList.toggle('active',isCustomers);if(navReviews)navReviews.classList.toggle('active',isReviews);if(navSettings)navSettings.classList.toggle('active',isSettings);if(isOrders)loadOrders();if(isCustomers)loadCustomerChats();if(isReviews)loadReviews();if(isSettings)loadBrandAssets();}
 
 // ============================================================
 // WEBSITE BRANDING
@@ -950,7 +958,10 @@ function renderOrders(){
     // Ready becomes clickable only after every purchased menu item is Ready.
     const canMarkReady=status==='Preparing' && allItemsReady;
     const canDeliver=status==='On the Way';
-    return '<article class="order-card '+(deliveredLocked?'order-delivered-locked':'')+'">'+
+    const isNewNotify=newOrderHighlightIds.has(String(o.orderId||''));
+    const isReadyFade=newOrderReadyFadeIds.has(String(o.orderId||''));
+    const cardState=closed?'order-closed-gray':(isNewNotify?'order-new-notification'+(isReadyFade?' mck-order-ready-read':''):'');
+    return '<article class="order-card '+(deliveredLocked?'order-delivered-locked ':'')+cardState+'">'+
       '<div class="order-head"><div><div class="order-id">#'+esc(o.orderId)+'</div><div class="order-meta">'+esc(o.customerName||'Guest')+' · '+esc(o.mobile||'')+'</div><div class="order-meta">'+(o.orderedAt?new Date(o.orderedAt).toLocaleString():'')+'</div></div>'+
       '<span class="status-pill '+orderStatusClass(status)+'">'+esc(status)+(closed?' · Closed':'')+'</span></div>'+
       '<div class="order-grid">'+
@@ -961,7 +972,7 @@ function renderOrders(){
       '<div class="order-workflow-note">Workflow: <b>Preparing</b> → <b>Ready</b> → <b>On the Way</b> → <b>Delivered</b><br><span style="font-size:11px">Admin uses only Preparing, Ready, and Delivered buttons. Ready automatically advances to On the Way.</span></div>'+
       '<div class="order-actions">'+
       '<button class="'+(status==='Preparing' && !allItemsReady ? 'active':'')+'" disabled title="Order is being prepared">Preparing</button>'+
-      '<button class="'+(canMarkReady?'active':'')+'" '+(deliveredLocked||closed||!canMarkReady?'disabled':'')+' onclick="updateOrderStatus(\''+escAttr(o.orderId)+'\',\'Ready\')" title="Click when every item is Ready. The order will move directly to On the Way.">Ready</button>'+
+      '<button class="'+(canMarkReady?'active':'')+'" '+(deliveredLocked||closed||!canMarkReady?'disabled':'')+' onclick="markOrderReadyFromUI(\''+escAttr(o.orderId)+'\')" title="Click when every item is Ready. The order will move directly to On the Way.">Ready</button>'+
       '<button class="'+(canDeliver?'active':'')+'" '+(deliveredLocked||closed||!canDeliver?'disabled':'')+' onclick="updateOrderStatus(\''+escAttr(o.orderId)+'\',\'Delivered\')">Delivered</button>'+
       '</div>'+
       '<div class="review-notify-row">'+
@@ -1022,6 +1033,14 @@ function approveDeliveryConfirm(){
   closeDeliveryConfirm();
   if(id) updateOrderStatus(id,'Delivered',true);
 }
+function markOrderReadyFromUI(orderId){
+  const id=String(orderId||'');
+  if(!id)return;
+  newOrderReadyFadeIds.add(id);
+  renderOrders();
+  setTimeout(function(){newOrderHighlightIds.delete(id);newOrderReadyFadeIds.delete(id);renderOrders();},700);
+  updateOrderStatus(id,'Ready');
+}
 function updateOrderStatus(orderId,status,confirmed){
   const highlightId=String(orderId||'');
   const idx=orders.findIndex(function(x){return String(x.orderId)===String(orderId);});
@@ -1040,6 +1059,7 @@ function updateOrderStatus(orderId,status,confirmed){
   // Instant Admin UI: do not make the user wait for the server round-trip.
   // Clicking Ready immediately shows On the Way; there is NO On the Way button.
   const previousStatus=o.orderStatus;
+  if(status==='Ready'){ newOrderHighlightIds.delete(highlightId); }
   const nextStatus=(status==='Ready'?'On the Way':status);
   o.orderStatus=nextStatus;
   if(nextStatus==='Delivered'){
@@ -1106,10 +1126,13 @@ function initAdminNotifications(){
       if (notice) notice.textContent = latest.length ? ('Live • Last checked: ' + new Date().toLocaleTimeString()) : 'Live • No customer orders yet.';
       if (document.getElementById('ordersSection') && document.getElementById('ordersSection').style.display !== 'none') renderOrders();
       updateOrderBadge(latest);
+      // Keep customer chat inbox live without changing the order workflow.
+      loadCustomerChatsBadge_();
     });
   },3000);
 }
 
+async function loadCustomerChatsBadge_(){try{const f=await adminFirebase_();if(!f.auth.currentUser)return;const snap=await f.getDocs(f.collection(f.db,'supportChats'));const chats=snap.docs.map(d=>d.data()||{});updateChatBadge_(chats);}catch(e){}}
 function updateOrderBadge(list){
   const badge=document.getElementById('orderBadge');
   if(!badge)return;
@@ -1141,6 +1164,29 @@ function showNewOrderNotification(newOrders){
   }catch(err){}
 }
 
+function adminFirebase_(){return window.MckenzieFirebaseReady?Promise.resolve(window.MckenzieFirebaseReady):Promise.reject(new Error('Firebase is not ready.'));}
+async function loadCustomerChats(){
+  const c=document.getElementById('customerChats'); if(!c)return; c.innerHTML='<div class="customer-chat-empty">Loading customer conversations…</div>';
+  try{
+    const f=await adminFirebase_();
+    if(!(await f.auth.currentUser)) throw new Error('Please log in again.');
+    const snap=await f.getDocs(f.collection(f.db,'supportChats'));
+    const chats=snap.docs.map(d=>Object.assign({chatId:d.id},d.data()||{})).sort((a,b)=>String(b.updatedAt||b.createdAt||'').localeCompare(String(a.updatedAt||a.createdAt||'')));
+    updateChatBadge_(chats);
+    if(!chats.length){c.innerHTML='<div class="customer-chat-empty">No customer conversations yet.</div>';return;}
+    c.innerHTML=chats.map(renderAdminChat_).join('');
+  }catch(e){c.innerHTML='<div class="customer-chat-empty">Unable to load customer chats: '+esc(e&&e.message?e.message:String(e))+'</div>';}
+}
+function updateChatBadge_(chats){const b=document.getElementById('chatBadge');if(!b)return;const n=(chats||[]).filter(c=>c.unreadForAdmin).length;b.textContent=n;b.style.display=n?'inline-block':'none';}
+function renderAdminChat_(chat){
+  const msgs=Array.isArray(chat.messages)?chat.messages:[];
+  const messages=msgs.map(m=>'<div class="customer-chat-msg '+(m.senderType==='customer'?'customer':(m.senderType==='ai'?'ai':'admin'))+'"><b>'+esc(m.senderType==='customer'?(chat.customerName||'Customer'):(m.senderType==='ai'?'McKenzie AI':'McKenzie Admin'))+'</b><br>'+esc(m.text||'')+'<div style="font-size:9px;opacity:.65;margin-top:3px">'+esc(m.createdAt?new Date(m.createdAt).toLocaleString():'')+'</div></div>').join('');
+  return '<article class="customer-chat-card"><div class="customer-chat-head"><div><div class="customer-chat-name">'+esc(chat.customerName||'Customer')+'</div><div class="customer-chat-meta">'+esc(chat.customerEmail||'')+(chat.orderId?' · Order #'+esc(chat.orderId):'')+'</div></div><span class="customer-chat-status '+(chat.unreadForAdmin?'new':'')+'">'+(chat.unreadForAdmin?'NEW':'OPEN')+'</span></div><div class="customer-chat-messages">'+messages+'</div><div class="customer-chat-compose"><textarea id="adminChatInput_'+escAttr(chat.chatId)+'" placeholder="Reply to customer…"></textarea><button type="button" onclick="adminSendChat(\''+escAttr(chat.chatId)+'\')">Send</button></div></article>';
+}
+async function adminSendChat(chatId){
+  const input=document.getElementById('adminChatInput_'+String(chatId));if(!input)return;const text=String(input.value||'').trim();if(!text)return;input.disabled=true;
+  try{const f=await adminFirebase_();const ref=f.doc(f.db,'supportChats',String(chatId));const snap=await f.getDoc(ref);if(!snap.exists())throw new Error('Chat not found.');const d=snap.data()||{};const messages=Array.isArray(d.messages)?d.messages.slice():[];messages.push({senderType:'admin',text,createdAt:new Date().toISOString()});await f.updateDoc(ref,{messages:messages,updatedAt:new Date().toISOString(),unreadForAdmin:false,unreadForCustomer:true});input.value='';await loadCustomerChats();}catch(e){alert(e&&e.message?e.message:'Unable to send message.');}finally{input.disabled=false;}
+}
 function loadReviews(){
   const btn=document.getElementById('refreshReviewsBtn');
   if(btn){btn.disabled=true;btn.textContent='↻ Loading...';}
