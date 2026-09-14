@@ -519,12 +519,18 @@ button,input,select,textarea{font:inherit}
     const f = await READY;
     const u = f.auth.currentUser;
     if (!u) return false;
+
+    // The admin account is identified by BOTH the configured UID and the
+    // dedicated admin email. This prevents a stale/old UID from locking out
+    // the real admin account while keeping normal customer accounts blocked.
     const configuredUid = String(window.MCKENZIE_ADMIN_UID || "").trim();
-    if (configuredUid && configuredUid !== "PASTE_ADMIN_USER_UID_HERE") {
-      return u.uid === configuredUid;
+    const adminEmail = "admin@mckenzieramenhouse.com";
+    const userEmail = String(u.email || "").trim().toLowerCase();
+
+    if (configuredUid && configuredUid !== "PASTE_ADMIN_USER_UID_HERE" && u.uid === configuredUid) {
+      return true;
     }
-    // Safety fallback: no UID configured means admin operations are disabled.
-    return false;
+    return userEmail === adminEmail;
   }
 
   async function requireAdmin() {
@@ -1225,7 +1231,7 @@ button,input,select,textarea{font:inherit}
       case "adminLogin": {
         const f=await READY;
         const cred=await f.signInWithEmailAndPassword(f.auth,String(args[0]||"").trim().toLowerCase(),String(args[1]||""));
-        if (!(await isAdmin())) { await f.signOut(f.auth); throw makeError("This Firebase account is not configured as the McKenzie admin."); }
+        if (!(await isAdmin())) { await f.signOut(f.auth); throw makeError("This account is not authorized as the McKenzie admin."); }
         return {success:true,token:await cred.user.getIdToken(),email:cred.user.email};
       }
       case "adminGetProducts": return getAdminProducts();
