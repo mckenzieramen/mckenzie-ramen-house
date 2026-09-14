@@ -8622,7 +8622,11 @@ if (window.MckenzieFirebaseReady && typeof window.MckenzieFirebaseReady.then ===
             var target=orderItems.find(function(item){return String(item.productId||item.id||'')===pid;});
             if(!target) throw new Error('One of the selected menu items was not part of this order.');
             var key=String(params.orderId||'')+'|'+pid;
-            if(existingMap[key]) throw new Error('You already reviewed one of the menu items in this order. Please refresh the survey.');
+            /* A survey can remain open in the browser while another submission
+               (or an earlier tab/session) has already reviewed one of the items.
+               Do not reject the whole batch in that case. Simply skip the item
+               that is already reviewed and continue with any remaining items. */
+            if(existingMap[key]) return;
             var id='REV-'+Date.now()+'-'+Math.floor(Math.random()*100000)+'-'+count;
             batch.set(f.doc(f.db,'reviews',id),{reviewId:id,orderId:String(params.orderId||''),customerId:String(u.uid),productId:pid,productName:String(target.productName||target.name||'Ramen item'),rating:rating,review:review,customerName:String(odb.customerName||odb.fullName||'Customer'),submittedAt:new Date().toISOString(),status:'Published'});
             count++;
