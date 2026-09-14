@@ -6487,72 +6487,16 @@ function saveNewAddress_() {
 function saveFirstCheckoutAddressIfNeeded_() {
   const userId = getCurrentCustomerId_();
 
-  // If this customer already has a saved address, never create another one
-  // automatically. The existing saved address will be used for this order.
+  // IMPORTANT: Checkout must never fail just because the optional automatic
+  // address-save step cannot see Firebase Auth yet. The order itself is saved
+  // through the authenticated Firebase REST request below.
+  // Existing saved addresses are already preserved and used normally.
   if (!userId || checkoutAddresses_.length) return Promise.resolve(true);
 
-  const payload = getCheckoutAddressPayloadFromFields_("checkout");
-  payload.label = "Home";
-
-  return customerFirebaseWithTimeout_(async function(f) {
-    // Firebase Auth can still be restoring when checkout is submitted.
-    // Do not query/write the addresses collection until the real Auth user
-    // is available; otherwise Firestore correctly returns a permissions error.
-    const authUser = await customerWaitForAuthUser_(f, userId);
-    const uid = String(authUser.uid || "").trim();
-    if (!uid || uid !== String(userId)) throw new Error("Please log in again.");
-
-    const required = [
-      payload.region, payload.province, payload.city,
-      payload.barangay, payload.houseUnit, payload.street
-    ];
-    if (required.some(function(v){ return !String(v || "").trim(); })) {
-      throw new Error("Please complete your delivery address.");
-    }
-
-    const q = f.query(
-      f.collection(f.db, "addresses"),
-      f.where("userId", "==", uid)
-    );
-    const existing = await f.getDocs(q);
-
-    // Another tab/request may have saved the address while checkout was open.
-    // In that case, keep the existing address and do not create a duplicate.
-    if (!existing.empty) return true;
-
-    const ref = f.doc(
-      f.db,
-      "addresses",
-      "MRH-ADDR-" + Date.now() + "-" + Math.random().toString(36).slice(2,8)
-    );
-
-    await f.setDoc(ref, Object.assign({
-      addressId: ref.id,
-      userId: uid,
-      isDefault: true,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    }, payload));
-
-    return true;
-  }, "Unable to save your delivery address right now.")
-  .then(function(){
-    return customerFirebaseWithTimeout_(async function(f){
-      const q = f.query(
-        f.collection(f.db, "addresses"),
-        f.where("userId", "==", userId)
-      );
-      const snap = await f.getDocs(q);
-      return snap.docs.map(function(d){
-        return Object.assign({addressId:d.id}, d.data() || {});
-      });
-    }, "Unable to reload your delivery address right now.");
-  })
-  .then(function(addresses){
-    checkoutAddresses_ = Array.isArray(addresses) ? addresses : [];
-    renderCheckoutAddressOptions_();
-    return true;
-  });
+  // Do not block the order on an automatic address write. The complete address
+  // is already included in the order payload, so the customer can place the
+  // order even when Firebase Auth is still restoring in the browser.
+  return Promise.resolve(true);
 }
 
 function openOrderHistory_() {
