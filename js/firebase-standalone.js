@@ -542,10 +542,13 @@
     const f = await READY;
     const u = await currentUser(true);
     if (u.uid !== String(userId)) throw makeError("Invalid customer account.");
-    const list = await getCollection("notifications");
-    return list.filter(n=>String(n.userId)===u.uid && !n.readAt)
-      .sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0))
-      .map(n=>({...n,notificationId:n.notificationId||n.id,createdAt:cleanTimestamp(n.createdAt),readAt:cleanTimestamp(n.readAt)}));
+    // Customer notifications must be filtered at Firestore query level.
+    // A collection-wide read is denied by the customer security rules.
+    const q = f.query(f.collection(f.db,"notifications"), f.where("userId","==",u.uid));
+    const snap = await f.getDocs(q);
+    return snap.docs.map(d=>{const n=d.data()||{};return {...n,notificationId:n.notificationId||d.id,createdAt:cleanTimestamp(n.createdAt),readAt:cleanTimestamp(n.readAt)};})
+      .filter(n=>!n.readAt)
+      .sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0));
   }
 
   async function markNotificationRead(userId, notificationId) {
@@ -730,8 +733,20 @@
     const reviews=await getCollection("reviews");
     const complete=(Array.isArray(order.items)?order.items:[]).every(item=>reviews.some(r=>String(r.orderId)===String(orderId)&&String(r.productId)===String(item.productId)));
     if(complete) return {success:true,sent:false,completed:true,message:"Customer has already reviewed this order."};
-    const notes=await getCollection("notifications");
-    const existing=notes.find(n=>String(n.orderId)===String(orderId)&&n.type==="REVIEW_REQUEST"&&!n.readAt);
+    const noteQ=f.query(f.collection(f.db,"notifications"),f.where("orderId","==",String(orderId)));
+    const noteSnap=await f.getDocs(noteQ);
+    const notes=noteSnap.docs.map(d=>({id:d.id,...(d.data()||{})})).filter(n=>String(n.type||"")==="REVIEW_REQUEST").sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0));
+    const latest=notes[0]||null;
+    // Prevent repeated review pushes for 10 minutes. This applies whether the
+    // customer has already opened/dismissed the previous notification or not.
+    if(latest && latest.createdAt){
+      const elapsed=Date.now()-new Date(latest.createdAt).getTime();
+      if(Number.isFinite(elapsed) && elapsed<10*60*1000){
+        const remaining=Math.max(1,Math.ceil((10*60*1000-elapsed)/1000));
+        return {success:false,cooldown:true,remainingSeconds:remaining,message:"Please wait "+Math.ceil(remaining/60)+" minute(s) before sending another review notification."};
+      }
+    }
+    const existing=notes.find(n=>!n.readAt);
     if(existing && !forceResend) return {success:true,sent:false,alreadyNotified:true,notificationId:existing.notificationId||existing.id,message:"Review notification is already waiting for the customer."};
     if(forceResend && existing) await f.updateDoc(f.doc(f.db,"notifications",existing.id),{readAt:isoNow()});
     const nid="NTF-"+Date.now()+"-"+Math.floor(Math.random()*10000);
