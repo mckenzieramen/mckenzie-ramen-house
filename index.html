@@ -2976,6 +2976,14 @@ body.quick-loading {
 </style>
 </style>
 
+<style id="mobile-category-filter-fix">
+@media (max-width:700px){
+  #products > .menu-category-group[hidden]{
+    display:none !important;
+  }
+}
+</style>
+
 <style id="mobile-nav-fit-fix">
 /* MOBILE NAV FIT: keep logo + Home/Menu/About/Contact + cart + hamburger in one compact row. */
 @media (max-width:700px){
@@ -3015,6 +3023,47 @@ body.quick-loading {
   .mobile-site-nav-button span{width:13px !important;}
 }
 </style>
+<style id="mobile-account-menu-fix">
+@media (max-width:700px){
+  .account-menu-wrap{
+    display:block !important;
+    position:fixed !important;
+    top:0 !important;
+    right:0 !important;
+    width:0 !important;
+    height:0 !important;
+    z-index:1000005 !important;
+  }
+  .account-menu-button{display:none !important;}
+  .account-dropdown{
+    position:fixed !important;
+    top:62px !important;
+    right:8px !important;
+    width:min(225px,calc(100vw - 16px)) !important;
+    max-height:calc(100dvh - 74px) !important;
+    overflow-y:auto !important;
+    z-index:1000005 !important;
+  }
+}
+</style>
+
+<style id="mobile-popup-close-fix">
+@media (max-width:700px){
+  .login-close,
+  .create-account-close,
+  .cart-close,
+  .account-subclose,
+  .address-close,
+  .password-close,
+  .verification-close{
+    position:fixed !important;
+    top:10px !important;
+    right:10px !important;
+    z-index:1000010 !important;
+  }
+}
+</style>
+
 </head>
 
 
@@ -3042,7 +3091,7 @@ body.quick-loading {
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind,{once:true});else bind();
 })();
-</script>\n
+</script>
 
 <!-- =======================================================
      QUICK FULL-SCREEN RAMEN LOADER
@@ -3626,7 +3675,7 @@ body.quick-loading {
 ======================================================= -->
 
 <!-- STICKY TOP NAVIGATION: appears after scrolling -->
-<button type="button" id="mobileSiteNavButton" class="mobile-site-nav-button" aria-label="Open site navigation" aria-expanded="false" onclick="toggleMobileSiteNav_()"><span></span><span></span><span></span></button>
+<button type="button" id="mobileSiteNavButton" class="mobile-site-nav-button" aria-label="Open site navigation" aria-expanded="false" onclick="toggleAccountMenu_(event)"><span></span><span></span><span></span></button>
 <div id="mobileSiteNavBackdrop" class="mobile-site-nav-backdrop" onclick="closeMobileSiteNav_()"></div>
 <div id="siteStickyNav" class="site-sticky-nav" aria-label="Site navigation">
   <img id="siteStickyLogo"
