@@ -8479,8 +8479,16 @@ if (window.MckenzieFirebaseReady && typeof window.MckenzieFirebaseReady.then ===
   function callApi(api,params,done){
     if(window.google&&google.script&&google.script.run){
       var runner=google.script.run.withSuccessHandler(function(v){done(v||{});}).withFailureHandler(function(e){done({success:false,error:e&&e.message?e.message:String(e)});});
-      if(api==='customerNotifications') runner.getCustomerNotifications(String(params.userId||''));
-      else if(api==='markCustomerNotificationRead') runner.markCustomerNotificationRead(String(params.userId||''),String(params.notificationId||''));
+      if(api==='customerNotifications' && window.MckenzieFirebaseReady){
+        Promise.resolve(window.MckenzieFirebaseReady).then(async function(f){
+          var u=await customerWaitForAuthUser_(f,String(params.userId||''));
+          if(!u || String(u.uid)!==String(params.userId||'')) throw new Error('Please log in again.');
+          var q=f.query(f.collection(f.db,'notifications'),f.where('userId','==',String(u.uid)));
+          var snap=await f.getDocs(q);
+          var notes=snap.docs.map(function(d){var n=d.data()||{};return Object.assign({},n,{notificationId:n.notificationId||d.id});}).filter(function(n){return !n.readAt;}).sort(function(a,b){return new Date(b.createdAt||0)-new Date(a.createdAt||0);});
+          done({success:true,notifications:notes});
+        }).catch(function(e){done({success:false,error:e&&e.message?e.message:String(e)});});
+      } else if(api==='markCustomerNotificationRead') runner.markCustomerNotificationRead(String(params.userId||''),String(params.notificationId||''));
       return;
     }
     if(!API){done({success:false,error:'Customer API is unavailable.'});return;}
@@ -8543,20 +8551,67 @@ if (window.MckenzieFirebaseReady && typeof window.MckenzieFirebaseReady.then ===
   function surveyUser(){try{return JSON.parse(localStorage.getItem('mckenzieUser')||localStorage.getItem('mckenzie_user')||'null')||{};}catch(e){return {};}}
   function surveyEsc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m];});}
   function surveyCall(api,params,done){
-    if(window.google&&google.script&&google.script.run){
-      var runner=google.script.run.withSuccessHandler(function(v){done(v||{});}).withFailureHandler(function(e){done({success:false,error:e&&e.message?e.message:String(e)});});
-      if(api==='getCustomerReviewForm') runner.getCustomerReviewForm(String(params.userId||''),String(params.orderId||''));
-      else if(api==='submitCustomerReview') runner.submitCustomerReview(String(params.userId||''),String(params.orderId||''),String(params.productId||''),Number(params.rating||0),String(params.review||''));
+    /* Firebase-only survey path. The old compatibility bridge attempted a
+       collection-wide reviews read, which Firestore correctly rejects for
+       customers. Query only the signed-in customer's reviews instead. */
+    if(window.MckenzieFirebaseReady){
+      Promise.resolve(window.MckenzieFirebaseReady).then(async function(f){
+        var u=await customerWaitForAuthUser_(f,String(params.userId||''));
+        if(!u || String(u.uid)!==String(params.userId||'')) throw new Error('Please log in again.');
+
+        if(api==='getCustomerReviewForm'){
+          var orderSnap=await f.getDoc(f.doc(f.db,'orders',String(params.orderId||'')));
+          if(!orderSnap.exists()) throw new Error('Order not found.');
+          var order=orderSnap.data()||{};
+          if(String(order.userId||'')!==String(u.uid)) throw new Error('Invalid customer account.');
+          if(String(order.orderStatus||'')!=='Delivered' || !order.customerConfirmed){
+            throw new Error('You can review this order only after it has been delivered and received.');
+          }
+          var rq=f.query(f.collection(f.db,'reviews'),f.where('customerId','==',String(u.uid)));
+          var rs=await f.getDocs(rq);
+          var byProduct={};
+          rs.docs.forEach(function(d){
+            var r=d.data()||{};
+            if(String(r.orderId||'')===String(params.orderId||'')) byProduct[String(r.productId||'')]=r;
+          });
+          var items=Array.isArray(order.items)?order.items.map(function(item){
+            var pid=String(item.productId||item.id||'');
+            var r=byProduct[pid];
+            return {productId:pid,productName:item.productName||item.name||'Ramen item',quantity:Number(item.quantity||0),reviewed:!!r,existingRating:r?Number(r.rating||0):0,existingReview:r?String(r.review||''):''};
+          }):[];
+          done({success:true,orderId:String(order.orderId||params.orderId||''),customerName:String(order.customerName||order.fullName||'Customer'),items:items,completed:items.length>0 && items.every(function(i){return i.reviewed;})});
+          return;
+        }
+
+        if(api==='submitCustomerReview'){
+          var rating=Number(params.rating||0), review=String(params.review||'').trim();
+          if(!Number.isFinite(rating)||rating<1||rating>5) throw new Error('Please select a rating from 1 to 5 stars.');
+          if(review.length>1000) throw new Error('Review is too long. Please keep it under 1000 characters.');
+          var os=await f.getDoc(f.doc(f.db,'orders',String(params.orderId||'')));
+          if(!os.exists()) throw new Error('Order not found.');
+          var od=os.data()||{};
+          if(String(od.userId||'')!==String(u.uid)) throw new Error('Invalid customer account.');
+          if(String(od.orderStatus||'')!=='Delivered'||!od.customerConfirmed) throw new Error('You can review this order only after it has been delivered and received.');
+          var target=(Array.isArray(od.items)?od.items:[]).find(function(item){return String(item.productId||item.id||'')===String(params.productId||'');});
+          if(!target) throw new Error('That menu item was not part of this order.');
+          var existingQ=f.query(f.collection(f.db,'reviews'),f.where('customerId','==',String(u.uid)));
+          var existingSnap=await f.getDocs(existingQ);
+          var duplicate=existingSnap.docs.some(function(d){var r=d.data()||{};return String(r.orderId||'')===String(params.orderId||'')&&String(r.productId||'')===String(params.productId||'');});
+          if(duplicate) throw new Error('You already reviewed this menu item.');
+          var id='REV-'+Date.now()+'-'+Math.floor(Math.random()*10000);
+          await f.setDoc(f.doc(f.db,'reviews',id),{
+            reviewId:id,orderId:String(params.orderId||''),customerId:String(u.uid),productId:String(params.productId||''),
+            productName:String(target.productName||target.name||'Ramen item'),rating:rating,review:review,
+            customerName:String(od.customerName||od.fullName||'Customer'),submittedAt:new Date().toISOString(),status:'Published'
+          });
+          done({success:true,message:'Your review has been submitted.',reviewId:id});
+          return;
+        }
+        throw new Error('Unsupported survey request.');
+      }).catch(function(e){done({success:false,error:e&&e.message?e.message:String(e)});});
       return;
     }
-    var apiBase=(typeof MCKENZIE_ORDER_API_URL!=='undefined')?MCKENZIE_ORDER_API_URL:'';
-    if(!apiBase){done({success:false,error:'Customer API is unavailable.'});return;}
-    var cb='mckSurveyApi_'+Date.now()+'_'+Math.floor(Math.random()*100000),sc=document.createElement('script');
-    var q=[];Object.keys(params||{}).forEach(function(k){q.push(encodeURIComponent(k)+'='+encodeURIComponent(params[k]));});
-    window[cb]=function(v){try{delete window[cb];}catch(e){}if(sc.parentNode)sc.parentNode.removeChild(sc);done(v||{});};
-    sc.onerror=function(){try{delete window[cb];}catch(e){}if(sc.parentNode)sc.parentNode.removeChild(sc);done({success:false,error:'Unable to reach the restaurant server.'});};
-    sc.src=apiBase+'?api='+encodeURIComponent(api)+'&callback='+encodeURIComponent(cb)+'&'+q.join('&');
-    document.head.appendChild(sc);
+    done({success:false,error:'Firebase is still initializing. Please try again.'});
   }
   function surveyMessage(msg,cls){var c=document.getElementById('mckSurveyContent');if(c)c.innerHTML='<div class="mck-survey-wrap"><div class="'+cls+'">'+surveyEsc(msg)+'</div></div>';}
   window.loadInlineSurvey_=function(orderId){
@@ -8590,6 +8645,7 @@ if (window.MckenzieFirebaseReady && typeof window.MckenzieFirebaseReady.then ===
 #mckSurveyHead .survey-brand{font-size:10px;letter-spacing:3px;font-weight:900;color:#e9ad35}
 #mckSurveyHead h2{margin:3px 0 0;font-family:"Playfair Display",serif;font-size:25px;color:#fff}
 #mckSurveyClose{border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:#fff;width:38px;height:38px;border-radius:50%;font-size:21px;cursor:pointer}
+#mckSurveyFrame{width:100%;height:100%;border:0;background:#fff7ed;display:block}
 @media(max-width:600px){#mckSurveyModal{padding:0}#mckSurveyBox{width:100%;height:100%;border-radius:0}#mckSurveyHead{padding:14px 16px}#mckSurveyHead h2{font-size:21px}}
 </style>
 <div id="mckSurveyModal" aria-modal="true" role="dialog" aria-label="Share your experience">
@@ -8598,9 +8654,7 @@ if (window.MckenzieFirebaseReady && typeof window.MckenzieFirebaseReady.then ===
       <div><div class="survey-brand">✦ MCKENZIE RAMEN HOUSE ✦</div><h2>Share Your Experience</h2></div>
       <button id="mckSurveyClose" type="button" aria-label="Close survey">×</button>
     </div>
-    <div id="mckSurveyContent" class="mck-inline-survey-content" aria-live="polite">
-      <div class="mck-survey-loading">Loading your order…</div>
-    </div>
+    <div id="mckSurveyContent" class="mck-inline-survey-content"><div class="mck-survey-loading">Loading your order…</div></div>
   </div>
 </div>
 <script>
@@ -8612,6 +8666,34 @@ document.addEventListener('DOMContentLoaded',function(){
 });
 </script>
 
+<style id="mckenzie-thankyou-style">
+#mckThankYouModal{display:none;position:fixed;inset:0;z-index:1000001;background:rgba(9,3,3,.76);align-items:center;justify-content:center;padding:20px}
+#mckThankYouModal.show{display:flex}
+#mckThankYouBox{width:min(440px,100%);background:#fffaf5;border:1px solid #ead8cf;border-radius:24px;padding:34px 24px;text-align:center;box-shadow:0 30px 90px rgba(0,0,0,.42);animation:mckThankPop .5s cubic-bezier(.2,.8,.2,1) both}
+#mckThankYouIcon{font-size:58px;display:block;animation:mckThankFloat 1.2s ease-in-out infinite}
+#mckThankYouBox h2{margin:10px 0 7px;color:#6b111b;font-family:"Playfair Display",serif;font-size:30px}
+#mckThankYouBox p{margin:0;color:#806c65;font-size:14px;line-height:1.6}
+#mckThankYouNext{margin-top:15px;font-weight:900;color:#a51620;font-size:12px;letter-spacing:.4px}
+@keyframes mckThankPop{from{opacity:0;transform:scale(.88) translateY(14px)}to{opacity:1;transform:scale(1) translateY(0)}}
+@keyframes mckThankFloat{0%,100%{transform:translateY(0) rotate(-2deg)}50%{transform:translateY(-7px) rotate(2deg)}}
+</style>
+<div id="mckThankYouModal" aria-modal="true" role="dialog">
+  <div id="mckThankYouBox"><span id="mckThankYouIcon">🍜</span><h2>Thank You for Ordering!</h2><p>Your order has been received and confirmed.</p><div id="mckThankYouNext">See you again next time! ✨</div></div>
+</div>
+<script>
+function showThankYouThenSurvey_(orderId){
+  try{ if(typeof closeAccountSubmodal_==='function') closeAccountSubmodal_('orderHistoryModal'); }catch(e){}
+  try{ if(typeof closeAccountMenu_==='function') closeAccountMenu_(); }catch(e){}
+  var m=document.getElementById('mckThankYouModal');
+  if(!m){ openRatingPage_(orderId); return; }
+  m.classList.add('show'); document.body.style.overflow='hidden';
+  clearTimeout(window._mckThankYouTimer);
+  window._mckThankYouTimer=setTimeout(function(){
+    m.classList.remove('show'); document.body.style.overflow='';
+    setTimeout(function(){openRatingPage_(orderId);},180);
+  },1800);
+}
+</script>
 <style id="mckenzie-receipt-confirm-style">
 #mckReceiptModal{display:none;position:fixed;inset:0;z-index:999999;background:rgba(9,3,3,.72);align-items:center;justify-content:center;padding:20px}
 #mckReceiptModal.show{display:flex}
@@ -8691,7 +8773,7 @@ document.addEventListener('DOMContentLoaded',function(){
       if(!v || !v.success){document.querySelectorAll('#mckReceiptActions button').forEach(function(b){b.disabled=false;});alert((v&&v.error)||'Unable to save your response. Please try again.');return;}
       if(received){
         modal.classList.remove('show'); document.body.style.overflow='';
-        openRatingPage_(orderId);
+        showThankYouThenSurvey_(orderId);
       }else{
         document.getElementById('mckReceiptActions').style.display='none';
         document.getElementById('mckReceiptTitle').textContent='We are sorry about that.';
