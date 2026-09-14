@@ -8590,7 +8590,6 @@ if (window.MckenzieFirebaseReady && typeof window.MckenzieFirebaseReady.then ===
 #mckSurveyHead .survey-brand{font-size:10px;letter-spacing:3px;font-weight:900;color:#e9ad35}
 #mckSurveyHead h2{margin:3px 0 0;font-family:"Playfair Display",serif;font-size:25px;color:#fff}
 #mckSurveyClose{border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:#fff;width:38px;height:38px;border-radius:50%;font-size:21px;cursor:pointer}
-#mckSurveyFrame{width:100%;height:100%;border:0;background:#fff7ed;display:block}
 @media(max-width:600px){#mckSurveyModal{padding:0}#mckSurveyBox{width:100%;height:100%;border-radius:0}#mckSurveyHead{padding:14px 16px}#mckSurveyHead h2{font-size:21px}}
 </style>
 <div id="mckSurveyModal" aria-modal="true" role="dialog" aria-label="Share your experience">
@@ -8599,7 +8598,9 @@ if (window.MckenzieFirebaseReady && typeof window.MckenzieFirebaseReady.then ===
       <div><div class="survey-brand">✦ MCKENZIE RAMEN HOUSE ✦</div><h2>Share Your Experience</h2></div>
       <button id="mckSurveyClose" type="button" aria-label="Close survey">×</button>
     </div>
-    <iframe id="mckSurveyFrame" title="Share Your Experience" src="about:blank"></iframe>
+    <div id="mckSurveyContent" class="mck-inline-survey-content" aria-live="polite">
+      <div class="mck-survey-loading">Loading your order…</div>
+    </div>
   </div>
 </div>
 <script>
