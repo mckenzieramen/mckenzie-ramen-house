@@ -2944,6 +2944,46 @@ body.quick-loading {
 }
 </style>
 </style>
+
+<style id="mobile-nav-fit-fix">
+/* MOBILE NAV FIT: keep logo + Home/Menu/About/Contact + cart + hamburger in one compact row. */
+@media (max-width:700px){
+  .site-sticky-nav{
+    padding:7px 82px 7px 42px !important;
+    height:58px !important; min-height:58px !important;
+  }
+  .site-sticky-nav-inner{
+    gap:clamp(5px,1.8vw,9px) !important;
+    width:auto !important;
+  }
+  .site-sticky-nav a{
+    font-size:clamp(7px,2.2vw,9px) !important;
+    letter-spacing:.15px !important;
+    padding:7px 0 !important;
+  }
+  .site-sticky-logo{
+    left:7px !important; width:34px !important; height:34px !important;
+  }
+  .sticky-cart-button{
+    right:48px !important; top:12px !important;
+    width:34px !important; height:34px !important;
+  }
+  .mobile-site-nav-button{
+    right:7px !important; top:12px !important;
+    width:34px !important; height:34px !important;
+  }
+  .mobile-site-nav-button span{width:15px !important;height:2px !important;gap:3px !important;}
+}
+@media (max-width:360px){
+  .site-sticky-nav{padding-left:39px !important;padding-right:76px !important;}
+  .site-sticky-nav-inner{gap:4px !important;}
+  .site-sticky-nav a{font-size:7px !important;letter-spacing:0 !important;}
+  .site-sticky-logo{left:5px !important;width:31px !important;height:31px !important;}
+  .sticky-cart-button{right:44px !important;width:31px !important;height:31px !important;top:13px !important;}
+  .mobile-site-nav-button{right:5px !important;width:31px !important;height:31px !important;top:13px !important;}
+  .mobile-site-nav-button span{width:13px !important;}
+}
+</style>
 </head>
 
 
