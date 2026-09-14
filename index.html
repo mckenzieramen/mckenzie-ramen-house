@@ -2531,8 +2531,39 @@ body.quick-loading {
 #checkoutModal .checkout-card::-webkit-scrollbar { width:7px; }
 #checkoutModal .checkout-card::-webkit-scrollbar-thumb { background:#d7aaa0; border-radius:20px; }
 #checkoutModal .checkout-card::-webkit-scrollbar-track { background:transparent; }
-@media (max-width:700px) { #checkoutModal { align-items:flex-start; padding:10px; } #checkoutModal .checkout-card { width:min(620px,96vw); max-height:calc(100vh - 20px); padding:22px 18px 20px; border-radius:20px; } #checkoutModal .checkout-payment-options { grid-template-columns:1fr 1fr; } }
-@media (max-width:430px) { #checkoutModal .checkout-card { max-height:calc(100vh - 16px); padding:20px 15px 18px; } #checkoutModal .checkout-payment-options { grid-template-columns:1fr; } }
+@media (max-width:700px) {
+  #checkoutModal { align-items:flex-start; padding:8px; overflow:hidden; }
+  #checkoutModal .checkout-card {
+    width:min(620px,96vw);
+    height:calc(100dvh - 16px);
+    max-height:calc(100dvh - 16px);
+    padding:22px 18px 12px;
+    border-radius:20px;
+    overflow-y:auto;
+    overscroll-behavior:contain;
+    -webkit-overflow-scrolling:touch;
+  }
+  #checkoutModal .checkout-submit {
+    position:sticky;
+    bottom:0;
+    z-index:5;
+    display:block;
+    width:100%;
+    margin-top:12px;
+    margin-bottom:2px;
+    padding:14px 16px;
+    box-shadow:0 -8px 18px rgba(255,250,243,.96);
+  }
+  #checkoutModal .checkout-payment-options { grid-template-columns:1fr 1fr; }
+}
+@media (max-width:430px) {
+  #checkoutModal .checkout-card {
+    height:calc(100dvh - 12px);
+    max-height:calc(100dvh - 12px);
+    padding:20px 15px 10px;
+  }
+  #checkoutModal .checkout-payment-options { grid-template-columns:1fr; }
+}
 
 .account-subclose { position:absolute; top:12px; right:15px; width:36px; height:36px; border:0; border-radius:50%; background:#f5ddd5; color:#6d1014; font-size:22px; cursor:pointer; }
 .account-subkicker { margin-bottom:6px; color:#a51620; font-size:11px; font-weight:800; letter-spacing:2px; text-transform:uppercase; }
