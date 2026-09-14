@@ -4981,6 +4981,16 @@ async function checkEmailVerificationReturn_(attempt){
 ========================================================= */
 
 function getCurrentCustomerId_() {
+  // The Firebase Auth UID is the real account identity. Use it first so
+  // one customer's cart can never be reused by another customer.
+  try {
+    if (typeof firebaseAuth !== "undefined" && firebaseAuth && firebaseAuth.auth && firebaseAuth.auth.currentUser) {
+      const uid = String(firebaseAuth.auth.currentUser.uid || "").trim();
+      if (uid) return uid;
+    }
+  } catch (error) {}
+
+  // Fallback while Firebase Auth is restoring after a page refresh.
   try {
     const raw = localStorage.getItem("mckenzieUser");
     const user = raw ? JSON.parse(raw) : null;
@@ -4992,7 +5002,8 @@ function getCurrentCustomerId_() {
 
 function getCustomerStorageKey_(baseKey, userId) {
   const id = String(userId || getCurrentCustomerId_()).trim();
-  return id ? baseKey + "_" + encodeURIComponent(id) : baseKey + "_guest";
+  // Never create or use a shared guest cart.
+  return id ? baseKey + "_" + encodeURIComponent(id) : "";
 }
 
 function setLoggedInState_(loggedIn) {
@@ -5020,6 +5031,8 @@ function isLoggedIn_() {
 function getCart_() {
   try {
     const key = getCustomerStorageKey_("mckenzieCart");
+    // Guests never get a cart. Cart data exists only under a customer UID.
+    if (!key || !isLoggedIn_()) return [];
     const raw = localStorage.getItem(key);
     const cart = raw ? JSON.parse(raw) : [];
     return Array.isArray(cart) ? cart : [];
@@ -5031,14 +5044,21 @@ function getCart_() {
 let cartItems = getCart_();
 
 function loadCartForCurrentCustomer_() {
-  cartItems = getCart_();
+  cartItems = isLoggedIn_() ? getCart_() : [];
   renderCartModal_();
+  renderAllCartControls_();
   updateHeroAccountButton_();
 }
 
 function saveCart_() {
   try {
     const key = getCustomerStorageKey_("mckenzieCart");
+    // Never write a cart to a shared guest key.
+    if (!key || !isLoggedIn_()) {
+      cartItems = [];
+      updateHeroAccountButton_();
+      return;
+    }
     localStorage.setItem(key, JSON.stringify(cartItems));
   } catch(error) {
     console.warn("Unable to save cart:",error);
@@ -5145,7 +5165,12 @@ function getCartQuantity_(productKey) {
   return item ? Number(item.quantity || 0) : 0;
 }
 async function addToCart_(product) {
+  // Cart is customer-only. A guest cannot create or modify cart data.
   if(!isLoggedIn_()){openLoginModal();return;}
+  if (!getCurrentCustomerId_()) {
+    openLoginModal();
+    return;
+  }
   if (!(await requireVerifiedCustomer_("You should verify your account to proceed. Please verify your email before adding items to your cart."))) return;
   if (!product) return;
 
@@ -5204,7 +5229,15 @@ function renderCartControls_(productKey) {
   controls.querySelector(".qty-plus").onclick=function(){if(p)addToCart_(p);};
 }
 async function openCartSection_(){
-  if (isLoggedIn_() && !(await requireVerifiedCustomer_())) return;
+  if (!isLoggedIn_()) {
+    openLoginModal();
+    return;
+  }
+  if (!getCurrentCustomerId_()) {
+    openLoginModal();
+    return;
+  }
+  if (!(await requireVerifiedCustomer_())) return;
   // IMPORTANT: Use the current in-memory cart when opening the Cart.
   // The menu quantity controls and cartItems are the live source of truth.
   // Reloading localStorage here can restore an older snapshot and make the
@@ -6766,7 +6799,7 @@ function hideLoginRamenLoader_() {
   }
 }
 
-function logoutUser_() {
+async function logoutUser_() {
   closeAccountMenu_();
   closeCartModal_();
   closeAccountSubmodal_("checkoutModal");
@@ -6778,6 +6811,17 @@ function logoutUser_() {
   // Clear the login state first so the UI becomes guest state immediately.
   setLoggedInState_(false);
   try { localStorage.removeItem("mckenzieUser"); } catch(error) {}
+
+  // Also sign out the real Firebase Auth session so the next customer is
+  // always isolated from the previous customer's account.
+  try {
+    const f = await getMcKenzieCustomerAuthDirect_();
+    if (f && f.auth && f.auth.currentUser && typeof f.signOut === "function") {
+      await f.signOut(f.auth);
+    }
+  } catch (error) {
+    console.warn("Unable to sign out Firebase session:", error);
+  }
 
   // Clear only the in-memory cart when leaving the account.
   // The customer's saved cart remains stored under that customer's ID.
