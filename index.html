@@ -5918,7 +5918,7 @@ async function customerGetOrdersDirect_() {
     // the Firestore rules intentionally block collection-wide customer reads.
     var q=f.query(f.collection(f.db,"orders"),f.where("userId","==",uid));
     var snap=await f.getDocs(q);
-    return snap.docs.map(function(doc){var o=doc.data()||{};return {orderId:String(o.orderId||doc.id),userId:String(o.userId||""),customerName:o.customerName||o.fullName||"Customer",fullName:o.fullName||o.customerName||"Customer",email:o.email||u.email||"",mobile:o.mobile||"",items:Array.isArray(o.items)?o.items.map(function(it,idx){return {itemIndex:idx,productId:String(it.productId||it.id||""),productName:it.productName||it.name||"Ramen item",price:Number(it.price||0),quantity:Number(it.quantity||0),subtotal:Number(it.subtotal!=null?it.subtotal:Number(it.price||0)*Number(it.quantity||0)),itemStatus:String(it.itemStatus||"Preparing")};}):[],total:Number(o.total||0),paymentMethod:o.paymentMethod||"",paymentStatus:o.paymentStatus||"Pending",orderStatus:o.orderStatus==="Pending"?"Preparing":(o.orderStatus||"Preparing"),address:o.address||"",instruction:o.instruction||o.additionalInstruction||"",orderedAt:o.orderedAt&&o.orderedAt.toDate?o.orderedAt.toDate().toISOString():String(o.orderedAt||""),customerConfirmed:!!o.customerConfirmed,confirmedAt:o.confirmedAt&&o.confirmedAt.toDate?o.confirmedAt.toDate().toISOString():String(o.confirmedAt||""),deliveredAt:o.deliveredAt&&o.deliveredAt.toDate?o.deliveredAt.toDate().toISOString():String(o.deliveredAt||""),closed:!!o.closed,canRate:o.orderStatus==="Delivered"&&!!o.customerConfirmed};}).sort(function(a,b){return String(b.orderedAt).localeCompare(String(a.orderedAt));});
+    return snap.docs.map(function(doc){var o=doc.data()||{};return {orderId:String(o.orderId||doc.id),userId:String(o.userId||""),customerName:o.customerName||o.fullName||"Customer",fullName:o.fullName||o.customerName||"Customer",email:o.email||u.email||"",mobile:o.mobile||"",items:Array.isArray(o.items)?o.items.map(function(it,idx){return {itemIndex:idx,productId:String(it.productId||it.id||""),productName:it.productName||it.name||"Ramen item",image:String(it.image||it.productImage||""),price:Number(it.price||0),quantity:Number(it.quantity||0),subtotal:Number(it.subtotal!=null?it.subtotal:Number(it.price||0)*Number(it.quantity||0)),itemStatus:String(it.itemStatus||"Preparing")};}):[],total:Number(o.total||0),paymentMethod:o.paymentMethod||"",paymentStatus:o.paymentStatus||"Pending",orderStatus:o.orderStatus==="Pending"?"Preparing":(o.orderStatus||"Preparing"),address:o.address||"",instruction:o.instruction||o.additionalInstruction||"",orderedAt:o.orderedAt&&o.orderedAt.toDate?o.orderedAt.toDate().toISOString():String(o.orderedAt||""),customerConfirmed:!!o.customerConfirmed,confirmedAt:o.confirmedAt&&o.confirmedAt.toDate?o.confirmedAt.toDate().toISOString():String(o.confirmedAt||""),deliveredAt:o.deliveredAt&&o.deliveredAt.toDate?o.deliveredAt.toDate().toISOString():String(o.deliveredAt||""),closed:!!o.closed,canRate:o.orderStatus==="Delivered"&&!!o.customerConfirmed};}).sort(function(a,b){return String(b.orderedAt).localeCompare(String(a.orderedAt));});
   },"Unable to load your orders right now.");
 }
 
@@ -5951,6 +5951,7 @@ async function customerSaveOrderViaRest_(orderId,payload,token,uid) {
   var cleanItems=(payload.items||[]).map(function(item){return {
     productId:String(item.id||item.productId||""),
     productName:String(item.name||item.productName||"Ramen item"),
+    image:String(item.image||item.productImage||""),
     price:Number(item.price||0),
     quantity:Number(item.quantity||0),
     subtotal:Number(item.price||0)*Number(item.quantity||0),
@@ -5994,7 +5995,7 @@ async function customerSaveOrderDirect_(orderId,payload) {
     try { u=await waitForFirebaseCustomerAuthReady_(f); } catch(e) { console.warn("Firebase auth restore wait failed; using checkout token fallback.",e); }
 
     if(u && String(u.uid)===uid) {
-      var cleanItems=(payload.items||[]).map(function(item){return {productId:String(item.id||item.productId||""),productName:String(item.name||item.productName||"Ramen item"),price:Number(item.price||0),quantity:Number(item.quantity||0),subtotal:Number(item.price||0)*Number(item.quantity||0),itemStatus:"Preparing"};}).filter(function(x){return x.quantity>0;});
+      var cleanItems=(payload.items||[]).map(function(item){return {productId:String(item.id||item.productId||""),productName:String(item.name||item.productName||"Ramen item"),image:String(item.image||item.productImage||""),price:Number(item.price||0),quantity:Number(item.quantity||0),subtotal:Number(item.price||0)*Number(item.quantity||0),itemStatus:"Preparing"};}).filter(function(x){return x.quantity>0;});
       if(!cleanItems.length) throw new Error("The order contains no items.");
       var total=cleanItems.reduce(function(sum,it){return sum+it.subtotal;},0);
       var ref=f.doc(f.db,"orders",String(orderId));
@@ -6593,7 +6594,7 @@ function openOrderDetailByKey_(encodedOrderId){
 function renderCustomerOrderDetail_(order) {
   const items = Array.isArray(order.items) ? order.items : [];
   const itemsHtml = items.map(function(item) {
-    return '<div class="order-detail-item"><div><div class="order-detail-item-name">' + escapeHtml(item.productName || "Ramen item") + '</div><div class="order-detail-item-meta">Qty ' + Number(item.quantity || 0) + ' × ₱' + formatPrice(item.price || 0) + '</div></div><strong>₱' + formatPrice(item.subtotal || 0) + '</strong></div>';
+    return '<div class="order-detail-item"><div style="display:flex;align-items:center;gap:9px;min-width:0">' + (item.image ? '<img src="' + escapeHtml(item.image) + '" alt="" style="width:48px;height:48px;object-fit:cover;border-radius:9px;border:1px solid #ead4c9;flex:none">' : '') + '<div><div class="order-detail-item-name">' + escapeHtml(item.productName || "Ramen item") + '</div><div class="order-detail-item-meta">Qty ' + Number(item.quantity || 0) + ' × ₱' + formatPrice(item.price || 0) + '</div></div></div><strong>₱' + formatPrice(item.subtotal || 0) + '</strong></div>';
   }).join("");
 
   let actionHtml = '';
@@ -8552,7 +8553,7 @@ if (window.MckenzieFirebaseReady && typeof window.MckenzieFirebaseReady.then ===
 
 <style id="mckenzie-inline-survey-style">
 .mck-inline-survey-content{flex:1;overflow:auto;background:linear-gradient(180deg,#fffaf5,#f7e7db);padding:22px}
-.mck-survey-wrap{max-width:820px;margin:0 auto}.mck-survey-loading{text-align:center;padding:50px;color:#806c65;font-size:13px}.mck-survey-error{background:#fff0f0;color:#a51620;border:1px solid #edc3c3;border-radius:11px;padding:13px;font-size:12px}.mck-survey-success{text-align:center;background:#eaf7ed;color:#1e713a;border:1px solid #cce7d3;border-radius:13px;padding:15px;font-size:12px;font-weight:800}.mck-survey-order{font-weight:900;color:#60151f;font-size:14px;margin-bottom:4px}.mck-survey-meta{font-size:11px;color:#806c65}.mck-survey-item{border:1px solid #ead4c9;border-radius:15px;padding:17px;margin-top:14px;background:#fff}.mck-survey-item-name{font-weight:900;color:#4f201c;font-size:15px}.mck-survey-qty{font-size:10px;color:#806c65;margin-top:3px}.mck-survey-label{font-size:10px;font-weight:900;color:#806c65;text-transform:uppercase;letter-spacing:.5px;margin-top:12px}.mck-survey-stars{display:flex;gap:3px;margin:8px 0}.mck-survey-star{border:0;background:transparent;color:#cdbdb5;font-size:29px;cursor:pointer;padding:0 3px;line-height:1}.mck-survey-star.active{color:#e9ad35}.mck-survey-review{width:100%;min-height:88px;resize:vertical;border:1px solid #ead4c9;border-radius:11px;padding:11px 12px;margin-top:7px;outline:none;font:inherit;font-size:12px}.mck-survey-submit-row{display:flex;justify-content:flex-end;margin-top:12px}.mck-survey-submit{border:0;border-radius:11px;padding:11px 17px;background:#a51620;color:#fff;font-weight:900;cursor:pointer}.mck-survey-submit:disabled{opacity:.55;cursor:wait}.mck-survey-reviewed{background:#e9f7ed;border:1px solid #c9e7d2;color:#23733e;border-radius:10px;padding:10px;font-size:11px;font-weight:800;margin-top:10px}
+.mck-survey-wrap{max-width:820px;margin:0 auto}.mck-survey-loading{text-align:center;padding:50px;color:#806c65;font-size:13px}.mck-survey-error{background:#fff0f0;color:#a51620;border:1px solid #edc3c3;border-radius:11px;padding:13px;font-size:12px}.mck-survey-success{text-align:center;background:#eaf7ed;color:#1e713a;border:1px solid #cce7d3;border-radius:13px;padding:15px;font-size:12px;font-weight:800}.mck-survey-order{font-weight:900;color:#60151f;font-size:14px;margin-bottom:4px}.mck-survey-meta{font-size:11px;color:#806c65}.mck-survey-item{border:1px solid #ead4c9;border-radius:15px;padding:17px;margin-top:14px;background:#fff}.mck-survey-item-name{font-weight:900;color:#4f201c;font-size:15px}.mck-survey-item-photo{width:68px;height:68px;object-fit:cover;border-radius:12px;border:1px solid #ead4c9;flex:none;background:#f7eee8}.mck-survey-item-top{display:flex;align-items:center;gap:12px}.mck-survey-qty{font-size:10px;color:#806c65;margin-top:3px}.mck-survey-label{font-size:10px;font-weight:900;color:#806c65;text-transform:uppercase;letter-spacing:.5px;margin-top:12px}.mck-survey-stars{display:flex;gap:3px;margin:8px 0}.mck-survey-star{border:0;background:transparent;color:#cdbdb5;font-size:29px;cursor:pointer;padding:0 3px;line-height:1}.mck-survey-star.active{color:#e9ad35}.mck-survey-review{width:100%;min-height:88px;resize:vertical;border:1px solid #ead4c9;border-radius:11px;padding:11px 12px;margin-top:7px;outline:none;font:inherit;font-size:12px}.mck-survey-submit-row{display:flex;justify-content:flex-end;margin-top:12px}.mck-survey-submit{border:0;border-radius:11px;padding:11px 17px;background:#a51620;color:#fff;font-weight:900;cursor:pointer}.mck-survey-submit:disabled{opacity:.55;cursor:wait}.mck-survey-reviewed{background:#e9f7ed;border:1px solid #c9e7d2;color:#23733e;border-radius:10px;padding:10px;font-size:11px;font-weight:800;margin-top:10px}
 @media(max-width:600px){.mck-inline-survey-content{padding:15px}.mck-survey-submit-row{justify-content:stretch}.mck-survey-submit{width:100%}}
 </style>
 <script id="mckenzie-inline-survey-script">
@@ -8584,11 +8585,22 @@ if (window.MckenzieFirebaseReady && typeof window.MckenzieFirebaseReady.then ===
             var r=d.data()||{};
             if(String(r.orderId||'')===String(params.orderId||'')) byProduct[String(r.productId||'')]=r;
           });
-          var items=Array.isArray(order.items)?order.items.map(function(item){
+          var rawItems=Array.isArray(order.items)?order.items:[];
+          var items=rawItems.map(function(item){
             var pid=String(item.productId||item.id||'');
             var r=byProduct[pid];
-            return {productId:pid,productName:item.productName||item.name||'Ramen item',quantity:Number(item.quantity||0),reviewed:!!r,existingRating:r?Number(r.rating||0):0,existingReview:r?String(r.review||''):''};
-          }):[];
+            return {productId:pid,productName:item.productName||item.name||'Ramen item',image:String(item.image||item.productImage||''),quantity:Number(item.quantity||0),reviewed:!!r,existingRating:r?Number(r.rating||0):0,existingReview:r?String(r.review||''):''};
+          });
+          await Promise.all(items.map(async function(item){
+            if(item.image||!item.productId)return;
+            try{
+              var ps=await f.getDoc(f.doc(f.db,'products',item.productId));
+              if(ps.exists()){
+                var pd=ps.data()||{};
+                item.image=String(pd.image||pd.imageUrl||pd.photo||'');
+              }
+            }catch(e){}
+          }));
           done({success:true,orderId:String(order.orderId||params.orderId||''),customerName:String(order.customerName||order.fullName||'Customer'),items:items,completed:items.length>0 && items.every(function(i){return i.reviewed;})});
           return;
         }
@@ -8670,7 +8682,7 @@ if (window.MckenzieFirebaseReady && typeof window.MckenzieFirebaseReady.then ===
     if(surveyForm.completed){c.innerHTML='<div class="mck-survey-wrap"><div class="mck-survey-success">✓ Thank you! You have already reviewed every menu item in order <b>#'+surveyEsc(surveyForm.orderId)+'</b>.</div></div>';return;}
     var remaining=(surveyForm.items||[]).filter(function(i){return !i.reviewed;});
     var html='<div class="mck-survey-wrap"><div class="mck-survey-order">Order #'+surveyEsc(surveyForm.orderId)+'</div><div class="mck-survey-meta">Customer: '+surveyEsc(surveyForm.customerName||'Customer')+' · Rate all the menu items you received, then submit once.</div>';
-    remaining.forEach(function(item,idx){html+='<div class="mck-survey-item" data-product-id="'+surveyEsc(item.productId)+'"><div class="mck-survey-item-name">'+surveyEsc(item.productName)+'</div><div class="mck-survey-qty">Quantity: '+Number(item.quantity||0)+'</div><div class="mck-survey-label">Your rating</div><div class="mck-survey-stars" id="mckSurveyStars_'+idx+'">'+[1,2,3,4,5].map(function(n){return '<button type="button" class="mck-survey-star" data-rating="'+n+'">★</button>';}).join('')+'</div><input type="hidden" id="mckSurveyRating_'+idx+'" value="0"><div class="mck-survey-label">Your review (optional)</div><textarea class="mck-survey-review" id="mckSurveyReview_'+idx+'" maxlength="1000" placeholder="Tell us about this menu item..."></textarea></div>';});
+    remaining.forEach(function(item,idx){html+='<div class="mck-survey-item" data-product-id="'+surveyEsc(item.productId)+'"><div class="mck-survey-item-top">'+(item.image?'<img class="mck-survey-item-photo" src="'+surveyEsc(item.image)+'" alt="'+surveyEsc(item.productName)+'">':'')+'<div><div class="mck-survey-item-name">'+surveyEsc(item.productName)+'</div><div class="mck-survey-qty">Quantity: '+Number(item.quantity||0)+'</div></div></div><div class="mck-survey-label">Your rating</div><div class="mck-survey-stars" id="mckSurveyStars_'+idx+'">'+[1,2,3,4,5].map(function(n){return '<button type="button" class="mck-survey-star" data-rating="'+n+'">★</button>';}).join('')+'</div><input type="hidden" id="mckSurveyRating_'+idx+'" value="0"><div class="mck-survey-label">Your review (optional)</div><textarea class="mck-survey-review" id="mckSurveyReview_'+idx+'" maxlength="1000" placeholder="Tell us about this menu item..."></textarea></div>';});
     html+='<div class="mck-survey-submit-row"><button class="mck-survey-submit mck-survey-submit-all" id="mckSurveySubmitAll" type="button">Submit All Feedback</button></div></div>';c.innerHTML=html;
     remaining.forEach(function(item,idx){document.querySelectorAll('#mckSurveyStars_'+idx+' .mck-survey-star').forEach(function(b){b.onclick=function(){var n=Number(b.dataset.rating);document.getElementById('mckSurveyRating_'+idx).value=n;document.querySelectorAll('#mckSurveyStars_'+idx+' .mck-survey-star').forEach(function(x){x.classList.toggle('active',Number(x.dataset.rating)<=n);});};});});
     var allBtn=document.getElementById('mckSurveySubmitAll');if(allBtn)allBtn.onclick=function(){submitSurveyAll_(remaining);};
@@ -8781,7 +8793,7 @@ function showThankYouThenSurvey_(orderId){
   var receiptUnsub=null;
   var receiptPollTimer=null;
   var receiptPollBusy=false;
-  var STORAGE_PREFIX='mckenzie_receipt_popup_shown_';
+  var STORAGE_PREFIX='mckenzie_receipt_popup_done_';
   function user(){try{return JSON.parse(localStorage.getItem('mckenzieUser')||'null')||{};}catch(e){return {};}}
   function wasShown(orderId){try{return localStorage.getItem(STORAGE_PREFIX+String(orderId||''))==='1';}catch(e){return false;}}
   function rememberShown(orderId){try{localStorage.setItem(STORAGE_PREFIX+String(orderId||''),'1');}catch(e){}}
@@ -8838,7 +8850,7 @@ function showThankYouThenSurvey_(orderId){
     if(!n||busy)return;
     var orderId=String(n.orderId||'');
     if(!orderId||wasShown(orderId))return;
-    rememberShown(orderId); shown[orderId]=true;
+    shown[orderId]=true;
     var modal=document.getElementById('mckReceiptModal');if(!modal)return;
     modal.dataset.orderId=orderId;modal.dataset.notificationId=String(n.notificationId||'');
     document.getElementById('mckReceiptTitle').textContent=n.title||'Did you receive your order?';
@@ -8859,6 +8871,7 @@ function showThankYouThenSurvey_(orderId){
     callApi('respondCustomerReceipt',{userId:u.userId,orderId:orderId,received:received?'true':'false',notificationId:notificationId},function(v){
       busy=false;
       if(!v||!v.success){document.querySelectorAll('#mckReceiptActions button').forEach(function(b){b.disabled=false;});alert((v&&v.error)||'Unable to save your response. Please try again.');return;}
+      rememberShown(orderId);
       if(received){modal.classList.remove('show');document.body.style.overflow='';showThankYouThenSurvey_(orderId);}
       else{document.getElementById('mckReceiptActions').style.display='none';document.getElementById('mckReceiptTitle').textContent='We are sorry about that.';document.getElementById('mckReceiptMessage').textContent='Please contact McKenzie Ramen House so we can help you with your order.';document.getElementById('mckReceiptContact').style.display='block';var cb=document.getElementById('mckReceiptChatBtn');if(cb){cb.onclick=function(){modal.classList.remove('show');document.body.style.overflow='';openCustomerSupportChat_(orderId);};}}
     });
