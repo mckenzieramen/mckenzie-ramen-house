@@ -8460,10 +8460,10 @@ if (window.MckenzieFirebaseReady && typeof window.MckenzieFirebaseReady.then ===
 <div id="mckReviewNotifyModal" aria-modal="true" role="dialog">
   <div id="mckReviewNotifyBox">
     <div class="rIcon">⭐</div>
-    <h2 id="mckReviewNotifyTitle">Your ramen review is ready!</h2>
-    <p id="mckReviewNotifyMessage">Your order has been delivered. Please share your rating and review for the menu items you received.</p>
+    <h2 id="mckReviewNotifyTitle">Give Us Feedback</h2>
+    <p id="mckReviewNotifyMessage">We’d love to hear about your experience. Share your feedback about the menu you received.</p>
     <div id="mckReviewNotifyActions">
-      <button id="mckReviewOpen" type="button">⭐ Open Survey</button>
+      <button id="mckReviewOpen" type="button">⭐ Give Us Feedback</button>
       <button id="mckReviewLater" type="button">Later</button>
     </div>
   </div>
@@ -8504,8 +8504,8 @@ if (window.MckenzieFirebaseReady && typeof window.MckenzieFirebaseReady.then ===
     if(!n||current)return;
     current=n;
     var m=document.getElementById('mckReviewNotifyModal');if(!m)return;
-    document.getElementById('mckReviewNotifyTitle').textContent=n.title||'Your ramen review is ready!';
-    document.getElementById('mckReviewNotifyMessage').textContent=n.message||'Please share your rating and review.';
+    document.getElementById('mckReviewNotifyTitle').textContent=n.title||'Give Us Feedback';
+    document.getElementById('mckReviewNotifyMessage').textContent=n.message||'We’d love to hear about your experience. Share your feedback about the menu you received.';
     m.classList.add('show');document.body.style.overflow='hidden';
   }
   function closeReview(){var m=document.getElementById('mckReviewNotifyModal');if(m)m.classList.remove('show');document.body.style.overflow='';current=null;}
@@ -8678,7 +8678,7 @@ document.addEventListener('DOMContentLoaded',function(){
 @keyframes mckThankFloat{0%,100%{transform:translateY(0) rotate(-2deg)}50%{transform:translateY(-7px) rotate(2deg)}}
 </style>
 <div id="mckThankYouModal" aria-modal="true" role="dialog">
-  <div id="mckThankYouBox"><span id="mckThankYouIcon">🍜</span><h2>Thank You for Ordering!</h2><p>Your order has been received and confirmed.</p><div id="mckThankYouNext">See you again next time! ✨</div></div>
+  <div id="mckThankYouBox"><span id="mckThankYouIcon">🍜</span><h2>Thank You for Ordering!</h2><p>Enjoy your meal, and we hope to see you again next time! 🍜</p><div id="mckThankYouNext">Thank you for choosing McKenzie Ramen House! ✨</div></div>
 </div>
 <script>
 function showThankYouThenSurvey_(orderId){
@@ -8735,6 +8735,43 @@ function showThankYouThenSurvey_(orderId){
   var receiptPollTimer = null;
   function user(){ try{return JSON.parse(localStorage.getItem('mckenzieUser')||'null')||{};}catch(e){return {};} }
   function callApi(api, params, done){
+    /* Firebase-only receipt flow. This keeps the Delivered popup live on both
+       desktop and mobile without depending on the retired Apps Script bridge. */
+    if(window.MckenzieFirebaseReady){
+      Promise.resolve(window.MckenzieFirebaseReady).then(async function(f){
+        var uid=String(params.userId||'');
+        var u=await customerWaitForAuthUser_(f,uid);
+        if(!u || String(u.uid)!==uid) throw new Error('Please log in again.');
+
+        if(api==='customerNotifications'){
+          var nq=f.query(f.collection(f.db,'notifications'),f.where('userId','==',uid));
+          var ns=await f.getDocs(nq);
+          var notes=ns.docs.map(function(d){
+            var n=d.data()||{};
+            return Object.assign({},n,{notificationId:n.notificationId||d.id});
+          }).filter(function(n){return !n.readAt;})
+            .sort(function(a,b){return new Date(b.createdAt||0)-new Date(a.createdAt||0);});
+          done({success:true,notifications:notes});
+          return;
+        }
+
+        if(api==='respondCustomerReceipt'){
+          var orderId=String(params.orderId||'');
+          var received=String(params.received||'').toLowerCase()==='true';
+          var ref=f.doc(f.db,'orders',orderId);
+          var snap=await f.getDoc(ref);
+          if(!snap.exists()) throw new Error('Order not found.');
+          var order=snap.data()||{};
+          if(String(order.userId||'')!==uid) throw new Error('Invalid customer account.');
+          if(String(order.orderStatus||'')!=='Delivered') throw new Error('The order has not been marked as delivered yet.');
+          await f.updateDoc(ref,{customerConfirmed:received,confirmedAt:received?new Date().toISOString():'',closed:received});
+          done({success:true,received:received});
+          return;
+        }
+        throw new Error('Unsupported customer receipt request.');
+      }).catch(function(e){done({success:false,error:e&&e.message?e.message:String(e)});});
+      return;
+    }
     if(window.google&&google.script&&google.script.run){
       var runner=google.script.run.withSuccessHandler(function(v){done(v||{});}).withFailureHandler(function(e){done({success:false,error:e&&e.message?e.message:String(e)});});
       if(api==='customerNotifications') runner.getCustomerNotifications(String(params.userId||''));
@@ -8790,8 +8827,22 @@ function showThankYouThenSurvey_(orderId){
     callApi('customerNotifications',{userId:u.userId,_ts:Date.now()},function(v){
       receiptPollBusy=false;
       if(!v||!v.success||!Array.isArray(v.notifications)){scheduleReceiptPoll_();return;}
-      var n=v.notifications.find(function(x){return x.type==='RECEIPT_CONFIRMATION' && !shown[String(x.notificationId||'')];});
-      if(n){shown[String(n.notificationId||'')]=true;open(n);}
+      var candidates=v.notifications.filter(function(x){return x.type==='RECEIPT_CONFIRMATION' && !shown[String(x.notificationId||'')];});
+      var n=candidates[0];
+      if(n){
+        customerGetOrdersDirect_().then(function(orders){
+          var order=(orders||[]).find(function(o){return String(o.orderId||'')===String(n.orderId||'');});
+          if(order && String(order.orderStatus||'')==='Delivered' && !order.customerConfirmed){
+            shown[String(n.notificationId||'')]=true;
+            open(n);
+          } else {
+            shown[String(n.notificationId||'')]=true;
+          }
+        }).catch(function(){
+          shown[String(n.notificationId||'')]=true;
+          open(n);
+        });
+      }
       scheduleReceiptPoll_();
     });
   }
