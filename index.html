@@ -2349,7 +2349,7 @@ body.quick-loading {
 .site-sticky-logo {
   position: absolute;
   left: 20px;
-  top: calc(50% + 4px);
+  top: 50%;
   transform: translateY(-50%);
   width: 56px;
   height: 50px;
@@ -2400,7 +2400,7 @@ body.quick-loading {
 }
 
 /* Account control: hamburger only, aligned with sticky navigation. */
-.account-menu-wrap { top:7px !important; right:16px !important; }
+.account-menu-wrap { top:9px !important; right:16px !important; }
 .account-icon-person { display:none !important; }
 .account-icon-lines { gap:4px !important; }
 .account-icon-lines i { width:18px !important; height:2px !important; }
@@ -2736,11 +2736,12 @@ body.quick-loading {
   body.mobile-site-nav-open .mobile-site-nav-backdrop{display:block}
   .site-sticky-nav{
     left:10px;right:auto;top:62px;width:calc(100vw - 20px);height:auto;min-height:0;
+    z-index:1000000 !important;
     padding:14px;border:1px solid rgba(233,173,53,.72);border-radius:16px;
     transform:translateY(-18px);opacity:0;pointer-events:none;
     justify-content:flex-start;box-shadow:0 18px 40px rgba(0,0,0,.32)
   }
-  body.mobile-site-nav-open .site-sticky-nav{transform:translateY(0);opacity:1;pointer-events:auto}
+  body.mobile-site-nav-open .site-sticky-nav{transform:translateY(0);opacity:1;pointer-events:auto;z-index:1000000 !important}
   .site-sticky-nav-inner{display:grid;grid-template-columns:1fr 1fr;gap:7px;width:100%}
   .site-sticky-nav a{display:block;padding:11px 10px;border:1px solid rgba(255,255,255,.12);border-radius:10px;font-size:10px;letter-spacing:.7px;text-align:center;background:rgba(255,255,255,.04)}
   .site-sticky-logo{display:none!important}
@@ -2847,69 +2848,10 @@ body.quick-loading {
     top:9px !important;
   }
   body.mobile-top-scrolled .site-sticky-nav{
-    visibility:hidden !important;
+    visibility:visible !important;
   }
 }
 </style>
-
-<style id="mobile-scroll-nav-fix-2026-09-14">
-/* MOBILE SCROLL HEADER FIX — keep logo + Home/Menu/About/Contact visible after scroll. */
-@media (max-width:700px){
-  body.mobile-top-scrolled .site-sticky-nav{
-    visibility:visible !important;
-    display:flex !important;
-    left:0 !important;
-    right:0 !important;
-    top:0 !important;
-    width:100% !important;
-    height:58px !important;
-    min-height:58px !important;
-    box-sizing:border-box !important;
-    padding:7px 92px 7px 48px !important;
-    border-radius:0 !important;
-    transform:translateY(0) !important;
-    opacity:1 !important;
-    pointer-events:auto !important;
-    justify-content:center !important;
-    overflow:hidden !important;
-  }
-  body.mobile-top-scrolled .site-sticky-nav-inner{
-    display:flex !important;
-    align-items:center !important;
-    justify-content:center !important;
-    gap:clamp(5px,2vw,12px) !important;
-    width:100% !important;
-    max-width:none !important;
-    min-width:0 !important;
-    margin:0 !important;
-  }
-  body.mobile-top-scrolled .site-sticky-nav a{
-    flex:0 0 auto !important;
-    padding:8px 1px !important;
-    font-size:clamp(7px,2.2vw,9px) !important;
-    letter-spacing:clamp(.15px,.18vw,.55px) !important;
-    white-space:nowrap !important;
-  }
-  body.mobile-top-scrolled .site-sticky-logo{
-    display:block !important;
-    visibility:visible !important;
-    left:7px !important;
-    top:7px !important;
-    width:42px !important;
-    height:42px !important;
-    z-index:1000002 !important;
-  }
-}
-@media (max-width:360px){
-  body.mobile-top-scrolled .site-sticky-nav{
-    padding-left:45px !important;
-    padding-right:88px !important;
-  }
-  body.mobile-top-scrolled .site-sticky-nav-inner{gap:4px !important}
-  body.mobile-top-scrolled .site-sticky-nav a{font-size:7px !important;letter-spacing:.1px !important}
-}
-</style>
-
 </head>
 
 
@@ -2937,7 +2879,7 @@ body.quick-loading {
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind,{once:true});else bind();
 })();
-</script>
+</script>\n
 
 <!-- =======================================================
      QUICK FULL-SCREEN RAMEN LOADER
