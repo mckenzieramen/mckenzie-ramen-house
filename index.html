@@ -6426,63 +6426,55 @@ function checkoutAddressChanged_() {
   });
 }
 
+var returnToCheckoutAfterAddress_=false;
+
 function openAddAddressModal_() {
   const modal = document.getElementById("addAddressModal");
   if (!modal) return;
-  ["newAddressLabel","newAddressHouseUnit","newAddressStreet","newAddressAdditionalInstruction"].forEach(function(id) {
-    const el = document.getElementById(id); if (el) el.value = "";
-  });
-  const message = document.getElementById("newAddressMessage"); if (message) message.textContent = "";
-  const button = document.getElementById("addressSaveButton");
-  if (button) { button.disabled = false; button.textContent = "Save & Set as Default"; }
-  modal.classList.add("show");
-  document.body.style.overflow = "hidden";
-  loadAddressChain_("newAddress", {});
+  returnToCheckoutAfterAddress_=!!document.getElementById("checkoutModal")?.classList.contains("show");
+  if(returnToCheckoutAfterAddress_){ const checkout=document.getElementById("checkoutModal"); if(checkout) checkout.classList.remove("show"); }
+  ["newAddressLabel","newAddressHouseUnit","newAddressStreet","newAddressAdditionalInstruction"].forEach(function(id) { const el=document.getElementById(id); if(el)el.value=""; });
+  const message=document.getElementById("newAddressMessage"); if(message)message.textContent="";
+  const button=document.getElementById("addressSaveButton"); if(button){button.disabled=false;button.textContent="Save & Set as Default";}
+  modal.classList.add("show"); document.body.style.overflow="hidden"; loadAddressChain_("newAddress",{});
 }
 
 function closeAddAddressModal_() {
-  const modal = document.getElementById("addAddressModal"); if (modal) modal.classList.remove("show");
-  if (!document.getElementById("checkoutModal")?.classList.contains("show") && !document.getElementById("orderConfirmModal")?.classList.contains("show")) document.body.style.overflow = "";
+  const modal=document.getElementById("addAddressModal"); if(modal)modal.classList.remove("show");
+  if(returnToCheckoutAfterAddress_){
+    returnToCheckoutAfterAddress_=false;
+    const checkout=document.getElementById("checkoutModal");
+    if(checkout){checkout.classList.add("show");document.body.style.overflow="hidden";}
+    return;
+  }
+  if(!document.getElementById("checkoutModal")?.classList.contains("show") && !document.getElementById("orderConfirmModal")?.classList.contains("show")) document.body.style.overflow="";
 }
 
 function saveNewAddress_() {
-  const userId = getCurrentCustomerId_(); if (!userId) return;
-  const payload = getCheckoutAddressPayloadFromFields_("newAddress");
-  const required = [["newAddressRegion","Please select your region."],["newAddressProvince","Please select your province."],["newAddressCity","Please select your city/municipality."],["newAddressBarangay","Please select your barangay."],["newAddressHouseUnit","Please enter your lot/house/unit number."],["newAddressStreet","Please enter your street."]];
-  for (let i=0;i<required.length;i++) {
-    const el=document.getElementById(required[i][0]);
-    if(!el || !String(el.value||"").trim()) { const msg=document.getElementById("newAddressMessage"); if(msg){msg.style.color="#a51620";msg.textContent=required[i][1];} if(el)el.focus(); return; }
-  }
-  if (!payload.label) payload.label = "Address " + (checkoutAddresses_.length + 1);
-  const button=document.getElementById("addressSaveButton"), msg=document.getElementById("newAddressMessage");
-  if(button){button.disabled=true;button.textContent="Saving...";} if(msg)msg.textContent="";
-
-  customerFirebaseWithTimeout_(async function(f) {
-    const uid = String(f.auth.currentUser && f.auth.currentUser.uid || userId);
-    if (uid !== String(userId)) throw new Error("Please log in again.");
-    const ref = f.doc(f.db, "addresses", "MRH-ADDR-" + Date.now() + "-" + Math.random().toString(36).slice(2,8));
-    const existingQ = f.query(f.collection(f.db, "addresses"), f.where("userId", "==", uid));
-    const existingSnap = await f.getDocs(existingQ);
-    const isDefault = existingSnap.empty;
-    await f.setDoc(ref, Object.assign({
-      addressId: ref.id, userId: uid, isDefault: isDefault, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()
-    }, payload));
-    return true;
-  }, "Unable to save your address right now.")
-  .then(function(){
-    return customerFirebaseWithTimeout_(async function(f) {
-      const q=f.query(f.collection(f.db,"addresses"),f.where("userId","==",userId));
-      const snap=await f.getDocs(q);
-      return snap.docs.map(function(d){return Object.assign({addressId:d.id},d.data()||{});});
-    }, "Unable to reload your addresses right now.");
+  const userId=getCurrentCustomerId_(); if(!userId)return;
+  const payload=getCheckoutAddressPayloadFromFields_("newAddress");
+  const required=[["newAddressRegion","Please select your region."],["newAddressProvince","Please select your province."],["newAddressCity","Please select your city/municipality."],["newAddressBarangay","Please select your barangay."],["newAddressHouseUnit","Please enter your lot/house/unit number."],["newAddressStreet","Please enter your street."]];
+  for(let i=0;i<required.length;i++){const el=document.getElementById(required[i][0]);if(!el||!String(el.value||"").trim()){const msg=document.getElementById("newAddressMessage");if(msg){msg.style.color="#a51620";msg.textContent=required[i][1];}if(el)el.focus();return;}}
+  if(!payload.label)payload.label="Address "+(checkoutAddresses_.length+1);
+  const button=document.getElementById("addressSaveButton"),msg=document.getElementById("newAddressMessage");
+  if(button){button.disabled=true;button.textContent="Saving...";}if(msg)msg.textContent="";
+  customerFirebaseWithTimeout_(async function(f){
+    const authUser=await customerWaitForAuthUser_(f,userId),uid=String(authUser&&authUser.uid||"");
+    if(!uid||uid!==String(userId))throw new Error("Please log in again.");
+    const ref=f.doc(f.db,"addresses","MRH-ADDR-"+Date.now()+"-"+Math.random().toString(36).slice(2,8));
+    const q=f.query(f.collection(f.db,"addresses"),f.where("userId","==",uid)),snap=await f.getDocs(q),now=new Date().toISOString(),batch=f.writeBatch(f.db);
+    snap.docs.forEach(function(ds){if((ds.data()||{}).isDefault)batch.update(ds.ref,{isDefault:false,updatedAt:now});});
+    batch.set(ref,Object.assign({addressId:ref.id,userId:uid,isDefault:true,createdAt:now,updatedAt:now},payload));
+    await batch.commit(); return ref.id;
+  },"Unable to save your address right now.")
+  .then(function(newAddressId){return customerFirebaseWithTimeout_(async function(f){const q=f.query(f.collection(f.db,"addresses"),f.where("userId","==",userId)),snap=await f.getDocs(q);return {newAddressId:newAddressId,addresses:snap.docs.map(function(d){return Object.assign({addressId:d.id},d.data()||{});})};},"Unable to reload your addresses right now.");})
+  .then(function(result){
+    checkoutAddresses_=Array.isArray(result&&result.addresses)?result.addresses:[];renderCheckoutAddressOptions_();
+    const fresh=checkoutAddresses_.find(function(a){return String(a.addressId||"")===String(result&&result.newAddressId||"");}),select=document.getElementById("checkoutAddressSelect");
+    if(select&&fresh){select.value=String(fresh.addressId);checkoutDefaultAddressId_=String(fresh.addressId);applyCheckoutAddress_(fresh);}
+    closeAddAddressModal_();
   })
-  .then(function(addresses){
-    checkoutAddresses_=Array.isArray(addresses)?addresses:[]; renderCheckoutAddressOptions_(); closeAddAddressModal_();
-  })
-  .catch(function(error){
-    if(button){button.disabled=false;button.textContent="Save & Set as Default";}
-    if(msg){msg.style.color="#a51620";msg.textContent=error&&error.message?error.message:"Unable to save address.";}
-  });
+  .catch(function(error){if(button){button.disabled=false;button.textContent="Save & Set as Default";}if(msg){msg.style.color="#a51620";msg.textContent=error&&error.message?error.message:"Unable to save address.";}});
 }
 
 function saveFirstCheckoutAddressIfNeeded_() {
@@ -8636,8 +8628,10 @@ if (window.MckenzieFirebaseReady && typeof window.MckenzieFirebaseReady.then ===
             count++;
           });
           await batch.commit();
-          await f.updateDoc(f.doc(f.db,'orders',String(params.orderId||'')),{reviewCompleted:true,reviewCompletedAt:new Date().toISOString()});
-          done({success:true,message:'Thank you! Your feedback has been submitted.',reviewCount:count,completed:true});
+          // Review completion is derived from the reviews collection. Do not
+          // update the order here because customer order rules intentionally
+          // restrict customer updates to receipt-confirmation fields.
+          done({success:true,message:'Thank you for supporting McKenzie Ramen House!',reviewCount:count,completed:true});
           return;
         }
         if(api==='submitCustomerReview'){
@@ -8692,7 +8686,7 @@ if (window.MckenzieFirebaseReady && typeof window.MckenzieFirebaseReady.then ===
     (items||[]).forEach(function(item,idx){var rating=Number(document.getElementById('mckSurveyRating_'+idx).value||0),review=document.getElementById('mckSurveyReview_'+idx).value||'';entries.push({productId:item.productId,rating:rating,review:review});});
     if(entries.some(function(e){return e.rating<1||e.rating>5;})){alert('Please select a rating from 1 to 5 stars for every menu item.');return;}
     surveyBusy=true;var btn=document.getElementById('mckSurveySubmitAll');if(btn){btn.disabled=true;btn.textContent='Submitting All Feedback…';}
-    surveyCall('submitCustomerReviewsBatch',{userId:u.userId,orderId:surveyOrderId,entries:entries},function(v){surveyBusy=false;if(!v||!v.success){if(btn){btn.disabled=false;btn.textContent='Submit All Feedback';}alert(v&&v.error?v.error:'Unable to submit your feedback.');return;}if(btn){btn.textContent='✓ Feedback Submitted';}var c=document.getElementById('mckSurveyContent');if(c)c.innerHTML='<div class="mck-survey-wrap"><div class="mck-survey-success">✓ Thank you for your feedback! Your complete review has been submitted successfully.</div></div>';setTimeout(function(){closeSurveyModal_();},1400);});
+    surveyCall('submitCustomerReviewsBatch',{userId:u.userId,orderId:surveyOrderId,entries:entries},function(v){surveyBusy=false;if(!v||!v.success){if(btn){btn.disabled=false;btn.textContent='Submit All Feedback';}alert(v&&v.error?v.error:'Unable to submit your feedback.');return;}if(btn){btn.textContent='✓ Feedback Submitted';}var c=document.getElementById('mckSurveyContent');if(c)c.innerHTML='<div class="mck-survey-wrap"><div class="mck-survey-success">✓ Thank you for supporting McKenzie Ramen House!<br><span style="font-weight:600;opacity:.8">Your feedback has been submitted successfully.</span></div></div>';setTimeout(function(){closeSurveyModal_();},1700);});
   }
 })();
 </script>
@@ -8989,18 +8983,29 @@ document.addEventListener('click',function(e){
     var authUser=await customerWaitForAuthUser_(f,'');
     if(!authUser)throw new Error('Please log in again.');
     var uid=String(authUser.uid||'');
+    var wantedOrder=String(orderId||'');
     var id='CHAT-'+uid+'-'+String(orderId||'GENERAL').replace(/[^a-zA-Z0-9_-]/g,'_');
     chatId=id;
-    var ref=f.doc(f.db,'supportChats',id),snap=await f.getDoc(ref);
-    if(!snap.exists()){
+    // Query the customer's own chats instead of getDoc() on a missing document.
+    // The Firestore customer read rule depends on resource.data.userId, so a
+    // direct read of a nonexistent chat is denied even though create is allowed.
+    var q=f.query(f.collection(f.db,'supportChats'),f.where('userId','==',uid));
+    var qs=await f.getDocs(q),existingDoc=null;
+    qs.docs.forEach(function(ds){
+      var d=ds.data()||{};
+      if(String(d.chatId||ds.id)===id || String(d.orderId||'')===wantedOrder) existingDoc=ds;
+    });
+    if(existingDoc) chatId=existingDoc.id;
+    else {
       var now=new Date().toISOString();
-      await f.setDoc(ref,{chatId:id,userId:uid,customerName:String(saved.fullName||saved.name||authUser.displayName||'Customer'),customerEmail:String(authUser.email||saved.email||''),orderId:String(orderId||''),messages:[{senderType:'ai',text:'Hi! I’m McKenzie Customer Service. Let me know with regard to this concern, and I’ll help you get the right assistance.',createdAt:now}],createdAt:now,updatedAt:now,unreadForAdmin:true,unreadForCustomer:false});
+      await f.setDoc(f.doc(f.db,'supportChats',id),{chatId:id,userId:uid,customerName:String(saved.fullName||saved.name||authUser.displayName||'Customer'),customerEmail:String(authUser.email||saved.email||''),orderId:wantedOrder,messages:[{senderType:'ai',text:'Hi! I’m McKenzie Customer Service. Let me know with regard to this concern, and I’ll help you get the right assistance.',createdAt:now}],createdAt:now,updatedAt:now,unreadForAdmin:true,unreadForCustomer:false});
     }
+    var ref=f.doc(f.db,'supportChats',chatId);
     if(chatUnsub)try{chatUnsub();}catch(e){}
     if(typeof f.onSnapshot==='function'){
       chatUnsub=f.onSnapshot(ref,function(ds){if(ds.exists()){var d=ds.data()||{};chatFormat(Array.isArray(d.messages)?d.messages:[]);}},function(err){
         var c=document.getElementById('mckCustomerChatMessages');
-        if(c)c.innerHTML='<div style=\"text-align:center;color:#a51620;font-size:12px;padding:35px\">Unable to load chat: '+chatEsc(err&&err.message?err.message:'Missing or insufficient permissions.')+'</div>';
+        if(c)c.innerHTML='<div style="text-align:center;color:#a51620;font-size:12px;padding:35px">Unable to load chat: '+chatEsc(err&&err.message?err.message:'Missing or insufficient permissions.')+'</div>';
       });
     }else{var fresh=await f.getDoc(ref);chatFormat(fresh.exists()?(fresh.data().messages||[]):[]);}
   }
@@ -9011,5 +9016,24 @@ document.addEventListener('click',function(e){
 })();
 </script>
 
+
+<style id="mckenzie-modal-close-and-mobile-control-fix">
+.account-subcard,.address-card,#mckSurveyBox,#mckCustomerChatBox{position:relative;}
+.account-subcard .account-subclose,.address-card .address-close,#mckSurveyClose,#mckCustomerChatClose{position:absolute !important;top:12px !important;right:14px !important;z-index:30 !important;}
+#mckSurveyHead,#mckCustomerChatHead{position:relative;padding-right:64px !important;}
+@media(max-width:700px){#mckReceiptModal,#mckSurveyModal,#mckCustomerChatModal,.account-submodal,#addAddressModal,#orderConfirmModal{z-index:10000000 !important;}#mobileSiteNavButton{z-index:9000 !important;}}
+</style>
+
+<style id="mckenzie-customer-chat-live-notice-style">
+#mckCustomerChatLiveNotice{position:fixed;right:18px;bottom:18px;z-index:10000010;display:none;max-width:min(360px,calc(100vw - 36px));background:#130807;color:#fff;border:1px solid #e9ad35;border-radius:14px;box-shadow:0 18px 50px rgba(0,0,0,.35);padding:12px 14px;cursor:pointer}
+#mckCustomerChatLiveNotice.show{display:block;animation:mckChatNoticeIn .28s ease both}
+#mckCustomerChatLiveNotice b{display:block;color:#f2c45b;margin-bottom:3px}
+#mckCustomerChatLiveNotice span{font-size:11px;line-height:1.45;opacity:.92}
+@keyframes mckChatNoticeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+</style>
+<div id="mckCustomerChatLiveNotice" role="status" aria-live="polite"><b>💬 McKenzie Customer Service</b><span id="mckCustomerChatLiveNoticeText">You have a new message.</span></div>
+<script id="mckenzie-customer-chat-live-inbox">
+(function(){var unsub=null,known={},first=true,timer=null;function notice(text,orderId){var n=document.getElementById('mckCustomerChatLiveNotice'),t=document.getElementById('mckCustomerChatLiveNoticeText');if(!n||!t)return;t.textContent=text||'You have a new message from customer service.';n.classList.add('show');clearTimeout(timer);timer=setTimeout(function(){n.classList.remove('show');},8000);n.onclick=function(){n.classList.remove('show');if(window.openCustomerSupportChat_)window.openCustomerSupportChat_(orderId||'');};}function start(){if(!window.MckenzieFirebaseReady){setTimeout(start,700);return;}Promise.resolve(window.MckenzieFirebaseReady).then(function(f){if(!f.auth||typeof f.onAuthStateChanged!=='function'||typeof f.onSnapshot!=='function')return;f.onAuthStateChanged(f.auth,function(u){if(unsub)try{unsub();}catch(e){}unsub=null;known={};first=true;if(!u)return;var q=f.query(f.collection(f.db,'supportChats'),f.where('userId','==',String(u.uid)));unsub=f.onSnapshot(q,function(snap){snap.docChanges().forEach(function(ch){var d=ch.doc.data()||{},m=Array.isArray(d.messages)?d.messages:[],last=m.length?m[m.length-1]:null,key=ch.doc.id,sig=String(d.updatedAt||'')+'|'+String(last&&last.createdAt||'')+'|'+String(last&&last.text||'');if(!first&&ch.type==='modified'&&last&&last.senderType==='admin'&&known[key]!==sig)notice(last.text||'You have a new message from customer service.',d.orderId||'');known[key]=sig;});first=false;},function(e){console.warn('Customer chat inbox listener:',e);});});}).catch(function(e){console.warn('Customer chat inbox startup:',e);});}document.addEventListener('DOMContentLoaded',start);})();
+</script>
 </body>
 </html>
