@@ -318,10 +318,13 @@
   async function getBrandAssets() {
     // Keep each large image in its own Firestore document so the
     // Firestore 1 MiB document limit is not shared by logo + background.
-    const [main, logo, background] = await Promise.all([
+    const [main, logo, background, gcash, maya, bank] = await Promise.all([
       getDocById("brandAssets", "main"),
       getDocById("brandAssets", "logo"),
-      getDocById("brandAssets", "background")
+      getDocById("brandAssets", "background"),
+      getDocById("brandAssets", "payment_gcash"),
+      getDocById("brandAssets", "payment_maya"),
+      getDocById("brandAssets", "payment_bank")
     ]);
 
     return {
@@ -329,7 +332,12 @@
       logo: (logo && logo.imageUrl) || (main && main.logo) || "",
       background: (background && background.imageUrl) || (main && main.background) || "",
       logoUrl: (logo && logo.imageUrl) || (main && main.logoUrl) || (main && main.logo) || "",
-      backgroundUrl: (background && background.imageUrl) || (main && main.backgroundUrl) || (main && main.background) || ""
+      backgroundUrl: (background && background.imageUrl) || (main && main.backgroundUrl) || (main && main.background) || "",
+      paymentMethods: {
+        GCash: gcash || {name:"GCash",available:true,displayName:"",details:"",qr:""},
+        Maya: maya || {name:"Maya",available:true,displayName:"",details:"",qr:""},
+        "QR BANK": bank || {name:"QR BANK",available:true,displayName:"",details:"",qr:""}
+      }
     };
   }
 
@@ -357,14 +365,26 @@
           const h = Math.max(1, Math.round((img.height || 1) * scale));
           const canvas = document.createElement("canvas");
           canvas.width = w; canvas.height = h;
-          const ctx = canvas.getContext("2d", {alpha:false});
+          const ctx = canvas.getContext("2d", {alpha:true});
           if (!ctx) throw makeError("Your browser cannot process this image.");
-          ctx.fillStyle = "#ffffff";
-          ctx.fillRect(0, 0, w, h);
+          if (!isLogo) {
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(0, 0, w, h);
+          }
           ctx.drawImage(img, 0, 0, w, h);
+          if (isLogo) {
+            const data = ctx.getImageData(0, 0, w, h), px = data.data;
+            const visited = new Uint8Array(w * h), queue = new Int32Array(w * h);
+            let head = 0, tail = 0;
+            const white = i => px[i+3] > 0 && px[i] >= 245 && px[i+1] >= 245 && px[i+2] >= 245 && (Math.max(px[i],px[i+1],px[i+2]) - Math.min(px[i],px[i+1],px[i+2]) <= 18);
+            const push = (x,y) => { if(x<0||y<0||x>=w||y>=h)return; const p=y*w+x; if(visited[p])return; visited[p]=1; if(white(p*4))queue[tail++]=p; };
+            for(let x=0;x<w;x++){push(x,0);push(x,h-1);} for(let y=1;y<h-1;y++){push(0,y);push(w-1,y);}
+            while(head<tail){const p=queue[head++],x=p%w,y=(p-x)/w,i=p*4;px[i+3]=0;if(x>0)push(x-1,y);if(x<w-1)push(x+1,y);if(y>0)push(x,y-1);if(y<h-1)push(x,y+1);}
+            ctx.putImageData(data,0,0);
+          }
           let quality = isLogo ? 0.88 : 0.78;
-          let result = canvas.toDataURL("image/jpeg", quality);
-          while (result.length > 700000 && quality > 0.42) {
+          let result = isLogo ? canvas.toDataURL("image/png") : canvas.toDataURL("image/jpeg", quality);
+          while (result.length > 700000 && quality > 0.42 && !isLogo) {
             quality -= 0.06;
             result = canvas.toDataURL("image/jpeg", quality);
           }
@@ -372,11 +392,10 @@
             const smaller = document.createElement("canvas");
             smaller.width = Math.max(1, Math.round(w * 0.72));
             smaller.height = Math.max(1, Math.round(h * 0.72));
-            const sctx = smaller.getContext("2d", {alpha:false});
-            sctx.fillStyle = "#ffffff";
-            sctx.fillRect(0, 0, smaller.width, smaller.height);
+            const sctx = smaller.getContext("2d", {alpha:!!isLogo});
+            if (!isLogo) { sctx.fillStyle = "#ffffff"; sctx.fillRect(0, 0, smaller.width, smaller.height); }
             sctx.drawImage(img, 0, 0, smaller.width, smaller.height);
-            result = smaller.toDataURL("image/jpeg", 0.58);
+            result = isLogo ? smaller.toDataURL("image/png") : smaller.toDataURL("image/jpeg", 0.58);
           }
           if (result.length > 900000) throw makeError("Image is still too large. Please choose a smaller image.");
           resolve(result);
