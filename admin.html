@@ -1141,13 +1141,20 @@ button,input,select,textarea{font:inherit}
     if(next==="Delivered") { patch.deliveredAt=isoNow(); patch.customerConfirmed=false; patch.closed=false; }
     await f.updateDoc(ref,patch);
     if(next==="Delivered" && o.userId) {
-      const nid="NTF-"+Date.now()+"-"+Math.floor(Math.random()*10000);
-      await f.setDoc(f.doc(f.db,"notifications",nid),{
-        notificationId:nid,userId:o.userId,orderId:String(orderId),type:"RECEIPT_CONFIRMATION",
-        title:"🍜 Did you receive your food?",
-        message:"Your McKenzie Ramen House order was marked as Delivered. Did you receive your food?",
-        createdAt:isoNow(),readAt:""
-      });
+      try {
+        const nid="NTF-"+Date.now()+"-"+Math.floor(Math.random()*10000);
+        await f.setDoc(f.doc(f.db,"notifications",nid),{
+          notificationId:nid,userId:o.userId,orderId:String(orderId),type:"RECEIPT_CONFIRMATION",
+          title:"🍜 Did you receive your food?",
+          message:"Your McKenzie Ramen House order was marked as Delivered. Did you receive your food?",
+          createdAt:isoNow(),readAt:""
+        });
+      } catch(notificationError) {
+        // The order status is already the source of truth for the customer's
+        // live Delivered popup. A notification write must never make a
+        // successful status update look like a permission failure.
+        console.warn("Receipt notification write failed; live order listener remains active.", notificationError);
+      }
     }
     return {success:true,order:normalizeOrder((await f.getDoc(ref)).data())};
   }
@@ -1298,6 +1305,7 @@ let token=sessionStorage.getItem('mck_admin_token')||'';
 let products=[]; let selectedImage=null; let editing=null; let removeProductImageFlag=false;
 let removeBrandLogoFlag=false; let removeBrandBackgroundFlag=false;
 let orders=[]; let reviews=[];
+let adminOrdersUnsub=null; let adminChatsUnsub=null;
 let lastOrderIds=new Set(); let orderPollTimer=null; let firstOrderLoad=true;
 const savingOrderItems=new Set(); const savingOrderStatuses=new Set();
 let audioCtx=null; let adminToastTimer=null;
@@ -1371,6 +1379,7 @@ async function completeAdminLogin(user){
   loadProducts();
   loadOrders({setBaseline:true});
   initAdminNotifications();
+  startCustomerChatsRealtime_();
   return true;
 }
 
@@ -1686,7 +1695,22 @@ async function loadCustomerChats(){
     c.innerHTML='<div class="customer-chat-empty">Unable to load customer chats: '+esc(e&&e.message?e.message:String(e))+'</div>';
     const notice=document.getElementById('customerChatNotice'); if(notice)notice.textContent='Customer chat connection error.';
   }
+  startCustomerChatsRealtime_();
 }
+function startCustomerChatsRealtime_(){
+  if(adminChatsUnsub)return;
+  adminFirebase_().then(function(f){
+    if(!f.auth||!f.auth.currentUser||typeof f.onSnapshot!=='function')return;
+    adminChatsUnsub=f.onSnapshot(f.collection(f.db,'supportChats'),function(snap){
+      customerChatsData=snap.docs.map(function(d){return Object.assign({chatId:d.id},d.data()||{});}).sort(function(a,b){return String(b.updatedAt||b.createdAt||'').localeCompare(String(a.updatedAt||a.createdAt||''));});
+      updateChatBadge_(customerChatsData);
+      const notice=document.getElementById('customerChatNotice');
+      if(notice)notice.textContent=customerChatsData.length?('Live • '+customerChatsData.length+' conversation'+(customerChatsData.length===1?'':'s')):'No customer conversations yet.';
+      if(document.getElementById('customersSection')?.style.display!=='none')renderCustomerChats();
+    },function(err){console.warn('Customer chat realtime listener stopped:',err);adminChatsUnsub=null;});
+  }).catch(function(err){console.warn('Customer chat realtime setup failed:',err);});
+}
+
 async function loadCustomerChatsBadge_(){try{const f=await adminFirebase_();if(!f.auth.currentUser)return;const snap=await f.getDocs(f.collection(f.db,'supportChats'));updateChatBadge_(snap.docs.map(d=>d.data()||{}));}catch(e){}}
 function updateChatBadge_(chats){const b=document.getElementById('chatBadge');if(!b)return;const n=(chats||[]).filter(c=>c.unreadForAdmin).length;b.textContent=n;b.style.display=n?'inline-block':'none';}
 function renderCustomerChats(){
@@ -1946,8 +1970,8 @@ function updateOrderStatus(orderId,status,confirmed){
   const nextStatus=(status==='Ready'?'On the Way':status);
   o.orderStatus=nextStatus;
   if(nextStatus==='Delivered'){
-    o.customerConfirmed=true;
-    o.closed=true;
+    o.customerConfirmed=false;
+    o.closed=false;
   }
   savingOrderStatuses.add(String(orderId));
   renderOrders();
@@ -1976,10 +2000,19 @@ firstOrderLoad = true;
 
 function initAdminNotifications(){
   if (orderPollTimer) clearInterval(orderPollTimer);
+  // Primary path: Firestore realtime listener. This updates the Admin page
+  // immediately when a customer creates an order or its status changes.
+  adminFirebase_().then(function(f){
+    if(!f.auth||!f.auth.currentUser||typeof f.onSnapshot!=='function')return;
+    if(adminOrdersUnsub)try{adminOrdersUnsub();}catch(e){}
+    adminOrdersUnsub=f.onSnapshot(f.collection(f.db,'orders'),function(){
+      if ((savingOrderItems && savingOrderItems.size) || (savingOrderStatuses && savingOrderStatuses.size)) return;
+      loadOrders({silent:true,setBaseline:false});
+    },function(err){console.warn('Admin order realtime listener stopped:',err);adminOrdersUnsub=null;});
+  }).catch(function(err){console.warn('Admin order realtime setup failed:',err);});
+  // Fallback: retain a slow poll for browsers where Firestore realtime is blocked.
   orderPollTimer = setInterval(function(){
     if (!token) return;
-    // Never refresh while an item dropdown change is being saved.
-    // Otherwise the old server value can overwrite the user's Ready selection.
     if ((savingOrderItems && savingOrderItems.size) || (savingOrderStatuses && savingOrderStatuses.size)) return;
     run('adminGetOrders',[token],function(v,e){
       if(e||!v||!v.success) return;
