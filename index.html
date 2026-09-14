@@ -8791,18 +8791,20 @@ function showThankYouThenSurvey_(orderId){
   var shown={};
   var busy=false;
   var receiptUnsub=null;
+  var receiptOrderUnsub=null;
   var receiptPollTimer=null;
   var receiptPollBusy=false;
   var STORAGE_PREFIX='mckenzie_receipt_popup_done_';
   function user(){try{return JSON.parse(localStorage.getItem('mckenzieUser')||'null')||{};}catch(e){return {};}}
-  function wasShown(orderId){try{return localStorage.getItem(STORAGE_PREFIX+String(orderId||''))==='1';}catch(e){return false;}}
-  function rememberShown(orderId){try{localStorage.setItem(STORAGE_PREFIX+String(orderId||''),'1');}catch(e){}}
+  function wasShown(orderId){ return false; }
+  function rememberShown(orderId){ /* Firebase customerConfirmed/closed is the source of truth. */ }
   function callApi(api,params,done){
     if(window.MckenzieFirebaseReady){
       Promise.resolve(window.MckenzieFirebaseReady).then(async function(f){
-        var uid=String(params.userId||'');
-        var u=await customerWaitForAuthUser_(f,uid);
-        if(!u||String(u.uid)!==uid) throw new Error('Please log in again.');
+        var expectedUid=String(params.userId||'');
+        var u=await customerWaitForAuthUser_(f,'');
+        if(!u) throw new Error('Please log in again.');
+        var uid=String(u.uid||'');
         if(api==='customerNotifications'){
           var q=f.query(f.collection(f.db,'notifications'),f.where('userId','==',uid));
           var snap=await f.getDocs(q);
@@ -8882,14 +8884,25 @@ function showThankYouThenSurvey_(orderId){
     open({orderId:id,title:'Did you receive your order?',message:'Your order was marked as Delivered. Did you receive your food?'});
   }
   function startRealtime(){
-    var u=user(); if(!u.userId||!window.MckenzieFirebaseReady)return;
+    if(!window.MckenzieFirebaseReady)return;
     Promise.resolve(window.MckenzieFirebaseReady).then(function(f){
-      try{
-        var q=f.query(f.collection(f.db,'orders'),f.where('userId','==',String(u.userId)));
-        if(typeof f.onSnapshot==='function'){
-          receiptUnsub=f.onSnapshot(q,function(snap){snap.docChanges().forEach(function(ch){var d=ch.doc.data()||{};d.orderId=String(d.orderId||ch.doc.id);if(ch.type==='added'||ch.type==='modified')handleDeliveredOrder(d);});});
-        } else {poll();}
-      }catch(e){poll();}
+      if(!f||!f.auth||typeof f.onAuthStateChanged!=='function') throw new Error('Firebase Auth unavailable');
+      if(receiptUnsub)try{receiptUnsub();}catch(e){}
+      receiptUnsub=f.onAuthStateChanged(f.auth,function(authUser){
+        if(receiptUnsub && typeof receiptUnsub==='function' && !authUser)return;
+        if(!authUser)return;
+        try{
+          var q=f.query(f.collection(f.db,'orders'),f.where('userId','==',String(authUser.uid)));
+          if(receiptOrderUnsub)try{receiptOrderUnsub();}catch(e){}
+          receiptOrderUnsub=f.onSnapshot(q,function(snap){
+            snap.docChanges().forEach(function(ch){
+              var d=ch.doc.data()||{};
+              d.orderId=String(d.orderId||ch.doc.id);
+              if(ch.type==='added'||ch.type==='modified')handleDeliveredOrder(d);
+            });
+          },function(){poll();});
+        }catch(e){poll();}
+      });
     }).catch(function(){poll();});
   }
   function poll(){
@@ -8897,9 +8910,9 @@ function showThankYouThenSurvey_(orderId){
     receiptPollBusy=true;customerGetOrdersDirect_().then(function(orders){(orders||[]).forEach(handleDeliveredOrder);}).catch(function(){}).finally(function(){receiptPollBusy=false;clearTimeout(receiptPollTimer);receiptPollTimer=setTimeout(poll,2500);});
   }
   function start(){
-    var u=user();if(!u.userId){setTimeout(start,1000);return;}
+    if(!window.MckenzieFirebaseReady){setTimeout(start,500);return;}
     startRealtime();
-    // Notification fallback for installations where order snapshots are restricted.
+    // Keep a lightweight fallback in case a browser blocks the realtime stream.
     poll();
   }
   document.addEventListener('DOMContentLoaded',function(){
@@ -8970,7 +8983,27 @@ document.addEventListener('click',function(e){
   function chatEsc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m];});}
   function chatFormat(messages){var c=document.getElementById('mckCustomerChatMessages');if(!c)return;c.innerHTML=(messages||[]).map(function(m){var type=m.senderType==='customer'?'customer':(m.senderType==='ai'?'ai':'admin');var who=m.senderType==='customer'?'You':(m.senderType==='ai'?'McKenzie AI':'McKenzie Customer Service');return '<div class="mck-chat-msg '+type+'"><b>'+who+'</b><br>'+chatEsc(m.text||'')+'<small>'+chatEsc(m.createdAt?new Date(m.createdAt).toLocaleString():'')+'</small></div>';}).join('')||'<div style="text-align:center;color:#806c65;font-size:12px;padding:35px">No messages yet.</div>';c.scrollTop=c.scrollHeight;}
   async function chatFirebase(){if(!window.MckenzieFirebaseReady)throw new Error('Firebase is not ready.');return await Promise.resolve(window.MckenzieFirebaseReady);}
-  async function ensureChat_(orderId){var u=chatUser();if(!u.userId)throw new Error('Please log in again.');var f=await chatFirebase();var id='CHAT-'+String(u.userId)+'-'+String(orderId||'GENERAL').replace(/[^a-zA-Z0-9_-]/g,'_');chatId=id;var ref=f.doc(f.db,'supportChats',id),snap=await f.getDoc(ref);if(!snap.exists()){var now=new Date().toISOString();await f.setDoc(ref,{chatId:id,userId:String(u.userId),customerName:String(u.fullName||u.name||'Customer'),customerEmail:String(u.email||''),orderId:String(orderId||''),messages:[{senderType:'ai',text:'Hi! I’m McKenzie Customer Service. Let me know with regard to this concern, and I’ll help you get the right assistance.',createdAt:now}],createdAt:now,updatedAt:now,unreadForAdmin:true,unreadForCustomer:false});}if(chatUnsub)try{chatUnsub();}catch(e){}if(typeof f.onSnapshot==='function'){chatUnsub=f.onSnapshot(ref,function(ds){if(ds.exists()){var d=ds.data()||{};chatFormat(Array.isArray(d.messages)?d.messages:[]);}});}else{var fresh=await f.getDoc(ref);chatFormat(fresh.exists()?(fresh.data().messages||[]):[]);}}
+  async function ensureChat_(orderId){
+    var saved=chatUser();
+    var f=await chatFirebase();
+    var authUser=await customerWaitForAuthUser_(f,'');
+    if(!authUser)throw new Error('Please log in again.');
+    var uid=String(authUser.uid||'');
+    var id='CHAT-'+uid+'-'+String(orderId||'GENERAL').replace(/[^a-zA-Z0-9_-]/g,'_');
+    chatId=id;
+    var ref=f.doc(f.db,'supportChats',id),snap=await f.getDoc(ref);
+    if(!snap.exists()){
+      var now=new Date().toISOString();
+      await f.setDoc(ref,{chatId:id,userId:uid,customerName:String(saved.fullName||saved.name||authUser.displayName||'Customer'),customerEmail:String(authUser.email||saved.email||''),orderId:String(orderId||''),messages:[{senderType:'ai',text:'Hi! I’m McKenzie Customer Service. Let me know with regard to this concern, and I’ll help you get the right assistance.',createdAt:now}],createdAt:now,updatedAt:now,unreadForAdmin:true,unreadForCustomer:false});
+    }
+    if(chatUnsub)try{chatUnsub();}catch(e){}
+    if(typeof f.onSnapshot==='function'){
+      chatUnsub=f.onSnapshot(ref,function(ds){if(ds.exists()){var d=ds.data()||{};chatFormat(Array.isArray(d.messages)?d.messages:[]);}},function(err){
+        var c=document.getElementById('mckCustomerChatMessages');
+        if(c)c.innerHTML='<div style=\"text-align:center;color:#a51620;font-size:12px;padding:35px\">Unable to load chat: '+chatEsc(err&&err.message?err.message:'Missing or insufficient permissions.')+'</div>';
+      });
+    }else{var fresh=await f.getDoc(ref);chatFormat(fresh.exists()?(fresh.data().messages||[]):[]);}
+  }
   async function sendChat_(){if(chatSending)return;var input=document.getElementById('mckCustomerChatInput'),btn=document.getElementById('mckCustomerChatSend'),text=String(input&&input.value||'').trim();if(!text)return;var u=chatUser();if(!u.userId||!chatId)return;chatSending=true;if(input)input.disabled=true;if(btn)btn.disabled=true;try{var f=await chatFirebase(),ref=f.doc(f.db,'supportChats',chatId),snap=await f.getDoc(ref);if(!snap.exists())throw new Error('Chat could not be opened.');var d=snap.data()||{},messages=Array.isArray(d.messages)?d.messages.slice():[],now=new Date().toISOString();messages.push({senderType:'customer',text:text,createdAt:now});messages.push({senderType:'ai',text:'Thanks for letting us know. Let me know with regard to this concern, and our customer service team will assist you.',createdAt:new Date().toISOString()});await f.updateDoc(ref,{messages:messages,updatedAt:new Date().toISOString(),unreadForAdmin:true,unreadForCustomer:false});if(input)input.value='';}catch(e){alert(e&&e.message?e.message:'Unable to send your message.');}finally{chatSending=false;if(input)input.disabled=false;if(btn)btn.disabled=false;if(input)input.focus();}}
   window.openCustomerSupportChat_=async function(orderId){var m=document.getElementById('mckCustomerChatModal');if(!m)return;m.classList.add('show');document.body.style.overflow='hidden';document.getElementById('mckCustomerChatOrder').textContent=orderId?'Order #'+orderId:'McKenzie Customer Service';document.getElementById('mckCustomerChatMessages').innerHTML='<div style="text-align:center;color:#806c65;font-size:12px;padding:35px">Opening chat…</div>';try{await ensureChat_(orderId);}catch(e){document.getElementById('mckCustomerChatMessages').innerHTML='<div style="text-align:center;color:#a51620;font-size:12px;padding:35px">'+chatEsc(e&&e.message?e.message:'Unable to open chat.')+'</div>';}};
   function closeChat_(){var m=document.getElementById('mckCustomerChatModal');if(m)m.classList.remove('show');document.body.style.overflow='';if(chatUnsub){try{chatUnsub();}catch(e){}chatUnsub=null;}}
