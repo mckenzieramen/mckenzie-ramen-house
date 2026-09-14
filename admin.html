@@ -377,6 +377,7 @@ button,input,select,textarea{font:inherit}
       <div><strong>Customer Chats</strong><div id="customerChatNotice" style="font-size:12px;color:#756965;margin-top:4px">Customer support conversations will appear here.</div></div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
         <input class="search" id="customerChatSearch" placeholder="Search customer or order..." oninput="renderCustomerChats()">
+        <select class="status-filter" id="customerChatStatusFilter" onchange="renderCustomerChats()"><option value="">All chat statuses</option><option>Open</option><option>Pending</option><option>Solved</option><option>Closed</option></select>
         <button class="add" type="button" onclick="loadCustomerChats()">↻ Refresh</button>
       </div>
     </div>
@@ -1716,25 +1717,73 @@ function updateChatBadge_(chats){const b=document.getElementById('chatBadge');if
 function renderCustomerChats(){
   const c=document.getElementById('customerChats');if(!c)return;
   const q=chatSearchTerm_();
-  const list=(customerChatsData||[]).filter(function(chat){return !q||[chat.customerName,chat.customerEmail,chat.orderId,chat.chatId].join(' ').toLowerCase().includes(q);});
+  const sf=document.getElementById('customerChatStatusFilter');
+  const statusFilter=String(sf&&sf.value||'');
+  const list=(customerChatsData||[]).filter(function(chat){return (!q||[chat.customerName,chat.customerEmail,chat.orderId,chat.chatId].join(' ').toLowerCase().includes(q)) && (!statusFilter||String(chat.status||'Open')===statusFilter);});
   if(!list.length){c.innerHTML='<div class="customer-chat-empty">'+(q?'No matching customer conversations.':'No customer conversations yet. When a customer chats with McKenzie Customer Service, the conversation will appear here.')+'</div>';return;}
   c.innerHTML=list.map(renderAdminChat_).join('');
 }
 function renderAdminChat_(chat){
   const msgs=Array.isArray(chat.messages)?chat.messages:[];
   const messages=msgs.map(function(m){
-    const type=m.senderType==='customer'?'customer':(m.senderType==='ai'?'ai':'admin');
-    const who=m.senderType==='customer'?(chat.customerName||'Customer'):(m.senderType==='ai'?'McKenzie AI':'McKenzie Admin');
+    const type=m.senderType==='customer'?'customer':(m.senderType==='ai'?'ai':(m.senderType==='system'?'ai':'admin'));
+    const who=m.senderType==='customer'?(chat.customerName||'Customer'):(m.senderType==='ai'?'McKenzie AI':(m.senderType==='system'?'System':'McKenzie Customer Service'));
     return '<div class="customer-chat-msg '+type+'"><b>'+esc(who)+'</b><br>'+esc(m.text||'')+'<div style="font-size:9px;opacity:.65;margin-top:3px">'+esc(m.createdAt?new Date(m.createdAt).toLocaleString():'')+'</div></div>';
   }).join('');
   const safeId=escAttr(chat.chatId);
-  return '<article class="customer-chat-card"><div class="customer-chat-head"><div><div class="customer-chat-name">'+esc(chat.customerName||'Customer')+'</div><div class="customer-chat-meta">'+esc(chat.customerEmail||'')+(chat.orderId?' · Order #'+esc(chat.orderId):'')+'</div></div><span class="customer-chat-status '+(chat.unreadForAdmin?'new':'')+'">'+(chat.unreadForAdmin?'NEW':'OPEN')+'</span></div><div class="customer-chat-messages">'+(messages||'<div style="color:#806c65;font-size:12px;padding:20px">No messages yet.</div>')+'</div><div class="customer-chat-compose"><textarea id="adminChatInput_'+safeId+'" placeholder="Reply to customer…"></textarea><button type="button" data-chat-id="'+safeId+'" onclick="adminSendChat(this.dataset.chatId)">Send</button></div></article>';
+  const status=String(chat.status||'Open');
+  const statusClass=status.toLowerCase();
+  const solvedAt=chat.solvedAt?new Date(chat.solvedAt):null;
+  const solvedAge=solvedAt&&!isNaN(solvedAt.getTime())?Math.max(0,Date.now()-solvedAt.getTime()):0;
+  if(status==='Solved' && solvedAge>=24*60*60*1000){ setTimeout(function(){autoCloseSolvedChat_(chat.chatId,chat);},0); }
+  const replyDisabled=status==='Closed'?'disabled':'';
+  return '<article class="customer-chat-card" data-status="'+escAttr(status)+'"><div class="customer-chat-head"><div><div class="customer-chat-name">'+esc(chat.customerName||'Customer')+'</div><div class="customer-chat-meta">'+esc(chat.customerEmail||'')+(chat.orderId?' · Order #'+esc(chat.orderId):'')+'</div></div><div class="customer-chat-status-actions"><span class="customer-chat-status '+(chat.unreadForAdmin?'new':'')+'">'+esc(status.toUpperCase())+'</span><button type="button" '+(status==='Open'?'class="active"':'')+' onclick="setCustomerChatStatus_(\''+safeId+'\',\'Open\')">Open</button><button type="button" '+(status==='Pending'?'class="active"':'')+' onclick="setCustomerChatStatus_(\''+safeId+'\',\'Pending\')">Pending</button><button type="button" '+(status==='Solved'?'class="active"':'')+' onclick="setCustomerChatStatus_(\''+safeId+'\',\'Solved\')">Solve</button><button type="button" class="close-ticket" '+(status==='Closed'?'disabled':'')+' onclick="closeCustomerChat_(\''+safeId+'\')">Close</button></div></div><div class="customer-chat-messages">'+(messages||'<div style="color:#806c65;font-size:12px;padding:20px">No messages yet.</div>')+'</div><div class="customer-chat-compose"><textarea id="adminChatInput_'+safeId+'" placeholder="Reply to customer…" '+replyDisabled+'></textarea><button type="button" data-chat-id="'+safeId+'" '+replyDisabled+' onclick="adminSendChat(this.dataset.chatId)">Send</button></div></article>';
 }
 
 async function adminSendChat(chatId){
   const input=document.getElementById('adminChatInput_'+String(chatId));if(!input)return;const text=String(input.value||'').trim();if(!text)return;input.disabled=true;
-  try{const f=await adminFirebase_();if(!f.auth.currentUser)throw new Error('Please log in again.');const ref=f.doc(f.db,'supportChats',String(chatId));const snap=await f.getDoc(ref);if(!snap.exists())throw new Error('Chat not found.');const d=snap.data()||{};const messages=Array.isArray(d.messages)?d.messages.slice():[];messages.push({senderType:'admin',text:text,createdAt:new Date().toISOString()});await f.updateDoc(ref,{messages:messages,updatedAt:new Date().toISOString(),unreadForAdmin:false,unreadForCustomer:true});input.value='';await loadCustomerChats();}catch(e){alert(e&&e.message?e.message:'Unable to send message.');}finally{input.disabled=false;}
+  try{const f=await adminFirebase_();if(!f.auth.currentUser)throw new Error('Please log in again.');const ref=f.doc(f.db,'supportChats',String(chatId));const snap=await f.getDoc(ref);if(!snap.exists())throw new Error('Chat not found.');const d=snap.data()||{};if(String(d.status||'Open')==='Closed')throw new Error('This conversation is closed.');const messages=Array.isArray(d.messages)?d.messages.slice():[];messages.push({senderType:'admin',text:text,createdAt:new Date().toISOString()});await f.updateDoc(ref,{messages:messages,updatedAt:new Date().toISOString(),status:'Open',unreadForAdmin:false,unreadForCustomer:true});input.value='';}catch(e){alert(e&&e.message?e.message:'Unable to send message.');}finally{input.disabled=false;}
 }
+
+async function setCustomerChatStatus_(chatId,status){
+  try{const f=await adminFirebase_();if(!f.auth.currentUser)throw new Error('Please log in again.');const ref=f.doc(f.db,'supportChats',String(chatId));const snap=await f.getDoc(ref);if(!snap.exists())throw new Error('Chat not found.');const d=snap.data()||{};const now=new Date().toISOString();const patch={status:String(status),updatedAt:now,unreadForAdmin:false};
+    if(status==='Solved'){patch.solvedAt=now;patch.closedAt='';}
+    if(status==='Open'){patch.solvedAt='';patch.closedAt='';}
+    if(status==='Pending'){patch.closedAt='';}
+    await f.updateDoc(ref,patch);
+    if(status==='Solved') scheduleChatAutoClose_(chatId,24*60*60*1000);
+    await loadCustomerChats();
+  }catch(e){alert(e&&e.message?e.message:'Unable to update chat status.');}
+}
+
+function scheduleChatAutoClose_(chatId,delay){setTimeout(function(){autoCloseSolvedChat_(chatId);},Math.max(0,delay||24*60*60*1000));}
+async function autoCloseSolvedChat_(chatId,chatData){
+  try{const f=await adminFirebase_();if(!f.auth.currentUser)return;const ref=f.doc(f.db,'supportChats',String(chatId));const snap=await f.getDoc(ref);if(!snap.exists())return;const d=snap.data()||{};if(String(d.status||'Open')!=='Solved')return;const solvedAt=new Date(d.solvedAt||0).getTime();if(!solvedAt)return;if(Date.now()-solvedAt<24*60*60*1000){scheduleChatAutoClose_(chatId,24*60*60*1000-(Date.now()-solvedAt));return;}const now=new Date().toISOString();await f.updateDoc(ref,{status:'Closed',closedAt:now,updatedAt:now,unreadForAdmin:false});
+    await sendClosedChatNotification_(d,chatId);
+    await loadCustomerChats();
+  }catch(e){console.warn('Auto-close chat:',e);}
+}
+async function closeCustomerChat_(chatId){
+  if(!confirm('Close this customer support ticket?'))return;
+  try{const f=await adminFirebase_();if(!f.auth.currentUser)throw new Error('Please log in again.');const ref=f.doc(f.db,'supportChats',String(chatId));const snap=await f.getDoc(ref);if(!snap.exists())throw new Error('Chat not found.');const d=snap.data()||{};const now=new Date().toISOString();await f.updateDoc(ref,{status:'Closed',closedAt:now,updatedAt:now,unreadForAdmin:false});await sendClosedChatNotification_(d,chatId);await loadCustomerChats();}catch(e){alert(e&&e.message?e.message:'Unable to close ticket.');}
+}
+async function sendClosedChatNotification_(chat,chatId){
+  try{const f=await adminFirebase_();const uid=String(chat.userId||'');if(!uid)return;const finalText='Thank you for choosing Mckenzie Ramen. Have a great day.';const ref=f.doc(f.db,'supportChats',String(chatId));const snap=await f.getDoc(ref);if(snap.exists()){const d=snap.data()||{};const messages=Array.isArray(d.messages)?d.messages.slice():[];const already=messages.some(function(m){return m&&m.senderType==='system'&&String(m.text||'')===finalText;});if(!already){messages.push({senderType:'system',text:finalText,createdAt:new Date().toISOString()});await f.updateDoc(ref,{messages:messages,updatedAt:new Date().toISOString()});}}const nid='CHAT-CLOSED-'+String(chatId)+'-'+Date.now();await f.setDoc(f.doc(f.db,'notifications',nid),{notificationId:nid,userId:uid,type:'CHAT_CLOSED',chatId:String(chatId),orderId:String(chat.orderId||''),title:'Customer Service',message:finalText,email:String(chat.customerEmail||''),createdAt:new Date().toISOString(),readAt:''});}catch(e){console.warn('Closed chat customer notification:',e);}
+}
+
+let customerChatAutoCloseTimer_=null;
+function startCustomerChatAutoCloseTimer_(){
+  if(customerChatAutoCloseTimer_)return;
+  customerChatAutoCloseTimer_=setInterval(function(){
+    (customerChatsData||[]).forEach(function(chat){
+      if(String(chat.status||'Open')==='Solved' && chat.solvedAt){
+        var age=Date.now()-new Date(chat.solvedAt).getTime();
+        if(age>=24*60*60*1000) autoCloseSolvedChat_(chat.chatId,chat);
+      }
+    });
+  },60000);
+}
+startCustomerChatAutoCloseTimer_();
 
 function showSection(section){const productsPanel=document.querySelector('.main > .panel:not(#ordersSection):not(#reviewsSection):not(#settingsSection):not(#customersSection)'),productsStats=document.querySelector('.main > .stats'),productsTop=document.querySelector('.main > .top'),ordersSection=document.getElementById('ordersSection'),customersSection=document.getElementById('customersSection'),reviewsSection=document.getElementById('reviewsSection'),settingsSection=document.getElementById('settingsSection'),navProducts=document.getElementById('navProducts'),navOrders=document.getElementById('navOrders'),navCustomers=document.getElementById('navCustomers'),navReviews=document.getElementById('navReviews'),navSettings=document.getElementById('navSettings');const isOrders=section==='orders',isCustomers=section==='customers',isReviews=section==='reviews',isSettings=section==='settings';if(productsPanel)productsPanel.style.display=(isOrders||isCustomers||isReviews||isSettings)?'none':'';if(productsStats)productsStats.style.display=(isOrders||isCustomers||isReviews||isSettings)?'none':'';if(productsTop)productsTop.style.display=(isOrders||isCustomers||isReviews||isSettings)?'none':'';if(ordersSection)ordersSection.style.display=isOrders?'block':'none';if(customersSection)customersSection.style.display=isCustomers?'block':'none';if(reviewsSection)reviewsSection.style.display=isReviews?'block':'none';if(settingsSection)settingsSection.style.display=isSettings?'block':'none';if(navProducts)navProducts.classList.toggle('active',!isOrders&&!isCustomers&&!isReviews&&!isSettings);if(navOrders)navOrders.classList.toggle('active',isOrders);if(navCustomers)navCustomers.classList.toggle('active',isCustomers);if(navReviews)navReviews.classList.toggle('active',isReviews);if(navSettings)navSettings.classList.toggle('active',isSettings);if(isOrders)loadOrders();if(isCustomers)loadCustomerChats();if(isReviews)loadReviews();if(isSettings)loadBrandAssets();}
 
