@@ -3047,6 +3047,17 @@ body.quick-loading {
 }
 </style>
 
+<style id="mckenzie-final-mobile-controls-and-close">
+@media(max-width:700px){
+  #mobileSiteNavButton{display:flex !important;visibility:visible !important;opacity:1 !important;position:fixed !important;right:7px !important;top:10px !important;width:42px !important;height:42px !important;z-index:10000020 !important;align-items:center !important;justify-content:center !important;flex-direction:column !important;gap:4px !important;}
+  #mobileSiteNavButton span{display:block !important;width:18px !important;height:2px !important;}
+  .site-sticky-nav{padding-right:60px !important;}
+}
+/* Every scrollable modal keeps its close control visible at the top-right. */
+.login-close,.create-account-close,.cart-close,.account-subclose,.address-close,.password-close,.verification-close,#mckSurveyClose,#mckCustomerChatClose{position:sticky !important;top:8px !important;margin-left:auto !important;z-index:10000030 !important;flex:0 0 auto !important;}
+.login-modal-card,.create-account-card,.cart-modal-card,.account-subcard,.address-card,#mckSurveyBox,#mckCustomerChatBox{position:relative !important;}
+#mckCustomerChatHead,#mckSurveyHead{position:sticky !important;top:0 !important;z-index:10000025 !important;}
+</style>
 <style id="mobile-popup-close-fix">
 @media (max-width:700px){
   .login-close,
@@ -8789,7 +8800,7 @@ function showThankYouThenSurvey_(orderId){
       📞 09123456789<br>
       📧 Mckenzieramenhouse@gmail.com<br>
       📘 Facebook: Mckenzie Ramen House<br>
-      <button id="mckReceiptChatBtn" type="button" style="margin-top:12px;width:100%;padding:11px 14px;border:0;border-radius:11px;background:#a51620;color:#fff;font-weight:900;cursor:pointer">💬 Chat with McKenzie Customer Service</button>
+      <button id="mckReceiptChatBtn" type="button" style="margin-top:12px;width:100%;padding:11px 14px;border:0;border-radius:11px;background:#a51620;color:#fff;font-weight:900;cursor:pointer">💬 Chat with an Agent</button>
     </div>
   </div>
 </div>
@@ -8858,7 +8869,9 @@ function showThankYouThenSurvey_(orderId){
   function open(n){
     if(!n||busy)return;
     var orderId=String(n.orderId||'');
-    if(!orderId||wasShown(orderId))return;
+    if(!orderId)return;
+    var activeModal=document.getElementById('mckReceiptModal');
+    if(activeModal&&activeModal.classList.contains('show'))return;
     shown[orderId]=true;
     var modal=document.getElementById('mckReceiptModal');if(!modal)return;
     modal.dataset.orderId=orderId;modal.dataset.notificationId=String(n.notificationId||'');
@@ -9008,10 +9021,17 @@ document.addEventListener('click',function(e){
       var d=ds.data()||{};
       if(String(d.chatId||ds.id)===id || String(d.orderId||'')===wantedOrder) existingDoc=ds;
     });
-    if(existingDoc) chatId=existingDoc.id;
+    if(existingDoc) {
+      chatId=existingDoc.id;
+      var existingData=existingDoc.data()||{};
+      if(!Array.isArray(existingData.messages)||existingData.messages.length===0){
+        var greetNow=new Date().toISOString();
+        await f.updateDoc(f.doc(f.db,'supportChats',chatId),{messages:[{senderType:'ai',text:'Hi! I’m McKenzie Customer Service. Let me know with regard to this concern, and I’ll help you get the right assistance.',createdAt:greetNow}],aiReplied:false,updatedAt:greetNow,status:String(existingData.status||'Open')});
+      }
+    }
     else {
       var now=new Date().toISOString();
-      await f.setDoc(f.doc(f.db,'supportChats',id),{chatId:id,userId:uid,customerName:String(saved.fullName||saved.name||authUser.displayName||'Customer'),customerEmail:String(authUser.email||saved.email||''),orderId:wantedOrder,messages:[{senderType:'ai',text:'Hi! I’m McKenzie Customer Service. Let me know with regard to this concern, and I’ll help you get the right assistance.',createdAt:now}],status:'Open',aiReplied:true,createdAt:now,updatedAt:now,unreadForAdmin:false,unreadForCustomer:false});
+      await f.setDoc(f.doc(f.db,'supportChats',id),{chatId:id,userId:uid,customerName:String(saved.fullName||saved.name||authUser.displayName||'Customer'),customerEmail:String(authUser.email||saved.email||''),orderId:wantedOrder,messages:[{senderType:'ai',text:'Hi! I’m McKenzie Customer Service. Let me know with regard to this concern, and I’ll help you get the right assistance.',createdAt:now}],status:'Open',aiReplied:false,createdAt:now,updatedAt:now,unreadForAdmin:false,unreadForCustomer:false});
     }
     var ref=f.doc(f.db,'supportChats',chatId);
     // Existing chats created by an older version may have no automated opening message.
@@ -9030,13 +9050,13 @@ document.addEventListener('click',function(e){
     } catch(openingError) { console.warn('Customer chat opening message:', openingError); }
     if(chatUnsub)try{chatUnsub();}catch(e){}
     if(typeof f.onSnapshot==='function'){
-      chatUnsub=f.onSnapshot(ref,function(ds){if(ds.exists()){var d=ds.data()||{};chatFormat(Array.isArray(d.messages)?d.messages:[]);}},function(err){
+      chatUnsub=f.onSnapshot(ref,function(ds){if(ds.exists()){var d=ds.data()||{};chatFormat(Array.isArray(d.messages)?d.messages:[]);var closed=String(d.status||'Open')==='Closed';var ci=document.getElementById('mckCustomerChatInput'),cs=document.getElementById('mckCustomerChatSend');if(ci)ci.disabled=closed;if(cs)cs.disabled=closed;if(ci)ci.placeholder=closed?'This conversation is closed.':'Type your concern…';}},function(err){
         var c=document.getElementById('mckCustomerChatMessages');
         if(c)c.innerHTML='<div style="text-align:center;color:#a51620;font-size:12px;padding:35px">Unable to load chat: '+chatEsc(err&&err.message?err.message:'Missing or insufficient permissions.')+'</div>';
       });
     }else{var fresh=await f.getDoc(ref);chatFormat(fresh.exists()?(fresh.data().messages||[]):[]);}
   }
-  async function sendChat_(){if(chatSending)return;var input=document.getElementById('mckCustomerChatInput'),btn=document.getElementById('mckCustomerChatSend'),text=String(input&&input.value||'').trim();if(!text)return;var u=chatUser();if(!u.userId||!chatId)return;chatSending=true;if(input)input.disabled=true;if(btn)btn.disabled=true;try{var f=await chatFirebase(),ref=f.doc(f.db,'supportChats',chatId),snap=await f.getDoc(ref);if(!snap.exists())throw new Error('Chat could not be opened.');var d=snap.data()||{};if(String(d.status||'Open')==='Solved')throw new Error('This conversation has been solved. Please open a new support chat if you need further assistance.');var messages=Array.isArray(d.messages)?d.messages.slice():[],now=new Date().toISOString();var customerCount=messages.filter(function(m){return m&&m.senderType==='customer';}).length;messages.push({senderType:'customer',text:text,createdAt:now});var aiReplied=!!d.aiReplied;if(customerCount===0&&!aiReplied){messages.push({senderType:'ai',text:'Thanks for letting us know. Let me know with regard to this concern, and our customer service team will assist you.',createdAt:new Date().toISOString()});aiReplied=true;}await f.updateDoc(ref,{messages:messages,updatedAt:new Date().toISOString(),status:'Open',aiReplied:aiReplied,unreadForAdmin:true,unreadForCustomer:false});if(input)input.value='';}catch(e){alert(e&&e.message?e.message:'Unable to send your message.');}finally{chatSending=false;if(input)input.disabled=false;if(btn)btn.disabled=false;if(input)input.focus();}}
+  async function sendChat_(){if(chatSending)return;var input=document.getElementById('mckCustomerChatInput'),btn=document.getElementById('mckCustomerChatSend'),text=String(input&&input.value||'').trim();if(!text)return;var u=chatUser();if(!u.userId||!chatId)return;chatSending=true;if(input)input.disabled=true;if(btn)btn.disabled=true;try{var f=await chatFirebase(),ref=f.doc(f.db,'supportChats',chatId),snap=await f.getDoc(ref);if(!snap.exists())throw new Error('Chat could not be opened.');var d=snap.data()||{};if(String(d.status||'Open')==='Closed')throw new Error('This conversation is closed. Please open a new support chat if you need further assistance.');var messages=Array.isArray(d.messages)?d.messages.slice():[],now=new Date().toISOString();var customerCount=messages.filter(function(m){return m&&m.senderType==='customer';}).length;messages.push({senderType:'customer',text:text,createdAt:now});var secondAuto='Thanks for letting us know. Let me know with regard to this concern, and our customer service team will assist you.';var alreadyAutoReplied=messages.some(function(m){return m&&m.senderType==='ai'&&String(m.text||'')===secondAuto;});var aiReplied=!!d.aiReplied;if(customerCount===0&&!alreadyAutoReplied){messages.push({senderType:'ai',text:secondAuto,createdAt:new Date().toISOString()});aiReplied=true;}await f.updateDoc(ref,{messages:messages,updatedAt:new Date().toISOString(),status:'Open',aiReplied:aiReplied,unreadForAdmin:true,unreadForCustomer:false});if(input)input.value='';}catch(e){alert(e&&e.message?e.message:'Unable to send your message.');}finally{chatSending=false;if(input)input.disabled=false;if(btn)btn.disabled=false;if(input)input.focus();}}
   window.openCustomerSupportChat_=async function(orderId){var m=document.getElementById('mckCustomerChatModal');if(!m)return;m.classList.add('show');document.body.style.overflow='hidden';document.getElementById('mckCustomerChatOrder').textContent=orderId?'Order #'+orderId:'McKenzie Customer Service';document.getElementById('mckCustomerChatMessages').innerHTML='<div style="text-align:center;color:#806c65;font-size:12px;padding:35px">Opening chat…</div>';try{await ensureChat_(orderId);}catch(e){document.getElementById('mckCustomerChatMessages').innerHTML='<div style="text-align:center;color:#a51620;font-size:12px;padding:35px">'+chatEsc(e&&e.message?e.message:'Unable to open chat.')+'</div>';}};
   function closeChat_(){var m=document.getElementById('mckCustomerChatModal');if(m)m.classList.remove('show');document.body.style.overflow='';if(chatUnsub){try{chatUnsub();}catch(e){}chatUnsub=null;}}
   document.addEventListener('DOMContentLoaded',function(){var b=document.getElementById('mckCustomerChatSend'),x=document.getElementById('mckCustomerChatClose');if(b)b.onclick=sendChat_;if(x)x.onclick=closeChat_;var i=document.getElementById('mckCustomerChatInput');if(i)i.addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendChat_();}});});
@@ -9044,6 +9064,17 @@ document.addEventListener('click',function(e){
 </script>
 
 
+<style id="mckenzie-mobile-hamburger-and-sticky-close-final">
+/* Mobile hamburger must remain visible and independently open the site nav. */
+@media(max-width:700px){
+  #mobileSiteNavButton{display:flex !important;position:fixed !important;right:7px !important;top:10px !important;width:42px !important;height:42px !important;z-index:10000020 !important;align-items:center !important;justify-content:center !important;flex-direction:column !important;gap:4px !important;}
+  #mobileSiteNavButton span{display:block !important;width:18px !important;height:2px !important;}
+  .site-sticky-nav{padding-right:60px !important;}
+}
+/* Keep modal close controls pinned while the modal content scrolls. */
+.login-close,.create-account-close,.cart-close,.account-subclose,.address-close,.password-close,.verification-close,#mckSurveyClose,#mckCustomerChatClose{position:sticky !important;top:10px !important;margin-left:auto !important;z-index:10000030 !important;}
+#mckCustomerChatHead,#mckSurveyHead{position:sticky !important;top:0 !important;z-index:10000025 !important;}
+</style>
 <style id="mckenzie-modal-close-and-mobile-control-fix">
 .account-subcard,.address-card,#mckSurveyBox,#mckCustomerChatBox{position:relative;}
 .account-subcard .account-subclose,.address-card .address-close,#mckSurveyClose,#mckCustomerChatClose{position:absolute !important;top:12px !important;right:14px !important;z-index:30 !important;}
@@ -9061,6 +9092,33 @@ document.addEventListener('click',function(e){
 <div id="mckCustomerChatLiveNotice" role="status" aria-live="polite"><b>💬 McKenzie Customer Service</b><span id="mckCustomerChatLiveNoticeText">You have a new message.</span></div>
 <script id="mckenzie-customer-chat-live-inbox">
 (function(){var unsub=null,known={},first=true,timer=null;function notice(text,orderId){var n=document.getElementById('mckCustomerChatLiveNotice'),t=document.getElementById('mckCustomerChatLiveNoticeText');if(!n||!t)return;t.textContent=text||'You have a new message from customer service.';n.classList.add('show');clearTimeout(timer);timer=setTimeout(function(){n.classList.remove('show');},8000);n.onclick=function(){n.classList.remove('show');if(window.openCustomerSupportChat_)window.openCustomerSupportChat_(orderId||'');};}function start(){if(!window.MckenzieFirebaseReady){setTimeout(start,700);return;}Promise.resolve(window.MckenzieFirebaseReady).then(function(f){if(!f.auth||typeof f.onAuthStateChanged!=='function'||typeof f.onSnapshot!=='function')return;f.onAuthStateChanged(f.auth,function(u){if(unsub)try{unsub();}catch(e){}unsub=null;known={};first=true;if(!u)return;var q=f.query(f.collection(f.db,'supportChats'),f.where('userId','==',String(u.uid)));unsub=f.onSnapshot(q,function(snap){snap.docChanges().forEach(function(ch){var d=ch.doc.data()||{},m=Array.isArray(d.messages)?d.messages:[],last=m.length?m[m.length-1]:null,key=ch.doc.id,sig=String(d.updatedAt||'')+'|'+String(last&&last.createdAt||'')+'|'+String(last&&last.text||'');if(!first&&ch.type==='modified'&&last&&last.senderType==='admin'&&known[key]!==sig)notice(last.text||'You have a new message from customer service.',d.orderId||'');known[key]=sig;});first=false;},function(e){console.warn('Customer chat inbox listener:',e);});});}).catch(function(e){console.warn('Customer chat inbox startup:',e);});}document.addEventListener('DOMContentLoaded',start);})();
+</script>
+<script id="mckenzie-chat-closed-live-inbox">
+(function(){
+  var unsub=null,seen={};
+  function toast(text){
+    var n=document.getElementById('mckCustomerChatLiveNotice'),t=document.getElementById('mckCustomerChatLiveNoticeText');
+    if(!n||!t)return;t.textContent=text||'Thank you for choosing Mckenzie Ramen. Have a great day.';n.classList.add('show');
+    clearTimeout(n._closeTimer);n._closeTimer=setTimeout(function(){n.classList.remove('show');},9000);
+  }
+  function start(){
+    if(!window.MckenzieFirebaseReady){setTimeout(start,700);return;}
+    Promise.resolve(window.MckenzieFirebaseReady).then(function(f){
+      if(!f.auth||typeof f.onAuthStateChanged!=='function'||typeof f.onSnapshot!=='function')return;
+      f.onAuthStateChanged(f.auth,function(u){
+        if(unsub)try{unsub();}catch(e){}unsub=null;seen={};if(!u)return;
+        var q=f.query(f.collection(f.db,'notifications'),f.where('userId','==',String(u.uid)));
+        unsub=f.onSnapshot(q,function(snap){snap.docChanges().forEach(function(ch){
+          if(ch.type!=='added'&&ch.type!=='modified')return;var d=ch.doc.data()||{};
+          if(String(d.type||'')!=='CHAT_CLOSED'||d.readAt) return;
+          var key=ch.doc.id,sig=String(d.createdAt||'')+'|'+String(d.message||'');
+          if(seen[key]===sig)return;seen[key]=sig;toast(d.message||'Thank you for choosing Mckenzie Ramen. Have a great day.');
+        });},function(e){console.warn('Closed chat notification listener:',e);});
+      });
+    }).catch(function(e){console.warn('Closed chat notification startup:',e);});
+  }
+  document.addEventListener('DOMContentLoaded',start);
+})();
 </script>
 </body>
 </html>
