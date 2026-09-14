@@ -2851,6 +2851,65 @@ body.quick-loading {
   }
 }
 </style>
+
+<style id="mobile-scroll-nav-fix-2026-09-14">
+/* MOBILE SCROLL HEADER FIX — keep logo + Home/Menu/About/Contact visible after scroll. */
+@media (max-width:700px){
+  body.mobile-top-scrolled .site-sticky-nav{
+    visibility:visible !important;
+    display:flex !important;
+    left:0 !important;
+    right:0 !important;
+    top:0 !important;
+    width:100% !important;
+    height:58px !important;
+    min-height:58px !important;
+    box-sizing:border-box !important;
+    padding:7px 92px 7px 48px !important;
+    border-radius:0 !important;
+    transform:translateY(0) !important;
+    opacity:1 !important;
+    pointer-events:auto !important;
+    justify-content:center !important;
+    overflow:hidden !important;
+  }
+  body.mobile-top-scrolled .site-sticky-nav-inner{
+    display:flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+    gap:clamp(5px,2vw,12px) !important;
+    width:100% !important;
+    max-width:none !important;
+    min-width:0 !important;
+    margin:0 !important;
+  }
+  body.mobile-top-scrolled .site-sticky-nav a{
+    flex:0 0 auto !important;
+    padding:8px 1px !important;
+    font-size:clamp(7px,2.2vw,9px) !important;
+    letter-spacing:clamp(.15px,.18vw,.55px) !important;
+    white-space:nowrap !important;
+  }
+  body.mobile-top-scrolled .site-sticky-logo{
+    display:block !important;
+    visibility:visible !important;
+    left:7px !important;
+    top:7px !important;
+    width:42px !important;
+    height:42px !important;
+    z-index:1000002 !important;
+  }
+}
+@media (max-width:360px){
+  body.mobile-top-scrolled .site-sticky-nav{
+    padding-left:45px !important;
+    padding-right:88px !important;
+  }
+  body.mobile-top-scrolled .site-sticky-nav-inner{gap:4px !important}
+  body.mobile-top-scrolled .site-sticky-nav a{font-size:7px !important;letter-spacing:.1px !important}
+}
+</style>
+
 </head>
 
 
@@ -2878,7 +2937,7 @@ body.quick-loading {
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind,{once:true});else bind();
 })();
-</script>\n
+</script>
 
 <!-- =======================================================
      QUICK FULL-SCREEN RAMEN LOADER
