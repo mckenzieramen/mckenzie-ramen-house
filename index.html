@@ -3392,12 +3392,14 @@ body.quick-loading {
     <div id="accountGuestMessage" class="account-menu-guest">
       Please log in to access your account features.
       <button type="button" class="account-menu-login" onclick="accountMenuLogin_()">Log In</button>
+      <button type="button" class="account-menu-item" style="margin-top:8px;width:100%;" onclick="openCustomerSupportFromMenu_()"><span class="menu-symbol">💬</span> Customer Support</button>
     </div>
     <div id="accountLoggedInItems" style="display:none;">
       <button type="button" class="account-menu-item" onclick="openEditProfile_()"><span class="menu-symbol">👤</span> Edit Profile</button>
       <button type="button" class="account-menu-item" onclick="openOrderHistory_()"><span class="menu-symbol">📋</span> Order History</button>
       <button type="button" class="account-menu-item" onclick="openPaymentHistory_()"><span class="menu-symbol">💳</span> Payment History</button>
       <button type="button" class="account-menu-item" onclick="openCoupons_()"><span class="menu-symbol">🎟️</span> Coupons</button>
+      <button type="button" class="account-menu-item" onclick="openCustomerSupportFromMenu_()"><span class="menu-symbol">💬</span> Customer Support</button>
       <button type="button" class="account-menu-item logout" onclick="logoutUser_()"><span class="menu-symbol">↪</span> Log Out</button>
     </div>
   </div>
@@ -3777,7 +3779,7 @@ body.quick-loading {
 ======================================================= -->
 
 <!-- STICKY TOP NAVIGATION: appears after scrolling -->
-<button type="button" id="mobileSiteNavButton" class="mobile-site-nav-button" aria-label="Open site navigation" aria-expanded="false" onclick="toggleAccountMenu_(event)"><span></span><span></span><span></span></button>
+<button type="button" id="mobileSiteNavButton" class="mobile-site-nav-button" aria-label="Open site navigation" aria-expanded="false" onclick="toggleMobileSiteNav_(event)"><span></span><span></span><span></span></button>
 <div id="mobileSiteNavBackdrop" class="mobile-site-nav-backdrop" onclick="closeMobileSiteNav_()"></div>
 <div id="siteStickyNav" class="site-sticky-nav" aria-label="Site navigation">
   <img id="siteStickyLogo"
@@ -5788,6 +5790,17 @@ function toggleAccountMenu_(event) {
 function closeAccountMenu_() {
   const dropdown = document.getElementById("accountDropdown");
   if (dropdown) dropdown.classList.remove("show");
+}
+
+function openCustomerSupportFromMenu_() {
+  closeAccountMenu_();
+  if (!isLoggedIn_()) {
+    accountMenuLogin_();
+    return;
+  }
+  if (typeof window.openCustomerSupportChat_ === "function") {
+    window.openCustomerSupportChat_("");
+  }
 }
 
 function updateAccountMenu_() {
@@ -8998,9 +9011,23 @@ document.addEventListener('click',function(e){
     if(existingDoc) chatId=existingDoc.id;
     else {
       var now=new Date().toISOString();
-      await f.setDoc(f.doc(f.db,'supportChats',id),{chatId:id,userId:uid,customerName:String(saved.fullName||saved.name||authUser.displayName||'Customer'),customerEmail:String(authUser.email||saved.email||''),orderId:wantedOrder,messages:[],status:'Open',aiReplied:false,createdAt:now,updatedAt:now,unreadForAdmin:false,unreadForCustomer:false});
+      await f.setDoc(f.doc(f.db,'supportChats',id),{chatId:id,userId:uid,customerName:String(saved.fullName||saved.name||authUser.displayName||'Customer'),customerEmail:String(authUser.email||saved.email||''),orderId:wantedOrder,messages:[{senderType:'ai',text:'Hi! I’m McKenzie Customer Service. Let me know with regard to this concern, and I’ll help you get the right assistance.',createdAt:now}],status:'Open',aiReplied:true,createdAt:now,updatedAt:now,unreadForAdmin:false,unreadForCustomer:false});
     }
     var ref=f.doc(f.db,'supportChats',chatId);
+    // Existing chats created by an older version may have no automated opening message.
+    // Add the exact opening message once, without creating repeated automated replies.
+    try {
+      var currentChat=await f.getDoc(ref);
+      if(currentChat.exists()){
+        var currentData=currentChat.data()||{};
+        var currentMessages=Array.isArray(currentData.messages)?currentData.messages.slice():[];
+        if(currentMessages.length===0 && String(currentData.status||'Open')!=='Solved'){
+          var openingNow=new Date().toISOString();
+          currentMessages.push({senderType:'ai',text:'Hi! I’m McKenzie Customer Service. Let me know with regard to this concern, and I’ll help you get the right assistance.',createdAt:openingNow});
+          await f.updateDoc(ref,{messages:currentMessages,aiReplied:true,updatedAt:openingNow});
+        }
+      }
+    } catch(openingError) { console.warn('Customer chat opening message:', openingError); }
     if(chatUnsub)try{chatUnsub();}catch(e){}
     if(typeof f.onSnapshot==='function'){
       chatUnsub=f.onSnapshot(ref,function(ds){if(ds.exists()){var d=ds.data()||{};chatFormat(Array.isArray(d.messages)?d.messages:[]);}},function(err){
