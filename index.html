@@ -6495,8 +6495,12 @@ function saveFirstCheckoutAddressIfNeeded_() {
   payload.label = "Home";
 
   return customerFirebaseWithTimeout_(async function(f) {
-    const uid = String(f.auth.currentUser && f.auth.currentUser.uid || userId);
-    if (uid !== String(userId)) throw new Error("Please log in again.");
+    // Firebase Auth can still be restoring when checkout is submitted.
+    // Do not query/write the addresses collection until the real Auth user
+    // is available; otherwise Firestore correctly returns a permissions error.
+    const authUser = await customerWaitForAuthUser_(f, userId);
+    const uid = String(authUser.uid || "").trim();
+    if (!uid || uid !== String(userId)) throw new Error("Please log in again.");
 
     const required = [
       payload.region, payload.province, payload.city,
