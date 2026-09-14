@@ -196,6 +196,8 @@
 .checkout-payment-option { display:flex; align-items:center; gap:9px; padding:11px 12px; border:1px solid #e6c5b7; border-radius:10px; background:#fff; cursor:pointer; font-size:13px; font-weight:800; color:#3a0709; }
 .checkout-payment-option input { accent-color:#a51620; }
 .checkout-payment-option:has(input:checked) { border-color:#a51620; box-shadow:0 0 0 2px rgba(165,22,32,.08); }
+.checkout-payment-details{margin-top:10px;padding:10px 12px;border:1px dashed #e6c5b7;border-radius:10px;background:#fff;display:none;color:#5b4038;font-size:11px;line-height:1.5}.checkout-payment-details.show{display:block}.checkout-payment-details strong{color:#7b1520}.checkout-payment-qr{display:block;width:min(220px,100%);max-height:220px;object-fit:contain;margin:8px auto 2px;border:1px solid #ead4c9;border-radius:10px;background:#fff;padding:5px}.checkout-payment-unavailable{opacity:.58;cursor:not-allowed}.checkout-payment-option small{display:block;margin-left:25px;color:#9a7770;font-size:9px;font-weight:700}
+
 .checkout-loading {
   padding:14px;
   text-align:center;
@@ -3177,6 +3179,53 @@ body.quick-loading {
   .mobile-site-nav-button span{width:13px !important;}
 }
 </style>
+
+<style id="mckenzie-baseline-close-fix">
+/* Cart/checkout close controls stay pinned to the upper-right corner. */
+#cartModal .cart-card > .cart-close,
+#checkoutModal .checkout-card > .account-subclose {
+  position:sticky !important;
+  top:0 !important;
+  right:auto !important;
+  margin-left:auto !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  z-index:10000030 !important;
+  flex:0 0 36px !important;
+}
+#cartModal .cart-card, #checkoutModal .checkout-card {
+  display:flex !important;
+  flex-direction:column !important;
+}
+#cartModal .cart-card > .cart-kicker, #checkoutModal .checkout-card > .account-subkicker {
+  flex:0 0 auto !important;
+}
+#cartModal .cart-card > .cart-close { order:0; align-self:flex-end; margin-bottom:-36px !important; }
+#checkoutModal .checkout-card > .account-subclose { order:0; align-self:flex-end; margin-bottom:-36px !important; }
+#cartModal .cart-card > .cart-kicker { order:1; }
+#cartModal .cart-card > h2 { order:2; }
+#cartModal .cart-card > #cartItemsContainer { order:3; }
+#cartModal .cart-card > .cart-total-row { order:4; }
+#cartModal .cart-card > .cart-checkout { order:5; }
+#checkoutModal .checkout-card > .account-subkicker { order:1; }
+#checkoutModal .checkout-card > h2 { order:2; }
+#checkoutModal .checkout-card > .checkout-note,
+#checkoutModal .checkout-card > #checkoutLoading,
+#checkoutModal .checkout-card > #checkoutForm { order:3; }
+
+/* Customer account keeps its three-line profile control available on mobile. */
+@media(max-width:700px){
+  .account-menu-wrap{display:block !important;position:fixed !important;top:9px !important;right:7px !important;width:auto !important;height:auto !important;z-index:10000021 !important;}
+  .account-menu-button{display:flex !important;width:42px !important;height:42px !important;}
+  .account-icon-person{display:none !important;}
+  .account-icon-lines{display:flex !important;gap:4px !important;}
+  .account-icon-lines i{width:18px !important;height:2px !important;}
+  .account-dropdown{top:50px !important;right:0 !important;}
+  #mobileSiteNavButton{right:56px !important;}
+  .sticky-cart-button{right:106px !important;}
+}
+</style>
 </head>
 
 
@@ -3568,12 +3617,10 @@ body.quick-loading {
 
       <div class="checkout-payment">
         <div class="checkout-payment-title">Payment Method</div>
-        <div class="checkout-payment-options">
-          <label class="checkout-payment-option"><input type="radio" name="checkoutPaymentMethod" value="GCash"><span>GCash</span></label>
-          <label class="checkout-payment-option"><input type="radio" name="checkoutPaymentMethod" value="Maya"><span>Maya</span></label>
+        <div id="checkoutPaymentOptions" class="checkout-payment-options">
           <label class="checkout-payment-option"><input type="radio" name="checkoutPaymentMethod" value="Cash on Delivery"><span>Cash on Delivery</span></label>
-          <label class="checkout-payment-option"><input type="radio" name="checkoutPaymentMethod" value="QR BANK"><span>QR BANK</span></label>
         </div>
+        <div id="checkoutPaymentDetails" class="checkout-payment-details" aria-live="polite"></div>
       </div>
 
       <div id="checkoutMessage" class="profile-note" aria-live="polite"></div>
@@ -3749,10 +3796,10 @@ body.quick-loading {
   <div class="verification-card">
     <button type="button" class="verification-close" aria-label="Close email verification" onclick="closeEmailVerificationModal()">×</button>
     <div class="verification-kicker">MCKENZIE RAMEN HOUSE</div>
-    <h2 id="emailVerificationTitle">Verify Your Email</h2>
+    <h2 id="emailVerificationTitle">Verify Your Account</h2>
     <p>We sent a verification email to <span id="verificationEmail" class="verification-email"></span>. Please open the email and click the verification link.</p>
     <p id="verificationMessage" class="verification-message" aria-live="polite">Please check your inbox or spam folder.</p>
-    <button type="button" id="verificationSubmit" class="verification-submit" onclick="checkEmailVerificationNow_()">I’ve Verified My Email</button>
+    <button type="button" id="verificationSubmit" class="verification-submit" onclick="checkEmailVerificationNow_()">I’ll Verify My Email</button>
     <button type="button" id="verificationResend" class="verification-resend" onclick="resendVerificationEmail_()">Resend Verification Email</button>
     <button type="button" id="verificationChangeEmail" class="verification-change-email" onclick="showChangeVerificationEmail_()">Change Email</button>
     <button type="button" id="verificationProceedLogin" class="verification-proceed hidden" onclick="proceedToLoginFromVerification_()">Proceed to Login</button>
@@ -4490,7 +4537,7 @@ async function getMcKenzieCustomerAuthDirect_() {
 function isCustomerEmailVerified_() {
   try {
     const user = getSavedUser_() || {};
-    return user.emailVerified === true || String(user.status || "").toUpperCase() === "ACTIVE";
+    return user.emailVerified === true;
   } catch (e) {
     return false;
   }
@@ -4561,7 +4608,7 @@ function openEmailVerificationModal_(email) {
   if (!modal) return;
   if (emailEl) emailEl.textContent = email || "your email";
   if (message) { message.style.color = "#a51620"; message.textContent = "Please check your inbox or spam folder, then click the verification link."; }
-  if (submit) { submit.disabled=false; submit.style.display=""; submit.textContent="I’ve Verified My Email"; }
+  if (submit) { submit.disabled=false; submit.style.display=""; submit.textContent="I’ll Verify My Email"; }
   if (resend) { resend.disabled=false; resend.style.display=""; resend.textContent="Resend Verification Email"; }
   if (change) change.style.display="";
   if (proceed) proceed.classList.add("hidden");
@@ -4644,12 +4691,12 @@ async function checkEmailVerificationNow_() {
   try {
     const firebaseAuth = await mckenzieWithTimeout_(getMcKenzieCustomerAuthDirect_(), 12000, "Unable to load the verification service. Please try again.");
     const user = await waitForFirebaseCustomerAuthReady_(firebaseAuth);
-    if (!user) throw new Error("Your verification session is not ready yet. Please wait a moment and click “I’ve Verified My Email” again.");
+    if (!user) throw new Error("Your verification session is not ready yet. Please wait a moment and click “I’ll Verify My Email” again.");
 
     await mckenzieWithTimeout_(user.reload(), 12000, "The verification check took too long. Please wait a moment and try again.");
     const freshUser = firebaseAuth.auth.currentUser;
     if (!freshUser || !freshUser.emailVerified) {
-      if (message) message.textContent="Your email is not verified yet. Please click the verification link in the email first, then click “I’ve Verified My Email” again.";
+      if (message) message.textContent="Your email is not verified yet. Please click the verification link in the email first, then click “I’ll Verify My Email” again.";
       return;
     }
 
@@ -4659,7 +4706,7 @@ async function checkEmailVerificationNow_() {
     console.warn("Verification status check failed:", error);
     if (message) message.textContent=error && error.message ? error.message : "Verification check failed. Please try again.";
   } finally {
-    if (button) { button.disabled=false; button.textContent="I’ve Verified My Email"; }
+    if (button) { button.disabled=false; button.textContent="I’ll Verify My Email"; }
   }
 }
 
@@ -4852,29 +4899,28 @@ function showEmailVerifiedSuccess_(user, profile) {
   const proceed=document.getElementById("mckEmailVerifiedOrderButton");
   if(!modal)return;
 
-  /* IMPORTANT: the verification gate must disappear completely before the
-     congratulations popup is shown. Otherwise the old verification popup
-     remains behind it and makes the flow look stuck. */
-  closeEmailVerificationModal();
+  // Firebase Auth is the only source of truth. Never show success unless the
+  // current Firebase user has actually reported emailVerified === true.
+  if(!user || user.emailVerified !== true) return;
 
-  const fullName=String((profile&&profile.fullName)||"").trim();
-  const firstName=fullName?fullName.split(/\s+/)[0]:"";
-  if(message)message.textContent=firstName
-    ?"Congratulations, "+firstName+"! Your email has been successfully verified. Please proceed to login."
-    :"Congratulations! Your email has been successfully verified. Please proceed to login.";
-  if(proceed){proceed.textContent="Proceed to Login";proceed.onclick=function(){proceedToLoginFromVerifiedSuccess_();};}
+  closeEmailVerificationModal();
+  if(message)message.textContent="Your email has been successfully verified. You can now order.";
+  if(proceed){
+    proceed.textContent="Go & Order Now";
+    proceed.onclick=function(){
+      modal.classList.remove("show");
+      document.body.style.overflow="";
+      const menu=document.getElementById("menu");
+      if(menu) menu.scrollIntoView({behavior:"smooth",block:"start"});
+    };
+  }
   try{
     localStorage.removeItem("mckenziePendingVerification");
     localStorage.setItem("mckenzieEmailVerifiedJustNow","true");
   }catch(e){}
-  modal.classList.remove("show");
-  /* Force a clean front-layer render so the congratulations card is always
-     above the old gate/overlay, even on browsers restoring the page quickly. */
-  void modal.offsetWidth;
   modal.classList.add("show");
   document.body.style.overflow="hidden";
 }
-
 async function proceedToLoginFromVerifiedSuccess_(){
   try{const f=await getMcKenzieCustomerAuthDirect_();if(f.auth.currentUser)await f.signOut(f.auth);}catch(e){}
   const modal=document.getElementById("mckEmailVerifiedModal");
@@ -5313,6 +5359,54 @@ function renderCheckoutOrderSummary_() {
   totalEl.textContent = "₱" + formatPrice(total);
 }
 
+async function loadCheckoutPaymentMethods_(){
+  const options=document.getElementById("checkoutPaymentOptions");
+  const details=document.getElementById("checkoutPaymentDetails");
+  if(!options)return;
+  const fallback={
+    GCash:{name:"GCash",displayName:"",details:"",available:true,qr:""},
+    Maya:{name:"Maya",displayName:"",details:"",available:true,qr:""},
+    "QR BANK":{name:"QR BANK",displayName:"",details:"",available:true,qr:""}
+  };
+  let methods=fallback;
+  try{
+    const f=await getMcKenzieCustomerAuthDirect_();
+    const docs=await Promise.all(["payment_gcash","payment_maya","payment_bank"].map(async function(id){
+      try{const snap=await f.getDoc(f.doc(f.db,"brandAssets",id));return snap.exists()?snap.data():null;}catch(e){return null;}
+    }));
+    const keys=["GCash","Maya","QR BANK"];
+    docs.forEach(function(d,i){if(d) methods[keys[i]]=Object.assign({},methods[keys[i]],d);});
+  }catch(e){console.warn("Unable to load payment settings:",e);}
+  const entries=[
+    {key:"GCash",label:"GCash"},
+    {key:"Maya",label:"Maya"},
+    {key:"QR BANK",label:(methods["QR BANK"].name||"QR BANK")},
+    {key:"Cash on Delivery",label:"Cash on Delivery",always:true}
+  ];
+  options.innerHTML=entries.map(function(item){
+    const d=item.always?{available:true}:methods[item.key];
+    const available=d.available!==false;
+    const safeLabel=escapeHtml(item.label||item.key);
+    const sub=item.always?"Pay upon delivery":(d.displayName||d.details||"");
+    return '<label class="checkout-payment-option '+(!available?'checkout-payment-unavailable':'')+'"><input type="radio" name="checkoutPaymentMethod" value="'+escapeHtml(item.key)+'" '+(!available?'disabled':'')+'><span>'+safeLabel+(available?'':' <small>Currently unavailable</small>')+'</span>'+(sub&&available?'<small>'+escapeHtml(sub)+'</small>':'')+'</label>';
+  }).join("");
+  function updateDetails(){
+    const checked=document.querySelector('input[name="checkoutPaymentMethod"]:checked');
+    if(!details)return;
+    if(!checked || checked.value==="Cash on Delivery"){details.classList.remove("show");details.innerHTML="";return;}
+    const d=methods[checked.value]||{};
+    let html='';
+    if(d.displayName)html+='<strong>'+escapeHtml(d.displayName)+'</strong>';
+    if(d.details)html+=(html?'<br>':'')+escapeHtml(d.details);
+    if(d.qr)html+='<img class="checkout-payment-qr" src="'+escapeHtml(d.qr)+'" alt="'+escapeHtml((d.name||checked.value)+' QR code')+'">';
+    if(!html)html='Payment details will be provided after selecting this method.';
+    details.innerHTML=html;details.classList.add("show");
+  }
+  options.querySelectorAll('input[name="checkoutPaymentMethod"]').forEach(function(r){r.addEventListener("change",updateDetails);});
+  const first=options.querySelector('input[name="checkoutPaymentMethod"]:not(:disabled)');
+  if(first){first.checked=true;updateDetails();}
+}
+
 function handleCheckout_() {
   // Always sync the cart with the exact logged-in Customer ID.
   // Keep the current in-memory cart for this logged-in customer.
@@ -5357,6 +5451,7 @@ function handleCheckout_() {
    */
   if (loading) loading.style.display = "none";
   if (form) form.style.display = "block";
+  loadCheckoutPaymentMethods_();
 
   // Clear previous checkout message.
   showCheckoutMessage_("", false);
@@ -8482,6 +8577,7 @@ if (window.MckenzieFirebaseReady && typeof window.MckenzieFirebaseReady.then ===
 #mckReviewNotifyActions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
 #mckReviewNotifyActions button{min-width:150px;padding:12px 18px;border-radius:12px;border:1px solid #a51620;font-weight:900;cursor:pointer}
 #mckReviewOpen{background:#a51620;color:#fff}
+#mckReviewSupport{background:#fff5df;color:#8b1118}
 #mckReviewLater{background:#fff;color:#8b1118}
 </style>
 <div id="mckReviewNotifyModal" aria-modal="true" role="dialog">
@@ -8491,6 +8587,7 @@ if (window.MckenzieFirebaseReady && typeof window.MckenzieFirebaseReady.then ===
     <p id="mckReviewNotifyMessage">We’d love to hear about your experience. Share your feedback about the menu you received.</p>
     <div id="mckReviewNotifyActions">
       <button id="mckReviewOpen" type="button">⭐ Give Us Feedback</button>
+      <button id="mckReviewSupport" type="button">💬 Support Ticket</button>
       <button id="mckReviewLater" type="button">Later</button>
     </div>
   </div>
@@ -8559,8 +8656,10 @@ if (window.MckenzieFirebaseReady && typeof window.MckenzieFirebaseReady.then ===
   }
   document.addEventListener('DOMContentLoaded',function(){
     var openBtn=document.getElementById('mckReviewOpen');
+    var supportBtn=document.getElementById('mckReviewSupport');
     var laterBtn=document.getElementById('mckReviewLater');
     if(openBtn)openBtn.onclick=function(){if(current){var id=current.orderId||'';markRead();closeReview();openRatingPage_(id);}};
+    if(supportBtn)supportBtn.onclick=function(){var oid=current&&current.orderId||'';markRead();closeReview();if(typeof window.openCustomerSupportChat_==='function')window.openCustomerSupportChat_(oid);};
     if(laterBtn)laterBtn.onclick=function(){markRead();closeReview();};
     pollReview();
   });
@@ -8988,6 +9087,8 @@ document.addEventListener('click',function(e){
 .mck-chat-msg{max-width:82%;padding:10px 12px;border-radius:14px;font-size:12px;line-height:1.55}.mck-chat-msg.customer{justify-self:end;background:#fbe0e4;color:#5f1018}.mck-chat-msg.ai,.mck-chat-msg.admin{justify-self:start;background:#fff5df;color:#4d3731}.mck-chat-msg small{display:block;font-size:9px;opacity:.55;margin-top:4px}
 #mckCustomerChatComposer{display:flex;gap:8px;padding:12px;border-top:1px solid #ead8cf;background:#fffaf5}.mck-chat-input{flex:1;min-height:46px;max-height:110px;resize:vertical;border:1px solid #dfc9bd;border-radius:11px;padding:10px 11px;outline:none}.mck-chat-send{border:0;background:#a51620;color:#fff;border-radius:11px;padding:10px 15px;font-weight:900;cursor:pointer}.mck-chat-start{text-align:center;padding:70px 24px;color:#3a211c}.mck-chat-start-icon{font-size:48px;margin-bottom:12px}.mck-chat-start h3{font-size:24px;margin:0 0 8px}.mck-chat-start p{font-size:13px;color:#806c65;line-height:1.5;max-width:420px;margin:0 auto 24px}.mck-chat-start-btn{border:0;background:#a51620;color:#fff;border-radius:12px;padding:13px 22px;font-weight:900;cursor:pointer}.mck-chat-start-btn:disabled{opacity:.55;cursor:wait}.mck-chat-send:disabled{opacity:.55;cursor:wait}
 @media(max-width:600px){#mckCustomerChatModal{padding:0}#mckCustomerChatBox{width:100%;height:100%;border-radius:0}#mckCustomerChatHead{padding:14px 15px}}
+
+.mck-chat-ticket-list{display:grid;gap:7px;max-height:230px;overflow:auto;text-align:left;margin:0 auto 14px;max-width:470px}.mck-chat-ticket{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 11px;border:1px solid #ead4c9;border-radius:11px;background:#fff;color:#3a0709;cursor:pointer;text-align:left}.mck-chat-ticket:hover{background:#fff1e7;border-color:#d8b4a7}.mck-chat-ticket span{min-width:0}.mck-chat-ticket b{display:block;font-size:11px}.mck-chat-ticket small{display:block;margin-top:3px;color:#806c65;font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:330px}.mck-chat-ticket strong{color:#a51620;font-size:10px;white-space:nowrap}
 </style>
 <div id="mckCustomerChatModal" aria-modal="true" role="dialog" aria-label="McKenzie Customer Service Chat">
   <div id="mckCustomerChatBox">
@@ -9005,7 +9106,7 @@ document.addEventListener('click',function(e){
   function chatUser(){try{return JSON.parse(localStorage.getItem('mckenzieUser')||'null')||{};}catch(e){return {};}}
   function chatEsc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m];});}
   function chatFormat(messages){var c=document.getElementById('mckCustomerChatMessages');if(!c)return;c.innerHTML=(messages||[]).map(function(m){var type=m.senderType==='customer'?'customer':(m.senderType==='ai'?'ai':(m.senderType==='system'?'ai':'admin'));var who=m.senderType==='customer'?'You':(m.senderType==='ai'?'McKenzie AI':(m.senderType==='system'?'McKenzie Customer Service':'McKenzie Customer Service'));return '<div class="mck-chat-msg '+type+'"><b>'+who+'</b><br>'+chatEsc(m.text||'')+'<small>'+chatEsc(m.createdAt?new Date(m.createdAt).toLocaleString():'')+'</small></div>';}).join('')||'<div style="text-align:center;color:#806c65;font-size:12px;padding:35px">No messages yet.</div>';c.scrollTop=c.scrollHeight;}
-  function showStartScreen_(){var c=document.getElementById('mckCustomerChatMessages'),comp=document.getElementById('mckCustomerChatComposer');if(c)c.innerHTML='<div class="mck-chat-start"><div class="mck-chat-start-icon">💬</div><h3>Start a Conversation</h3><p>Need help? Start a new conversation with McKenzie Customer Service.</p><button type="button" id="mckStartAgentBtn" class="mck-chat-start-btn">Chat with an Agent</button></div>';if(comp)comp.style.display='none';}
+  function showStartScreen_(tickets){var c=document.getElementById('mckCustomerChatMessages'),comp=document.getElementById('mckCustomerChatComposer');if(!c)return;var list=Array.isArray(tickets)?tickets:[];var html='<div class="mck-chat-start"><div class="mck-chat-start-icon">💬</div><h3>Customer Support</h3><p>Continue an existing ticket or start a new conversation with McKenzie Customer Service.</p>';if(list.length){html+='<div class="mck-chat-ticket-list">'+list.slice(0,8).map(function(t){var id=chatEsc(t.chatId||t.id||'');var status=String(t.status||'Open');var msgs=Array.isArray(t.messages)?t.messages:[];var last=msgs[msgs.length-1]||{};var label=last.text||'Support conversation';return '<button type="button" class="mck-chat-ticket" data-chat-id="'+id+'"><span><b>Ticket '+id.slice(-8)+'</b><small>'+chatEsc(status)+' · '+chatEsc(label.slice(0,72))+'</small></span><strong>Open</strong></button>';}).join('')+'</div>';}html+='<button type="button" id="mckStartAgentBtn" class="mck-chat-start-btn">Chat with an Agent</button></div>';c.innerHTML=html;if(comp)comp.style.display='none';c.querySelectorAll('.mck-chat-ticket').forEach(function(b){b.onclick=function(){openExistingCustomerSupportChat_(b.dataset.chatId);};});}
   function showComposer_(){var comp=document.getElementById('mckCustomerChatComposer');if(comp)comp.style.display='flex';}
   async function chatFirebase(){if(!window.MckenzieFirebaseReady)throw new Error('Firebase is not ready.');return await Promise.resolve(window.MckenzieFirebaseReady);}
   function clearAutoClose_(){if(chatAutoCloseTimer){clearTimeout(chatAutoCloseTimer);chatAutoCloseTimer=null;}chatAutoCloseClosing=false;}
@@ -9021,7 +9122,7 @@ document.addEventListener('click',function(e){
   async function sendChat_(){if(chatSending)return;var input=document.getElementById('mckCustomerChatInput'),btn=document.getElementById('mckCustomerChatSend'),text=String(input&&input.value||'').trim();if(!text||!chatId)return;chatSending=true;if(input)input.disabled=true;if(btn)btn.disabled=true;try{var f=await chatFirebase(),ref=f.doc(f.db,'supportChats',chatId),snap=await f.getDoc(ref);if(!snap.exists())throw new Error('Chat could not be opened.');var d=snap.data()||{},status=String(d.status||'Open');if(status==='Closed')throw new Error('This conversation is closed. Please start a new conversation.');if(status==='Solved')throw new Error('This conversation has been solved.');var messages=Array.isArray(d.messages)?d.messages.slice():[],now=new Date().toISOString(),customerCount=messages.filter(function(m){return m&&m.senderType==='customer';}).length;messages.push({senderType:'customer',text:text,createdAt:now});var patch={messages:messages,updatedAt:now,lastActivityAt:now,lastSenderType:'customer',unreadForAdmin:true,unreadForCustomer:false,autoClosePending:false};if(customerCount===0){messages.push({senderType:'ai',text:SECOND_REPLY,createdAt:new Date().toISOString()});patch.messages=messages;patch.aiReplied=true;patch.updatedAt=new Date().toISOString();patch.lastActivityAt=patch.updatedAt;patch.lastSenderType='ai';}await f.updateDoc(ref,patch);if(input)input.value='';scheduleAutoClose_(patch);}catch(e){alert(e&&e.message?e.message:'Unable to send your message.');}finally{chatSending=false;if(input)input.disabled=false;if(btn)btn.disabled=false;if(input)input.focus();}}
   window.openExistingCustomerSupportChat_=async function(existingId){
     var m=document.getElementById('mckCustomerChatModal');if(!m||!existingId)return;clearAutoClose_();if(chatUnsub)try{chatUnsub();}catch(e){}chatUnsub=null;chatId=String(existingId);m.classList.add('show');document.body.style.overflow='hidden';var o=document.getElementById('mckCustomerChatOrder');if(o)o.textContent='McKenzie Customer Service';var c=document.getElementById('mckCustomerChatMessages');if(c)c.innerHTML='<div style="text-align:center;color:#806c65;font-size:12px;padding:35px">Opening conversation…</div>';showComposer_();try{await attachChatListener_();}catch(e){if(c)c.innerHTML='<div style="text-align:center;color:#a51620;font-size:12px;padding:35px">Unable to load chat: '+chatEsc(e&&e.message?e.message:'Missing or insufficient permissions.')+'</div>';}}
-  window.openCustomerSupportChat_=async function(orderId){var m=document.getElementById('mckCustomerChatModal');if(!m)return;window.__mckPendingChatOrderId=String(orderId||'');clearAutoClose_();if(chatUnsub)try{chatUnsub();}catch(e){}chatUnsub=null;chatId='';m.classList.add('show');document.body.style.overflow='hidden';var o=document.getElementById('mckCustomerChatOrder');if(o)o.textContent=orderId?'Order #'+orderId:'McKenzie Customer Service';showStartScreen_();var sb=document.getElementById('mckStartAgentBtn');if(sb)sb.onclick=beginNewCustomerChat_;};
+  window.openCustomerSupportChat_=async function(orderId){var m=document.getElementById('mckCustomerChatModal');if(!m)return;window.__mckPendingChatOrderId=String(orderId||'');clearAutoClose_();if(chatUnsub)try{chatUnsub();}catch(e){}chatUnsub=null;chatId='';m.classList.add('show');document.body.style.overflow='hidden';var o=document.getElementById('mckCustomerChatOrder');if(o)o.textContent=orderId?'Order #'+orderId:'McKenzie Customer Service';var c=document.getElementById('mckCustomerChatMessages');if(c)c.innerHTML='<div style="text-align:center;color:#806c65;font-size:12px;padding:35px">Loading your support tickets…</div>';try{var f=await chatFirebase(),u=await customerWaitForAuthUser_(f,'');if(!u)throw new Error('Please log in again.');var snap=await f.getDocs(f.query(f.collection(f.db,'supportChats'),f.where('userId','==',String(u.uid))));var tickets=snap.docs.map(function(ds){return Object.assign({chatId:ds.id},ds.data()||{});}).sort(function(a,b){return String(b.updatedAt||b.createdAt||'').localeCompare(String(a.updatedAt||a.createdAt||''));});var openTicket=tickets.find(function(t){return String(t.status||'Open')==='Open';});if(openTicket){openExistingCustomerSupportChat_(openTicket.chatId);return;}showStartScreen_(tickets);var sb=document.getElementById('mckStartAgentBtn');if(sb)sb.onclick=beginNewCustomerChat_;}catch(e){showStartScreen_([]);var sb=document.getElementById('mckStartAgentBtn');if(sb)sb.onclick=beginNewCustomerChat_;}};
   function closeChat_(){var m=document.getElementById('mckCustomerChatModal');if(m)m.classList.remove('show');document.body.style.overflow='';clearAutoClose_();if(chatUnsub){try{chatUnsub();}catch(e){}chatUnsub=null;}}
   document.addEventListener('DOMContentLoaded',function(){var b=document.getElementById('mckCustomerChatSend'),x=document.getElementById('mckCustomerChatClose');if(b)b.onclick=sendChat_;if(x)x.onclick=closeChat_;var i=document.getElementById('mckCustomerChatInput');if(i)i.addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendChat_();}});});
 })();
