@@ -285,6 +285,19 @@ button,input,select,textarea{font:inherit}
 .category-filter{padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:#fff;min-width:170px;font-weight:700;color:#60151f}
 </style>
 
+<style id="mckenzie-safe-request-fixes">
+.customer-chat-card.customer-chat-closed{background:#eeeeee !important;border-color:#bdbdbd !important;color:#777 !important;opacity:.9;}
+.customer-chat-card.customer-chat-closed .customer-chat-name,.customer-chat-card.customer-chat-closed .customer-chat-meta{color:#777 !important;}
+.customer-chat-card.customer-chat-closed .customer-chat-messages{background:#e7e7e7 !important;}
+.customer-chat-card.customer-chat-closed .customer-chat-compose{opacity:.72;}
+.customer-chat-card.customer-chat-closed .customer-chat-status{background:#d4d4d4 !important;color:#666 !important;}
+.order-card.order-closed{background:#eeeeee !important;border:2px solid #bdbdbd !important;color:#777 !important;}
+.order-card.order-closed .order-id,.order-card.order-closed .order-meta,.order-card.order-closed .order-workflow-note,.order-card.order-closed .review-progress{color:#777 !important;}
+.order-card.order-closed .order-box{background:#e8e8e8 !important;border-color:#d0d0d0 !important;}
+.order-card.order-preparing-active{border:2px solid var(--red) !important;}
+.nav.logout{background:#b91e35 !important;border:1px solid #b91e35 !important;color:#fff !important;text-align:center !important;}
+.nav.logout:hover{background:#8e1528 !important;color:#fff !important;}
+</style>
 </head>
 <body>
 <button type="button" id="adminMobileMenuButton" class="admin-mobile-menu-button" aria-label="Open admin menu" aria-expanded="false" onclick="toggleAdminMobileMenu_()"><span></span><span></span><span></span></button>
@@ -379,7 +392,7 @@ button,input,select,textarea{font:inherit}
       <div><strong>Customer Chats</strong><div id="customerChatNotice" style="font-size:12px;color:#756965;margin-top:4px">Customer support conversations will appear here.</div></div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
         <input class="search" id="customerChatSearch" placeholder="Search customer or order..." oninput="renderCustomerChats()">
-        <select class="status-filter" id="customerChatStatusFilter" onchange="renderCustomerChats()"><option value="Open" selected>Open</option><option value="Solved">Solved</option></select>
+        <select class="status-filter" id="customerChatStatusFilter" onchange="renderCustomerChats()"><option value="Open" selected>Open</option><option value="Solved">Solved</option><option value="Closed">Closed</option><option value="">All</option></select>
         <button class="add" type="button" onclick="loadCustomerChats()">↻ Refresh</button>
       </div>
     </div>
@@ -1743,7 +1756,9 @@ function startCustomerChatsRealtime_(){
   adminFirebase_().then(function(f){
     if(!f.auth||!f.auth.currentUser||typeof f.onSnapshot!=='function')return;
     adminChatsUnsub=f.onSnapshot(f.collection(f.db,'supportChats'),function(snap){
+      const shouldRing=snap.docChanges().some(function(ch){if(ch.type==='removed')return false;const d=ch.doc.data()||{};return !!d.unreadForAdmin&&String(d.lastSenderType||'')==='customer';});
       customerChatsData=snap.docs.map(function(d){return Object.assign({chatId:d.id},d.data()||{});}).sort(function(a,b){return String(b.updatedAt||b.createdAt||'').localeCompare(String(a.updatedAt||a.createdAt||''));});
+      if(shouldRing)playAdminBellNotification_();
       updateChatBadge_(customerChatsData);
       const notice=document.getElementById('customerChatNotice');
       if(notice)notice.textContent=customerChatsData.length?('Live • '+customerChatsData.length+' conversation'+(customerChatsData.length===1?'':'s')):'No customer conversations yet.';
@@ -1754,6 +1769,7 @@ function startCustomerChatsRealtime_(){
 
 async function loadCustomerChatsBadge_(){try{const f=await adminFirebase_();if(!f.auth.currentUser)return;const snap=await f.getDocs(f.collection(f.db,'supportChats'));updateChatBadge_(snap.docs.map(d=>d.data()||{}));}catch(e){}}
 function updateChatBadge_(chats){const b=document.getElementById('chatBadge');if(!b)return;const n=(chats||[]).filter(c=>c.unreadForAdmin).length;b.textContent=n;b.style.display=n?'inline-block':'none';}
+function playAdminBellNotification_(){try{if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();if(audioCtx.state==='suspended')audioCtx.resume();const now=audioCtx.currentTime;[0,.22].forEach(function(offset,i){const osc=audioCtx.createOscillator(),gain=audioCtx.createGain();osc.type='sine';osc.frequency.setValueAtTime(i?1046:880,now+offset);gain.gain.setValueAtTime(.0001,now+offset);gain.gain.exponentialRampToValueAtTime(.09,now+offset+.02);gain.gain.exponentialRampToValueAtTime(.0001,now+offset+.22);osc.connect(gain);gain.connect(audioCtx.destination);osc.start(now+offset);osc.stop(now+offset+.24);});}catch(e){}}
 function renderCustomerChats(){
   const c=document.getElementById('customerChats');if(!c)return;
   const q=chatSearchTerm_();
@@ -1780,7 +1796,10 @@ function renderAdminChat_(chat){
   const solvedAge=solvedAt&&!isNaN(solvedAt.getTime())?Math.max(0,Date.now()-solvedAt.getTime()):0;
   if(status==='Solved' && solvedAge>=24*60*60*1000){ setTimeout(function(){autoCloseSolvedChat_(chat.chatId,chat);},0); }
   const replyDisabled=status!=='Open'?'disabled':'';
-  return '<article class="customer-chat-card" data-status="'+escAttr(status)+'"><div class="customer-chat-head"><div><div class="customer-chat-name">'+esc(chat.customerName||'Customer')+'</div><div class="customer-chat-meta">'+esc(chat.customerEmail||'')+(chat.orderId?' · Order #'+esc(chat.orderId):'')+'</div></div><div class="customer-chat-status-actions"><span class="customer-chat-status '+(chat.unreadForAdmin?'new':'')+'">'+esc(status.toUpperCase())+'</span><button type="button" '+(status==='Open'?'class="active"':'')+' onclick="setCustomerChatStatus_(\''+safeId+'\',\'Open\')">Open</button><button type="button" '+(status==='Solved'?'class="active"':'')+' onclick="setCustomerChatStatus_(\''+safeId+'\',\'Solved\')">Solve</button></div></div><div class="customer-chat-messages">'+(messages||'<div style="color:#806c65;font-size:12px;padding:20px">No messages yet.</div>')+'</div><div class="customer-chat-compose"><textarea id="adminChatInput_'+safeId+'" placeholder="'+(status==='Solved'?'This conversation is solved.':'Reply to customer…')+'" '+replyDisabled+'></textarea><button type="button" data-chat-id="'+safeId+'" '+replyDisabled+' onclick="adminSendChat(this.dataset.chatId)">Send</button></div></article>';
+  const closedClass=status==='Closed'?' customer-chat-closed':'';
+  const statusLabel=status==='Closed'?'CLOSED':status.toUpperCase();
+  const composerPlaceholder=status==='Closed'?'This conversation is closed.':(status==='Solved'?'This conversation is solved.':'Reply to customer…');
+  return '<article class="customer-chat-card'+closedClass+'" data-status="'+escAttr(status)+'"><div class="customer-chat-head"><div><div class="customer-chat-name">'+esc(chat.customerName||'Customer')+'</div><div class="customer-chat-meta">'+esc(chat.customerEmail||'')+(chat.orderId?' · Order #'+esc(chat.orderId):'')+'</div></div><div class="customer-chat-status-actions"><span class="customer-chat-status '+(chat.unreadForAdmin?'new ':'')+statusClass+'">'+esc(statusLabel)+'</span><button type="button" '+(status==='Open'?'class="active"':'')+' '+(status==='Closed'?'disabled':'')+' onclick="setCustomerChatStatus_(\''+safeId+'\',\'Open\')">Open</button><button type="button" '+(status==='Solved'?'class="active"':'')+' '+(status==='Closed'?'disabled':'')+' onclick="setCustomerChatStatus_(\''+safeId+'\',\'Solved\')">Solve</button></div></div><div class="customer-chat-messages">'+(messages||'<div style="color:#806c65;font-size:12px;padding:20px">No messages yet.</div>')+'</div><div class="customer-chat-compose"><textarea id="adminChatInput_'+safeId+'" placeholder="'+composerPlaceholder+'" '+replyDisabled+'></textarea><button type="button" data-chat-id="'+safeId+'" '+replyDisabled+' onclick="adminSendChat(this.dataset.chatId)">Send</button></div></article>';
 }
 
 async function adminSendChat(chatId){
@@ -1971,7 +1990,7 @@ function renderOrders(){
     // Ready becomes clickable only after every purchased menu item is Ready.
     const canMarkReady=status==='Preparing' && allItemsReady;
     const canDeliver=status==='On the Way';
-    return '<article class="order-card '+(deliveredLocked?'order-delivered-locked':'')+'">'+
+    return '<article class="order-card '+(deliveredLocked?'order-delivered-locked ':'')+(closed?'order-closed ':'')+(status==='Preparing'&&!closed?'order-preparing-active':'')+'>'+
       '<div class="order-head"><div><div class="order-id">#'+esc(o.orderId)+'</div><div class="order-meta">'+esc(o.customerName||'Guest')+' · '+esc(o.mobile||'')+'</div><div class="order-meta">'+(o.orderedAt?new Date(o.orderedAt).toLocaleString():'')+'</div></div>'+
       '<span class="status-pill '+orderStatusClass(status)+'">'+esc(status)+(closed?' · Closed':'')+'</span></div>'+
       '<div class="order-grid">'+
