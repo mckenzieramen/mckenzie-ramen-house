@@ -9949,46 +9949,94 @@ document.addEventListener('click',function(e){
 </body>
 </html>
 
-<style id="mck-v20-organized-header-icons">
-/* FINAL ORGANIZED HEADER ICONS: keep search, cart, and account controls in one clean row. */
+<style id="mck-v21-organized-header-icons">
+/* V21 HEADER BASELINE: search + cart + hamburger stay together in one clean row. */
 @media (min-width: 701px) {
   .account-menu-wrap {
     position: fixed !important;
     top: 9px !important;
-    right: 16px !important;
+    right: 12px !important;
     z-index: 1000012 !important;
     width: auto !important;
     height: auto !important;
-  }
-  .account-menu-button {
-    width: 48px !important;
-    height: 48px !important;
-  }
-  .sticky-cart-button {
-    right: 72px !important;
-    top: 9px !important;
-    width: 48px !important;
-    height: 48px !important;
-    z-index: 1000011 !important;
-  }
-  .sticky-search-button {
-    right: 132px !important;
-    top: 13px !important;
-    width: 40px !important;
-    height: 40px !important;
-    z-index: 1000011 !important;
-  }
-  /* Keep the navigation itself centered and give the icon group its own space. */
-  .site-sticky-nav {
-    padding-right: 190px !important;
-  }
-}
-
-/* The floating duplicate hamburger is no longer allowed to sit over page content. */
-@media (min-width: 701px) {
-  .account-menu-wrap {
     transform: none !important;
   }
+  .account-menu-button { width: 48px !important; height: 48px !important; }
+  .sticky-cart-button {
+    right: 68px !important; top: 9px !important;
+    width: 48px !important; height: 48px !important; z-index: 1000011 !important;
+  }
+  .sticky-search-button {
+    right: 126px !important; top: 13px !important;
+    width: 40px !important; height: 40px !important; z-index: 1000011 !important;
+  }
+  .site-sticky-nav { padding-right: 184px !important; }
+}
+
+/* PHONE: never allow the hamburger to fall below the header. */
+@media (max-width: 700px) {
+  .site-sticky-nav {
+    height: 58px !important; min-height: 58px !important;
+    padding-right: 128px !important;
+    box-sizing: border-box !important;
+  }
+  .site-sticky-nav-inner {
+    max-width: calc(100vw - 170px) !important;
+    overflow: hidden !important;
+  }
+  .site-sticky-nav a {
+    font-size: clamp(7px, 2.15vw, 9px) !important;
+    line-height: 1 !important;
+  }
+  .sticky-search-button,
+  .sticky-cart-button,
+  #mobileSiteNavButton {
+    position: fixed !important;
+    top: 12px !important;
+    width: 34px !important;
+    height: 34px !important;
+    min-width: 34px !important;
+    min-height: 34px !important;
+    max-width: 34px !important;
+    max-height: 34px !important;
+    box-sizing: border-box !important;
+    z-index: 10000040 !important;
+    margin: 0 !important;
+    transform: none !important;
+  }
+  /* Right-side group: SEARCH | CART | HAMBURGER */
+  .sticky-search-button { left: auto !important; right: 82px !important; font-size: 19px !important; }
+  .sticky-cart-button { left: auto !important; right: 44px !important; }
+  #mobileSiteNavButton { left: auto !important; right: 6px !important; display: flex !important; align-items: center !important; justify-content: center !important; flex-direction: column !important; gap: 4px !important; }
+  #mobileSiteNavButton span { width: 16px !important; height: 2px !important; display: block !important; }
+  /* Keep the three controls visually identical and centered on the same baseline. */
+  .sticky-search-button span { transform: translateY(-1px) rotate(-12deg) !important; }
+  body.mobile-top-scrolled .sticky-search-button { left: auto !important; right: 82px !important; top: 12px !important; }
+  body.mobile-top-scrolled .sticky-cart-button { left: auto !important; right: 44px !important; top: 12px !important; }
+  body.mobile-top-scrolled #mobileSiteNavButton { right: 6px !important; top: 12px !important; }
+}
+
+@media (max-width: 430px) {
+  .site-sticky-nav { padding-right: 112px !important; padding-left: 40px !important; }
+  .site-sticky-nav-inner { max-width: calc(100vw - 152px) !important; gap: 4px !important; }
+  .sticky-search-button, .sticky-cart-button, #mobileSiteNavButton { width: 32px !important; height: 32px !important; min-width: 32px !important; min-height: 32px !important; top: 13px !important; }
+  .sticky-search-button { right: 76px !important; font-size: 18px !important; }
+  .sticky-cart-button { right: 40px !important; }
+  #mobileSiteNavButton { right: 4px !important; gap: 3px !important; }
+  #mobileSiteNavButton span { width: 15px !important; height: 2px !important; }
+  body.mobile-top-scrolled .sticky-search-button { right: 76px !important; top: 13px !important; }
+  body.mobile-top-scrolled .sticky-cart-button { right: 40px !important; top: 13px !important; }
+  body.mobile-top-scrolled #mobileSiteNavButton { right: 4px !important; top: 13px !important; }
+}
+
+@media (max-width: 360px) {
+  .site-sticky-nav { padding-right: 102px !important; padding-left: 36px !important; }
+  .site-sticky-nav-inner { max-width: calc(100vw - 138px) !important; gap: 3px !important; }
+  .sticky-search-button, .sticky-cart-button, #mobileSiteNavButton { width: 30px !important; height: 30px !important; min-width: 30px !important; min-height: 30px !important; top: 14px !important; }
+  .sticky-search-button { right: 70px !important; font-size: 17px !important; }
+  .sticky-cart-button { right: 37px !important; }
+  #mobileSiteNavButton { right: 4px !important; }
+  #mobileSiteNavButton span { width: 14px !important; }
 }
 </style>
 
