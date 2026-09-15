@@ -542,8 +542,15 @@ button,input,select,textarea{font:inherit}
       const appMod = await import("https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js");
       const authMod = await import("https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js");
       const fsMod = await import("https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js");
-      const app = appMod.initializeApp(cfg, "mckenzie-ramen-house");
+      const app = appMod.initializeApp(cfg, "mckenzie-ramen-house-admin");
       const auth = authMod.getAuth(app);
+      try {
+        if (typeof authMod.setPersistence === "function" && authMod.browserLocalPersistence) {
+          await authMod.setPersistence(auth, authMod.browserLocalPersistence);
+        }
+      } catch (persistenceError) {
+        console.warn("Unable to enable persistent admin authentication:", persistenceError);
+      }
       const db = fsMod.getFirestore(app);
       console.log("McKenzie Ramen House Firebase initialized successfully.");
       return { app, auth, db, ...authMod, ...fsMod };
@@ -1484,9 +1491,10 @@ async function login(){
       const appMod=await import('https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js');
       const authMod=await import('https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js');
       let app;
-      try{ app=appMod.getApp('mckenzie-ramen-house'); }
-      catch(_){ app=appMod.initializeApp(cfg,'mckenzie-ramen-house'); }
+      try{ app=appMod.getApp('mckenzie-ramen-house-admin'); }
+      catch(_){ app=appMod.initializeApp(cfg,'mckenzie-ramen-house-admin'); }
       const auth=authMod.getAuth(app);
+      try{ if(authMod.setPersistence && authMod.browserLocalPersistence) await authMod.setPersistence(auth,authMod.browserLocalPersistence); }catch(e){ console.warn('Admin auth persistence:',e); }
       f={auth,...authMod};
     }
 
@@ -2348,7 +2356,7 @@ async function logout(){
         // Local Admin fallback: do not leave the login screen stuck on “Connecting”.
         return import('https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js')
           .then(function(appMod){
-            return import('https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js').then(function(authMod){
+            return import('https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js').then(async function(authMod){
               const cfg=window.MCKENZIE_FIREBASE_CONFIG||{
                 apiKey:'AIzaSyDnLMbAhkAw1JMlbTxN4u8vB6poip5dt94',
                 authDomain:'mckenzie-ramen-house.firebaseapp.com',
@@ -2359,9 +2367,10 @@ async function logout(){
                 measurementId:'G-C2KDRE88ZW'
               };
               let app;
-              try{app=appMod.getApp('mckenzie-ramen-house');}
-              catch(e){app=appMod.initializeApp(cfg,'mckenzie-ramen-house');}
+              try{app=appMod.getApp('mckenzie-ramen-house-admin');}
+              catch(e){app=appMod.initializeApp(cfg,'mckenzie-ramen-house-admin');}
               const auth=authMod.getAuth(app);
+              try{ if(authMod.setPersistence && authMod.browserLocalPersistence) await authMod.setPersistence(auth,authMod.browserLocalPersistence); }catch(e){ console.warn('Admin auth persistence:',e); }
               return {app:app,auth:auth,...authMod};
             });
           });
