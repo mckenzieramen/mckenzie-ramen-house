@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>FINAL FIXED - McKenzie Ramen House — Admin</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Inter:wght@400;500;600;700;800&display=swap');
@@ -1790,16 +1790,58 @@ function updateChatBadge_(chats){const b=document.getElementById('chatBadge');if
 function playAdminBellNotification_(){try{if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();if(audioCtx.state==='suspended')audioCtx.resume();const now=audioCtx.currentTime;[0,.22].forEach(function(offset,i){const osc=audioCtx.createOscillator(),gain=audioCtx.createGain();osc.type='sine';osc.frequency.setValueAtTime(i?1046:880,now+offset);gain.gain.setValueAtTime(.0001,now+offset);gain.gain.exponentialRampToValueAtTime(.09,now+offset+.02);gain.gain.exponentialRampToValueAtTime(.0001,now+offset+.22);osc.connect(gain);gain.connect(audioCtx.destination);osc.start(now+offset);osc.stop(now+offset+.24);});}catch(e){}}
 function renderCustomerChats(){
   const c=document.getElementById('customerChats');if(!c)return;
+
+  // Preserve each open conversation's scroll position across Firestore realtime
+  // updates. Re-rendering the card must never make an admin jump to the top
+  // or unexpectedly reposition a conversation.
+  const previousScroll={};
+  c.querySelectorAll('.customer-chat-card[data-chat-id]').forEach(function(card){
+    const id=String(card.getAttribute('data-chat-id')||'');
+    const box=card.querySelector('.customer-chat-messages');
+    if(id&&box){
+      const distanceFromBottom=Math.max(0,box.scrollHeight-box.scrollTop-box.clientHeight);
+      previousScroll[id]={
+        top:box.scrollTop,
+        distanceFromBottom:distanceFromBottom,
+        wasAtBottom:distanceFromBottom<=12
+      };
+    }
+  });
+
   const q=chatSearchTerm_();
   const sf=document.getElementById('customerChatStatusFilter');
   const statusFilter=String(sf&&sf.value||'');
   const list=(customerChatsData||[]).filter(function(chat){return (!q||[chat.customerName,chat.customerEmail,chat.orderId,chat.chatId].join(' ').toLowerCase().includes(q)) && (!statusFilter||String(chat.status||'Open')===statusFilter);});
   if(!list.length){c.innerHTML='<div class="customer-chat-empty">'+(q?'No matching customer conversations.':'No customer conversations yet. When a customer chats with McKenzie Customer Service, the conversation will appear here.')+'</div>';return;}
+
   c.innerHTML=list.map(renderAdminChat_).join('');
   c.querySelectorAll('textarea[id^="adminChatInput_"]').forEach(function(input){bindAdminTyping_(input);});
-  list.forEach(function(chat){var el=document.getElementById('adminTyping_'+String(chat.chatId));if(el)el.classList.toggle('show',!!(chat.typingBy&&chat.typingBy.customer) || !!chat.typingCustomer);});
+  list.forEach(function(chat){
+    var el=document.getElementById('adminTyping_'+String(chat.chatId));
+    if(el)el.classList.toggle('show',!!(chat.typingBy&&chat.typingBy.customer) || !!chat.typingCustomer);
+  });
+
   requestAnimationFrame(function(){
-    c.querySelectorAll('.customer-chat-messages').forEach(function(box){ box.scrollTop=box.scrollHeight; });
+    c.querySelectorAll('.customer-chat-card[data-chat-id]').forEach(function(card){
+      const id=String(card.getAttribute('data-chat-id')||'');
+      const box=card.querySelector('.customer-chat-messages');
+      if(!box)return;
+      const old=previousScroll[id];
+
+      if(old){
+        if(old.wasAtBottom){
+          // If the admin was already following the live conversation, keep
+          // the newest message visible at the bottom.
+          box.scrollTop=box.scrollHeight;
+        }else{
+          // Otherwise preserve the exact viewing position instead of jumping.
+          box.scrollTop=Math.min(old.top,Math.max(0,box.scrollHeight-box.clientHeight));
+        }
+      }else{
+        // New conversation: start at the latest messages.
+        box.scrollTop=box.scrollHeight;
+      }
+    });
   });
 }
 function renderAdminChat_(chat){
@@ -1824,7 +1866,41 @@ function renderAdminChat_(chat){
 }
 
 let adminTypingTimers={};
-async function setAdminTyping_(chatId,isTyping){try{const f=await adminFirebase_();if(!f.auth.currentUser)return;const ref=f.doc(f.db,'supportChats',String(chatId));await f.updateDoc(ref,{'typingBy.admin':!!isTyping});}catch(e){}}
+let adminTypingChannel=null;
+function broadcastAdminTyping_(chatId,active){
+  const payload={chatId:String(chatId||''),role:'admin',active:!!active,at:Date.now()};
+  try{if(window.BroadcastChannel){if(!adminTypingChannel)adminTypingChannel=new BroadcastChannel('mckenzie-support-typing');adminTypingChannel.postMessage(payload);}}catch(e){}
+  try{localStorage.setItem('mckenzie-support-typing-event',JSON.stringify(payload));localStorage.removeItem('mckenzie-support-typing-event');}catch(e){}
+}
+async function setAdminTyping_(chatId,isTyping){
+  const active=!!isTyping;
+  broadcastAdminTyping_(chatId,active);
+  try{
+    const f=await adminFirebase_();if(!f.auth.currentUser)return;
+    const ref=f.doc(f.db,'supportChats',String(chatId));
+    const fp=f.FieldPath?new f.FieldPath('typingBy','admin'):'typingBy.admin';
+    if(f.FieldPath) await f.updateDoc(ref,fp,active);
+    else await f.updateDoc(ref,{'typingBy.admin':active});
+  }catch(e){}
+}
+function showCustomerTypingFallback_(payload){
+  if(!payload||payload.role!=='customer')return;
+  const id=String(payload.chatId||'');
+  const el=document.getElementById('adminTyping_'+id);
+  if(el)el.classList.toggle('show',!!payload.active);
+}
+function bindAdminTypingFallback_(){
+  try{
+    if(window.BroadcastChannel){
+      if(!adminTypingChannel)adminTypingChannel=new BroadcastChannel('mckenzie-support-typing');
+      adminTypingChannel.onmessage=function(e){showCustomerTypingFallback_(e.data||{});};
+    }
+  }catch(e){}
+  window.addEventListener('storage',function(e){
+    if(e.key!=='mckenzie-support-typing-event'||!e.newValue)return;
+    try{showCustomerTypingFallback_(JSON.parse(e.newValue));}catch(err){}
+  });
+}
 function bindAdminTyping_(input){if(!input||input.dataset.typingBound==='1')return;input.dataset.typingBound='1';const chatId=String(input.id||'').replace(/^adminChatInput_/,'');input.addEventListener('input',function(){const active=!!String(input.value||'').trim();setAdminTyping_(chatId,active);clearTimeout(adminTypingTimers[chatId]);adminTypingTimers[chatId]=setTimeout(function(){setAdminTyping_(chatId,false);},1800);});}
 async function adminSendChat(chatId){
   const input=document.getElementById('adminChatInput_'+String(chatId));if(!input)return;const text=String(input.value||'').trim();if(!text)return;input.disabled=true;
