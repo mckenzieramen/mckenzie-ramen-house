@@ -300,6 +300,140 @@ async function resendCode(req, res) {
   }
 }
 
+
+
+function getBearerToken(req) {
+  const h = String(req.get("Authorization") || "");
+  return h.startsWith("Bearer ") ? h.slice(7).trim() : "";
+}
+
+async function requireCustomerToken(req) {
+  const token = getBearerToken(req);
+  if (!token) throw new Error("Authentication required.");
+  return admin.auth().verifyIdToken(token);
+}
+
+function reviewDocData(doc) {
+  const r = doc.data() || {};
+  return {
+    reviewId: r.reviewId || doc.id,
+    orderId: String(r.orderId || ""),
+    productId: String(r.productId || ""),
+    productName: String(r.productName || "Menu item"),
+    rating: Number(r.rating || 0),
+    review: String(r.review || ""),
+    customerName: String(r.customerName || "Customer"),
+    customerId: String(r.customerId || ""),
+    submittedAt: r.submittedAt?.toDate ? r.submittedAt.toDate().toISOString() : String(r.submittedAt || ""),
+    status: String(r.status || "Published")
+  };
+}
+
+async function publishedReviews(req, res) {
+  const snap = await db.collection("reviews").where("status", "==", "Published").get();
+  return res.json({
+    success: true,
+    reviews: snap.docs.map(reviewDocData)
+      .filter(r => r.rating >= 1 && r.rating <= 5)
+      .sort((a, b) => String(b.submittedAt).localeCompare(String(a.submittedAt)))
+  });
+}
+
+async function customerReviewForm(req, res) {
+  const decoded = await requireCustomerToken(req);
+  const orderId = String(req.body?.orderId || "").trim();
+  if (!orderId) return jsonError(res, 400, "Order ID is required.");
+  const orderSnap = await db.collection("orders").doc(orderId).get();
+  if (!orderSnap.exists) return jsonError(res, 404, "Order not found.");
+  const order = orderSnap.data() || {};
+  if (String(order.userId || "") !== decoded.uid) return jsonError(res, 403, "Invalid customer account.");
+  if (String(order.orderStatus || "") !== "Delivered" || !order.customerConfirmed) {
+    return jsonError(res, 400, "You can review this order only after it has been delivered and received.");
+  }
+  const reviewsSnap = await db.collection("reviews").where("customerId", "==", decoded.uid).get();
+  const byProduct = {};
+  reviewsSnap.docs.forEach(d => {
+    const r = d.data() || {};
+    const key = String(r.productId || "");
+    (byProduct[key] ||= []).push(r);
+  });
+  const items = [];
+  for (const item of (Array.isArray(order.items) ? order.items : [])) {
+    const productId = String(item.productId || item.id || "");
+    const qty = Math.max(1, Number(item.quantity || 1));
+    const existing = (byProduct[productId] || []).filter(r => String(r.orderId || "") === orderId)
+      .sort((a,b) => String(a.submittedAt || "").localeCompare(String(b.submittedAt || "")));
+    let image = String(item.image || item.productImage || "");
+    if (!image && productId) {
+      const ps = await db.collection("products").doc(productId).get();
+      if (ps.exists) image = String((ps.data() || {}).image || (ps.data() || {}).imageUrl || "");
+    }
+    for (let unit = 0; unit < qty; unit++) {
+      const r = existing[unit] || null;
+      items.push({ productId, productName: String(item.productName || item.name || "Ramen item"), image,
+        quantity: qty, unitIndex: unit + 1, reviewed: !!r,
+        existingRating: r ? Number(r.rating || 0) : 0, existingReview: r ? String(r.review || "") : "" });
+    }
+  }
+  return res.json({success:true, orderId, customerName:String(order.customerName || order.fullName || "Customer"), items,
+    completed: items.length > 0 && items.every(i => i.reviewed)});
+}
+
+async function submitCustomerReviews(req, res) {
+  const decoded = await requireCustomerToken(req);
+  const orderId = String(req.body?.orderId || "").trim();
+  const entries = Array.isArray(req.body?.entries) ? req.body.entries : [];
+  if (!orderId || !entries.length) return jsonError(res, 400, "Please rate at least one menu item before submitting.");
+  const orderSnap = await db.collection("orders").doc(orderId).get();
+  if (!orderSnap.exists) return jsonError(res, 404, "Order not found.");
+  const order = orderSnap.data() || {};
+  if (String(order.userId || "") !== decoded.uid) return jsonError(res, 403, "Invalid customer account.");
+  if (String(order.orderStatus || "") !== "Delivered" || !order.customerConfirmed) {
+    return jsonError(res, 400, "You can review this order only after it has been delivered and received.");
+  }
+  const existingSnap = await db.collection("reviews").where("customerId", "==", decoded.uid).get();
+  const existingCounts = {};
+  existingSnap.docs.forEach(d => {
+    const r=d.data()||{}; const key=String(r.orderId||"")+"|"+String(r.productId||"");
+    existingCounts[key]=(existingCounts[key]||0)+1;
+  });
+  const batch=db.batch(); let count=0; const submittedCounts={};
+  for (const ent of entries) {
+    const pid=String(ent.productId||""); if(!pid) continue;
+    const rating=Number(ent.rating||0), review=String(ent.review||"").trim();
+    if(!Number.isFinite(rating)||rating<1||rating>5) return jsonError(res,400,"Please select a rating from 1 to 5 stars for every menu item.");
+    if(review.length>1000) return jsonError(res,400,"A review is too long. Please keep each comment under 1000 characters.");
+    const target=(Array.isArray(order.items)?order.items:[]).find(item=>String(item.productId||item.id||"")===pid);
+    if(!target) return jsonError(res,400,"One of the selected menu items was not part of this order.");
+    const key=orderId+"|"+pid, already=Number(existingCounts[key]||0)+Number(submittedCounts[key]||0);
+    const qty=Math.max(1,Number(target.quantity||1)); if(already>=qty) continue;
+    const id="REV-"+Date.now()+"-"+Math.floor(Math.random()*100000)+"-"+count;
+    batch.set(db.collection("reviews").doc(id),{reviewId:id,orderId,customerId:decoded.uid,productId:pid,
+      productName:String(target.productName||target.name||"Ramen item"),rating,review,unitIndex:already+1,reviewedUnit:already+1,
+      customerName:String(order.customerName||order.fullName||"Customer"),submittedAt:admin.firestore.FieldValue.serverTimestamp(),status:"Published"});
+    submittedCounts[key]=(submittedCounts[key]||0)+1; count++;
+  }
+  if(count) await batch.commit();
+  return res.json({success:true,message:"Thank you for supporting McKenzie Ramen House!",reviewCount:count,completed:true});
+}
+
+async function customerReceiptAction(req, res) {
+  const decoded = await requireCustomerToken(req);
+  const orderId=String(req.body?.orderId||"").trim(), action=String(req.body?.action||"").trim();
+  if(!orderId || !["received","dismiss"].includes(action)) return jsonError(res,400,"Invalid receipt confirmation request.");
+  const ref=db.collection("orders").doc(orderId), snap=await ref.get();
+  if(!snap.exists) return jsonError(res,404,"Order not found.");
+  const order=snap.data()||{};
+  if(String(order.userId||"")!==decoded.uid) return jsonError(res,403,"Invalid customer account.");
+  if(String(order.orderStatus||"")!=="Delivered") return jsonError(res,400,"The order has not been marked as delivered yet.");
+  const now=admin.firestore.FieldValue.serverTimestamp();
+  if(action==="dismiss") await ref.update({receiptPromptDismissed:true,receiptPromptDismissedAt:now});
+  else await ref.update({customerConfirmed:true,confirmedAt:now,closed:true,receiptPromptDismissed:true,receiptPromptDismissedAt:now});
+  const notificationId=String(req.body?.notificationId||"");
+  if(notificationId){const nr=db.collection("notifications").doc(notificationId), ns=await nr.get(); if(ns.exists && String((ns.data()||{}).userId||"")===decoded.uid) await nr.update({readAt:now});}
+  return res.json({success:true,received:action==="received",dismissed:action==="dismiss"});
+}
+
 exports.requestEmailVerification = onRequest(
   {
     region: "us-central1",
@@ -355,4 +489,25 @@ exports.resendVerificationCode = onRequest(
       return jsonError(res, 500, "Unable to resend the verification code.");
     }
   }
+);
+
+
+exports.publishedReviews = onRequest(
+  { region: "us-central1", invoker: "public" },
+  async (req,res)=>{ setCors(res); if(req.method==="OPTIONS")return res.status(204).send(""); if(req.method!=="GET")return jsonError(res,405,"Method not allowed."); try{return await publishedReviews(req,res);}catch(e){console.error(e);return jsonError(res,500,"Unable to load published reviews.");} }
+);
+
+exports.customerReviewForm = onRequest(
+  { region: "us-central1", invoker: "public" },
+  async (req,res)=>{ setCors(res); if(req.method==="OPTIONS")return res.status(204).send(""); if(req.method!=="POST")return jsonError(res,405,"Method not allowed."); try{return await customerReviewForm(req,res);}catch(e){console.error(e);return jsonError(res, e.code === "auth/id-token-expired" || e.code === "auth/argument-error" ? 401 : 500, e.message || "Unable to load the review form.");} }
+);
+
+exports.submitCustomerReviews = onRequest(
+  { region: "us-central1", invoker: "public" },
+  async (req,res)=>{ setCors(res); if(req.method==="OPTIONS")return res.status(204).send(""); if(req.method!=="POST")return jsonError(res,405,"Method not allowed."); try{return await submitCustomerReviews(req,res);}catch(e){console.error(e);return jsonError(res, e.code === "auth/id-token-expired" || e.code === "auth/argument-error" ? 401 : 500, e.message || "Unable to submit the review.");} }
+);
+
+exports.customerReceiptAction = onRequest(
+  { region: "us-central1", invoker: "public" },
+  async (req,res)=>{ setCors(res); if(req.method==="OPTIONS")return res.status(204).send(""); if(req.method!=="POST")return jsonError(res,405,"Method not allowed."); try{return await customerReceiptAction(req,res);}catch(e){console.error(e);return jsonError(res, e.code === "auth/id-token-expired" || e.code === "auth/argument-error" ? 401 : 500, e.message || "Unable to save the receipt response.");} }
 );
