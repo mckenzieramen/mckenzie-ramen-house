@@ -1111,6 +1111,7 @@ button {
   gap: 24px;
 }
 
+.product-rating-summary{display:flex;align-items:center;gap:5px;margin:6px 0 4px;font-size:11px;font-weight:800;color:#e2a62c;min-height:16px}.product-rating-summary span{color:#806c65;font-size:10px;font-weight:700}.product-rating-summary.has-rating span{color:#6a4a3f}.product-rating-summary .rating-count{color:#806c65;font-weight:600}
 .product-card {
   position: relative;
 
@@ -7884,6 +7885,39 @@ function organizeCustomerMenuByCategory_() {
   filterMenuCategory_(mckenzieMenuCategoryFilter_);
 }
 
+async function loadPublishedMenuRatings_(){
+  try{
+    const f=await getMcKenzieCustomerAuthDirect_();
+    const snap=await f.getDocs(f.collection(f.db,'reviews'));
+    const stats={};
+    (snap.docs||[]).forEach(function(ds){
+      const r=ds.data()||{};
+      if(String(r.status||'Published').toLowerCase()!=='published') return;
+      const pid=String(r.productId==null?'':r.productId);
+      const name=String(r.productName||'').trim().toLowerCase();
+      const key=pid || ('name:'+name);
+      if(!stats[key])stats[key]={sum:0,count:0};
+      const rating=Number(r.rating||0);
+      if(rating>=1&&rating<=5){stats[key].sum+=rating;stats[key].count++;}
+      if(name&&!stats['name:'+name])stats['name:'+name]={sum:0,count:0};
+      if(name&&rating>=1&&rating<=5){stats['name:'+name].sum+=rating;stats['name:'+name].count++;}
+    });
+    document.querySelectorAll('.product-card[data-product-id]').forEach(function(card){
+      const pid=String(card.getAttribute('data-product-id')||'');
+      const name=String(card.getAttribute('data-product-name')||'').trim().toLowerCase();
+      const st=stats[pid]||stats['name:'+name];
+      const el=card.querySelector('[data-product-rating]');
+      if(!el||!st||!st.count)return;
+      const avg=st.sum/st.count;
+      const rounded=Math.round(avg);
+      el.classList.add('has-rating');
+      el.innerHTML=''+Array.from({length:5},function(_,i){return i<rounded?'★':'☆';}).join('')+' <span>'+avg.toFixed(1)+' <span class="rating-count">('+st.count+' review'+(st.count===1?'':'s')+')</span></span>';
+    });
+  }catch(e){
+    console.warn('Menu ratings could not be loaded:',e);
+  }
+}
+
 function loadProducts() {
 
   google.script.run
@@ -7947,6 +7981,8 @@ function loadProducts() {
 
             card.className =
               "product-card";
+            card.setAttribute("data-product-id", String(product.id));
+            card.setAttribute("data-product-name", String(product.name || ""));
 
 
             /* =========================================
@@ -8105,6 +8141,7 @@ function loadProducts() {
 
                 </h3>
 
+                <div class="product-rating-summary" data-product-rating="${escapeHtml(String(product.id))}" aria-label="Menu rating">☆ <span>Not yet rated</span></div>
 
                 <p class="product-description">
 
@@ -8173,6 +8210,7 @@ function loadProducts() {
         normalizeCartItemsForCurrentProducts_();
         saveCart_();
         renderAllCartControls_();
+        loadPublishedMenuRatings_();
 
         if (productImagesPending === 0) {
           markPageAssetReady_('products');
@@ -9224,7 +9262,7 @@ document.addEventListener('click',function(e){
 #mckCustomerChatBox{width:min(560px,100%);height:min(720px,90vh);background:#fffaf5;border:1px solid #ead8cf;border-radius:22px;box-shadow:0 30px 100px rgba(0,0,0,.42);overflow:hidden;display:flex;flex-direction:column}
 #mckCustomerChatHead{flex:0 0 auto;padding:16px 18px;background:#130807;color:#fff;display:flex;justify-content:space-between;align-items:center;gap:12px}
 #mckCustomerChatHead strong{font-family:"Playfair Display",serif;font-size:22px}
-#mckCustomerChatClose{width:38px;height:38px;border-radius:50%;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:#fff;font-size:21px;cursor:pointer}
+#mckCustomerChatBack{width:38px;height:38px;border-radius:50%;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:#fff;font-size:21px;cursor:pointer;display:none;flex:none}#mckCustomerChatClose{width:38px;height:38px;border-radius:50%;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:#fff;font-size:21px;cursor:pointer;flex:none}
 #mckCustomerChatMessages{flex:1;overflow:auto;padding:16px;display:grid;align-content:start;gap:9px;background:#fff7ed}
 .mck-chat-msg{max-width:82%;padding:10px 12px;border-radius:14px;font-size:12px;line-height:1.55}.mck-chat-msg.customer{justify-self:end;background:#fbe0e4;color:#5f1018}.mck-chat-msg.ai,.mck-chat-msg.admin{justify-self:start;background:#fff5df;color:#4d3731}.mck-chat-msg small{display:block;font-size:9px;opacity:.55;margin-top:4px}
 #mckCustomerChatComposer{display:flex;gap:8px;padding:12px;border-top:1px solid #ead8cf;background:#fffaf5}.mck-chat-input{flex:1;min-height:46px;max-height:110px;resize:vertical;border:1px solid #dfc9bd;border-radius:11px;padding:10px 11px;outline:none}.mck-chat-send{border:0;background:#a51620;color:#fff;border-radius:11px;padding:10px 15px;font-weight:900;cursor:pointer}.mck-chat-start{text-align:center;padding:70px 24px;color:#3a211c}.mck-chat-start-icon{font-size:48px;margin-bottom:12px}.mck-chat-start h3{font-size:24px;margin:0 0 8px}.mck-chat-start p{font-size:13px;color:#806c65;line-height:1.5;max-width:420px;margin:0 auto 24px}.mck-chat-start-btn{border:0;background:#a51620;color:#fff;border-radius:12px;padding:13px 22px;font-weight:900;cursor:pointer}.mck-chat-start-btn:disabled{opacity:.55;cursor:wait}.mck-chat-send:disabled{opacity:.55;cursor:wait}
@@ -9234,7 +9272,7 @@ document.addEventListener('click',function(e){
 </style>
 <div id="mckCustomerChatModal" aria-modal="true" role="dialog" aria-label="McKenzie Customer Service Chat">
   <div id="mckCustomerChatBox">
-    <div id="mckCustomerChatHead"><div><strong>McKenzie Customer Service</strong><div id="mckCustomerChatOrder" style="font-size:10px;color:#e9d9d1;margin-top:3px"></div></div><button id="mckCustomerChatClose" type="button" aria-label="Close chat">×</button></div>
+    <div id="mckCustomerChatHead"><div style="display:flex;align-items:center;gap:8px;min-width:0"><button id="mckCustomerChatBack" type="button" aria-label="Back to support tickets" title="Back to support tickets">←</button><div><strong>McKenzie Customer Service</strong><div id="mckCustomerChatOrder" style="font-size:10px;color:#e9d9d1;margin-top:3px"></div></div></div><button id="mckCustomerChatClose" type="button" aria-label="Close chat">×</button></div>
     <div id="mckCustomerChatMessages"><div style="text-align:center;color:#806c65;font-size:12px;padding:35px">Opening chat…</div></div>
     <div id="mckCustomerChatComposer"><textarea id="mckCustomerChatInput" class="mck-chat-input" placeholder="Type your concern…"></textarea><button id="mckCustomerChatSend" class="mck-chat-send" type="button">Send</button></div>
   </div>
@@ -9248,8 +9286,8 @@ document.addEventListener('click',function(e){
   function chatUser(){try{return JSON.parse(localStorage.getItem('mckenzieUser')||'null')||{};}catch(e){return {};}}
   function chatEsc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m];});}
   function chatFormat(messages){var c=document.getElementById('mckCustomerChatMessages');if(!c)return;c.innerHTML=(messages||[]).map(function(m){var type=m.senderType==='customer'?'customer':(m.senderType==='ai'?'ai':(m.senderType==='system'?'ai':'admin'));var who=m.senderType==='customer'?'You':(m.senderType==='ai'?'McKenzie AI':(m.senderType==='system'?'McKenzie Customer Service':'McKenzie Customer Service'));return '<div class="mck-chat-msg '+type+'"><b>'+who+'</b><br>'+chatEsc(m.text||'')+'<small>'+chatEsc(m.createdAt?new Date(m.createdAt).toLocaleString():'')+'</small></div>';}).join('')||'<div style="text-align:center;color:#806c65;font-size:12px;padding:35px">No messages yet.</div>';c.scrollTop=c.scrollHeight;}
-  function showStartScreen_(tickets){var c=document.getElementById('mckCustomerChatMessages'),comp=document.getElementById('mckCustomerChatComposer');if(!c)return;var list=(Array.isArray(tickets)?tickets:[]).slice().sort(function(a,b){return String(b.updatedAt||b.createdAt||'').localeCompare(String(a.updatedAt||a.createdAt||''));});var html='<div class="mck-chat-start"><div class="mck-chat-start-icon">💬</div><h3>Customer Support</h3><p>Continue an existing ticket or start a new conversation with McKenzie Customer Service.</p>';if(list.length){html+='<div class="mck-chat-ticket-list">'+list.slice(0,8).map(function(t){var id=chatEsc(t.chatId||t.id||'');var status=String(t.status||'Open');var closed=status==='Closed'||status==='Solved';var msgs=Array.isArray(t.messages)?t.messages:[];var last=msgs[msgs.length-1]||{};var label=last.text||'Support conversation';return '<button type="button" class="mck-chat-ticket '+(closed?'mck-chat-ticket-closed':'')+'" data-chat-id="'+id+'"><span><b>Ticket '+id.slice(-8)+'</b><small>'+chatEsc(status)+' · '+chatEsc(label.slice(0,72))+'</small></span><strong>'+chatEsc(status==='Closed'?'Closed':status==='Solved'?'Solved':'Open')+'</strong></button>';}).join('')+'</div>'; }html+='<button type="button" id="mckStartAgentBtn" class="mck-chat-start-btn">Chat with an Agent</button></div>';c.innerHTML=html;if(comp)comp.style.display='none';c.querySelectorAll('.mck-chat-ticket').forEach(function(b){b.onclick=function(){openExistingCustomerSupportChat_(b.dataset.chatId);};});}
-  function showComposer_(){var comp=document.getElementById('mckCustomerChatComposer');if(comp)comp.style.display='flex';}
+  function showStartScreen_(tickets){var c=document.getElementById('mckCustomerChatMessages'),comp=document.getElementById('mckCustomerChatComposer'),back=document.getElementById('mckCustomerChatBack');if(!c)return;if(back)back.style.display='none';var list=(Array.isArray(tickets)?tickets:[]).slice().sort(function(a,b){return String(b.updatedAt||b.createdAt||'').localeCompare(String(a.updatedAt||a.createdAt||''));});var html='<div class="mck-chat-start"><div class="mck-chat-start-icon">💬</div><h3>Customer Support</h3><p>Continue an existing ticket or start a new conversation with McKenzie Customer Service.</p>';if(list.length){html+='<div class="mck-chat-ticket-list">'+list.slice(0,8).map(function(t){var id=chatEsc(t.chatId||t.id||'');var status=String(t.status||'Open');var closed=status==='Closed'||status==='Solved';var msgs=Array.isArray(t.messages)?t.messages:[];var last=msgs[msgs.length-1]||{};var label=last.text||'Support conversation';return '<button type="button" class="mck-chat-ticket '+(closed?'mck-chat-ticket-closed':'')+'" data-chat-id="'+id+'"><span><b>Ticket '+id.slice(-8)+'</b><small>'+chatEsc(status)+' · '+chatEsc(label.slice(0,72))+'</small></span><strong>'+chatEsc(status==='Closed'?'Closed':status==='Solved'?'Solved':'Open')+'</strong></button>';}).join('')+'</div>'; }html+='<button type="button" id="mckStartAgentBtn" class="mck-chat-start-btn">Chat with an Agent</button></div>';c.innerHTML=html;if(comp)comp.style.display='none';c.querySelectorAll('.mck-chat-ticket').forEach(function(b){b.onclick=function(){openExistingCustomerSupportChat_(b.dataset.chatId);};});}
+  function showComposer_(){var comp=document.getElementById('mckCustomerChatComposer'),back=document.getElementById('mckCustomerChatBack');if(comp)comp.style.display='flex';if(back)back.style.display='flex';}
   async function chatFirebase(){if(!window.MckenzieFirebaseReady)throw new Error('Firebase is not ready.');return await Promise.resolve(window.MckenzieFirebaseReady);}
   function clearAutoClose_(){if(chatAutoCloseTimer){clearTimeout(chatAutoCloseTimer);chatAutoCloseTimer=null;}chatAutoCloseClosing=false;}
   function scheduleAutoClose_(data){clearAutoClose_();var status=String(data&&data.status||'Open');if(status!=='Open')return;var msgs=Array.isArray(data.messages)?data.messages:[];if(!msgs.length)return;var last=msgs[msgs.length-1]||{};var sender=String(last.senderType||'');if(sender==='customer')return;var lastAt=new Date(data.lastActivityAt||last.createdAt||0).getTime();if(!lastAt)return;var due=lastAt+5*60*1000;var wait=Math.max(0,due-Date.now());chatAutoCloseTimer=setTimeout(function(){autoCloseUnresponsive_();},wait);}
@@ -9262,12 +9300,34 @@ document.addEventListener('click',function(e){
     }catch(e){var c=document.getElementById('mckCustomerChatMessages');if(c)c.innerHTML='<div style="text-align:center;color:#a51620;font-size:12px;padding:35px">'+chatEsc(e&&e.message?e.message:'Unable to start chat.')+'</div>';if(btn)btn.disabled=false;}}
   async function attachChatListener_(){if(chatUnsub)try{chatUnsub();}catch(e){}chatUnsub=null;var f=await chatFirebase(),ref=f.doc(f.db,'supportChats',chatId);if(typeof f.onSnapshot==='function'){chatUnsub=f.onSnapshot(ref,function(ds){if(!ds.exists())return;var d=ds.data()||{};chatFormat(Array.isArray(d.messages)?d.messages:[]);showComposer_();var closed=String(d.status||'Open')==='Closed'||String(d.status||'Open')==='Solved';var ci=document.getElementById('mckCustomerChatInput'),cs=document.getElementById('mckCustomerChatSend');if(ci)ci.disabled=closed;if(cs)cs.disabled=closed;if(ci)ci.placeholder=String(d.status||'Open')==='Closed'?'This conversation is closed.':(String(d.status||'Open')==='Solved'?'This conversation has been solved.':'Type your concern…');if(String(d.status||'Open')==='Closed')clearAutoClose_();else if(String(d.status||'Open')==='Open')scheduleAutoClose_(d);},function(err){var c=document.getElementById('mckCustomerChatMessages');if(c)c.innerHTML='<div style="text-align:center;color:#a51620;font-size:12px;padding:35px">Unable to load chat: '+chatEsc(err&&err.message?err.message:'Missing or insufficient permissions.')+'</div>';});}}
   async function sendChat_(){if(chatSending)return;var input=document.getElementById('mckCustomerChatInput'),btn=document.getElementById('mckCustomerChatSend'),text=String(input&&input.value||'').trim();if(!text||!chatId)return;chatSending=true;if(input)input.disabled=true;if(btn)btn.disabled=true;try{var f=await chatFirebase(),ref=f.doc(f.db,'supportChats',chatId),snap=await f.getDoc(ref);if(!snap.exists())throw new Error('Chat could not be opened.');var d=snap.data()||{},status=String(d.status||'Open');if(status==='Closed')throw new Error('This conversation is closed. Please start a new conversation.');if(status==='Solved')throw new Error('This conversation has been solved.');var messages=Array.isArray(d.messages)?d.messages.slice():[],now=new Date().toISOString(),customerCount=messages.filter(function(m){return m&&m.senderType==='customer';}).length;messages.push({senderType:'customer',text:text,createdAt:now});var patch={messages:messages,updatedAt:now,lastActivityAt:now,lastSenderType:'customer',unreadForAdmin:true,unreadForCustomer:false,autoClosePending:false};if(customerCount===0){messages.push({senderType:'ai',text:SECOND_REPLY,createdAt:new Date().toISOString()});patch.messages=messages;patch.aiReplied=true;patch.updatedAt=new Date().toISOString();patch.lastActivityAt=patch.updatedAt;patch.lastSenderType='ai';}await f.updateDoc(ref,patch);if(input)input.value='';scheduleAutoClose_(patch);}catch(e){alert(e&&e.message?e.message:'Unable to send your message.');}finally{chatSending=false;var closedNow=false;try{if(chatId){var ff=await chatFirebase(),ss=await ff.getDoc(ff.doc(ff.db,'supportChats',chatId));if(ss.exists()){var dd=ss.data()||{};var st=String(dd.status||'Open');closedNow=st==='Closed'||st==='Solved';}}}catch(e){}if(input)input.disabled=closedNow;if(btn)btn.disabled=closedNow;if(input&&!closedNow)input.focus();}}
+  async function backToCustomerSupportTickets_(){
+    clearAutoClose_();
+    if(chatUnsub)try{chatUnsub();}catch(e){}
+    chatUnsub=null;
+    chatId='';
+    var c=document.getElementById('mckCustomerChatMessages');
+    var comp=document.getElementById('mckCustomerChatComposer');
+    if(comp)comp.style.display='none';
+    if(c)c.innerHTML='<div style="text-align:center;color:#806c65;font-size:12px;padding:35px">Loading your support tickets…</div>';
+    try{
+      var f=await chatFirebase(),u=await customerWaitForAuthUser_(f,'');
+      if(!u)throw new Error('Please log in again.');
+      var snap=await f.getDocs(f.query(f.collection(f.db,'supportChats'),f.where('userId','==',String(u.uid))));
+      var tickets=snap.docs.map(function(ds){return Object.assign({chatId:ds.id},ds.data()||{});}).sort(function(a,b){return String(b.updatedAt||b.createdAt||'').localeCompare(String(a.updatedAt||a.createdAt||''));});
+      showStartScreen_(tickets);
+    }catch(e){
+      showStartScreen_([]);
+    }
+  }
+  window.backToCustomerSupportTickets_=backToCustomerSupportTickets_;
   window.openExistingCustomerSupportChat_=async function(existingId){
     var m=document.getElementById('mckCustomerChatModal');if(!m||!existingId)return;clearAutoClose_();if(chatUnsub)try{chatUnsub();}catch(e){}chatUnsub=null;chatId=String(existingId);m.classList.add('show');document.body.style.overflow='hidden';var o=document.getElementById('mckCustomerChatOrder');if(o)o.textContent='McKenzie Customer Service';var c=document.getElementById('mckCustomerChatMessages');if(c)c.innerHTML='<div style="text-align:center;color:#806c65;font-size:12px;padding:35px">Opening conversation…</div>';showComposer_();try{await attachChatListener_();}catch(e){if(c)c.innerHTML='<div style="text-align:center;color:#a51620;font-size:12px;padding:35px">Unable to load chat: '+chatEsc(e&&e.message?e.message:'Missing or insufficient permissions.')+'</div>';}}
   window.openCustomerSupportChat_=async function(orderId){var m=document.getElementById('mckCustomerChatModal');if(!m)return;window.__mckPendingChatOrderId=String(orderId||'');clearAutoClose_();if(chatUnsub)try{chatUnsub();}catch(e){}chatUnsub=null;chatId='';m.classList.add('show');document.body.style.overflow='hidden';var o=document.getElementById('mckCustomerChatOrder');if(o)o.textContent=orderId?'Order #'+orderId:'McKenzie Customer Service';var c=document.getElementById('mckCustomerChatMessages');if(c)c.innerHTML='<div style="text-align:center;color:#806c65;font-size:12px;padding:35px">Loading your support tickets…</div>';try{var f=await chatFirebase(),u=await customerWaitForAuthUser_(f,'');if(!u)throw new Error('Please log in again.');var snap=await f.getDocs(f.query(f.collection(f.db,'supportChats'),f.where('userId','==',String(u.uid))));var tickets=snap.docs.map(function(ds){return Object.assign({chatId:ds.id},ds.data()||{});}).sort(function(a,b){return String(b.updatedAt||b.createdAt||'').localeCompare(String(a.updatedAt||a.createdAt||''));});var openTicket=tickets.find(function(t){return String(t.status||'Open')==='Open';});if(openTicket){openExistingCustomerSupportChat_(openTicket.chatId);return;}showStartScreen_(tickets);var sb=document.getElementById('mckStartAgentBtn');if(sb)sb.onclick=beginNewCustomerChat_;}catch(e){showStartScreen_([]);var sb=document.getElementById('mckStartAgentBtn');if(sb)sb.onclick=beginNewCustomerChat_;}};
   function closeChat_(){var m=document.getElementById('mckCustomerChatModal');if(m)m.classList.remove('show');document.body.style.overflow='';clearAutoClose_();if(chatUnsub){try{chatUnsub();}catch(e){}chatUnsub=null;}}
   document.addEventListener('DOMContentLoaded',function(){var b=document.getElementById('mckCustomerChatSend'),x=document.getElementById('mckCustomerChatClose');if(b)b.onclick=sendChat_;if(x)x.onclick=closeChat_;var i=document.getElementById('mckCustomerChatInput');if(i)i.addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendChat_();}});});
 })();
+
+  document.addEventListener('DOMContentLoaded',function(){var back=document.getElementById('mckCustomerChatBack');if(back)back.onclick=function(){backToCustomerSupportTickets_();};var close=document.getElementById('mckCustomerChatClose');if(close)close.onclick=function(){closeCustomerSupportChat_();};});
 </script>
 
 
