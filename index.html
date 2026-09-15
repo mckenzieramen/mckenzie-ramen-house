@@ -9132,6 +9132,23 @@ function showThankYouThenSurvey_(orderId){
           }
           done({success:true,received:received}); return;
         }
+        if(api==='dismissReceiptPrompt'){
+          var dismissOrderId=String(params.orderId||'');
+          if(!dismissOrderId) throw new Error('Order ID is required.');
+          var dref=f.doc(f.db,'orders',dismissOrderId),dsnap=await f.getDoc(dref);
+          if(!dsnap.exists()) throw new Error('Order not found.');
+          var dorder=dsnap.data()||{};
+          if(String(dorder.userId||'')!==uid) throw new Error('Invalid customer account.');
+          if(String(dorder.orderStatus||'')!=='Delivered') throw new Error('The order has not been marked as delivered yet.');
+          var nowDismiss=new Date().toISOString();
+          await f.updateDoc(dref,{receiptPromptDismissed:true,receiptPromptDismissedAt:nowDismiss});
+          if(params.notificationId){
+            var dnref=f.doc(f.db,'notifications',String(params.notificationId));
+            var dns=await f.getDoc(dnref);
+            if(dns.exists() && String((dns.data()||{}).userId||'')===uid) await f.updateDoc(dnref,{readAt:nowDismiss});
+          }
+          done({success:true,dismissed:true}); return;
+        }
         throw new Error('Unsupported customer receipt request.');
       }).catch(function(e){done({success:false,error:e&&e.message?e.message:String(e)});});
       return;
@@ -9142,6 +9159,7 @@ function showThankYouThenSurvey_(orderId){
       if(api==='customerNotifications') r.getCustomerNotifications(String(params.userId||''));
       else if(api==='markCustomerNotificationRead') r.markCustomerNotificationRead(String(params.userId||''),String(params.notificationId||''));
       else if(api==='respondCustomerReceipt') r.respondCustomerReceipt(String(params.userId||''),String(params.orderId||''),String(params.received||'').toLowerCase()==='true',String(params.notificationId||''));
+      else if(api==='dismissReceiptPrompt') r.dismissReceiptPrompt(String(params.userId||''),String(params.orderId||''),String(params.notificationId||''));
       return;
     }
     done({success:false,error:'Customer API is unavailable.'});
@@ -9175,13 +9193,24 @@ function showThankYouThenSurvey_(orderId){
   }
   function closeReceipt_(){
     var modal=document.getElementById('mckReceiptModal');
+    var orderId=modal&&modal.dataset.orderId?String(modal.dataset.orderId):'';
+    var notificationId=modal&&modal.dataset.notificationId?String(modal.dataset.notificationId):'';
+    if(orderId && !busy){
+      rememberShown(orderId);
+      callApi('dismissReceiptPrompt',{userId:user().userId||'',orderId:orderId,notificationId:notificationId},function(){});
+    }
+    if(modal)modal.classList.remove('show');
+    document.body.style.overflow='';
+  }
+  function hideReceiptOnly_(){
+    var modal=document.getElementById('mckReceiptModal');
     if(modal)modal.classList.remove('show');
     document.body.style.overflow='';
   }
   function handleReceiptBack_(){
     var contact=document.getElementById('mckReceiptContact');
     if(contact && contact.style.display==='block'){ resetReceiptQuestion_(); return; }
-    closeReceipt_();
+    hideReceiptOnly_();
   }
   function respond(received){
     var modal=document.getElementById('mckReceiptModal');if(!modal)return;
@@ -9419,7 +9448,7 @@ document.addEventListener('click',function(e){
       });
     }).catch(function(e){console.warn('Closed chat notification startup:',e);});
   }
-  document.addEventListener('DOMContentLoaded',start);0
+  document.addEventListener('DOMContentLoaded',start);
 })();
 </script>
 </body>
