@@ -306,6 +306,7 @@ button,input,select,textarea{font:inherit}
 @media(max-width:950px){.mck-admin-dashboard{grid-template-columns:repeat(2,1fr)}}
 </style>
 
+<style id="mck-admin-typing-css">.admin-typing-indicator{display:none;font-size:10px;color:#806c65;padding:0 0 5px;font-style:italic}.admin-typing-indicator.show{display:block}</style>
 </head>
 <body>
 <button type="button" id="adminMobileMenuButton" class="admin-mobile-menu-button" aria-label="Open admin menu" aria-expanded="false" onclick="toggleAdminMobileMenu_()"><span></span><span></span><span></span></button>
@@ -1795,6 +1796,8 @@ function renderCustomerChats(){
   const list=(customerChatsData||[]).filter(function(chat){return (!q||[chat.customerName,chat.customerEmail,chat.orderId,chat.chatId].join(' ').toLowerCase().includes(q)) && (!statusFilter||String(chat.status||'Open')===statusFilter);});
   if(!list.length){c.innerHTML='<div class="customer-chat-empty">'+(q?'No matching customer conversations.':'No customer conversations yet. When a customer chats with McKenzie Customer Service, the conversation will appear here.')+'</div>';return;}
   c.innerHTML=list.map(renderAdminChat_).join('');
+  c.querySelectorAll('textarea[id^="adminChatInput_"]').forEach(function(input){bindAdminTyping_(input);});
+  list.forEach(function(chat){var el=document.getElementById('adminTyping_'+String(chat.chatId));if(el)el.classList.toggle('show',!!(chat.typingBy&&chat.typingBy.customer));});
   requestAnimationFrame(function(){
     c.querySelectorAll('.customer-chat-messages').forEach(function(box){ box.scrollTop=box.scrollHeight; });
   });
@@ -1813,15 +1816,19 @@ function renderAdminChat_(chat){
   const solvedAge=solvedAt&&!isNaN(solvedAt.getTime())?Math.max(0,Date.now()-solvedAt.getTime()):0;
   if(status==='Solved' && solvedAge>=24*60*60*1000){ setTimeout(function(){autoCloseSolvedChat_(chat.chatId,chat);},0); }
   const replyDisabled=status!=='Open'?'disabled':'';
+  const typingAdmin=!!(chat.typingBy&&chat.typingBy.admin);
   const closedClass=status==='Closed'?' customer-chat-closed':'';
   const statusLabel=status==='Closed'?'CLOSED':status.toUpperCase();
   const composerPlaceholder=status==='Closed'?'This conversation is closed.':(status==='Solved'?'This conversation is solved.':'Reply to customer…');
-  return '<article class="customer-chat-card'+closedClass+'" data-status="'+escAttr(status)+'"><div class="customer-chat-head"><div><div class="customer-chat-name">'+esc(chat.customerName||'Customer')+'</div><div class="customer-chat-meta">'+esc(chat.customerEmail||'')+(chat.orderId?' · Order #'+esc(chat.orderId):'')+'</div></div><div class="customer-chat-status-actions"><span class="customer-chat-status '+(chat.unreadForAdmin?'new ':'')+statusClass+'">'+esc(statusLabel)+'</span><button type="button" '+(status==='Open'?'class="active"':'')+' '+(status==='Closed'?'disabled':'')+' onclick="setCustomerChatStatus_(\''+safeId+'\',\'Open\')">Open</button><button type="button" '+(status==='Solved'?'class="active"':'')+' '+(status==='Closed'?'disabled':'')+' onclick="setCustomerChatStatus_(\''+safeId+'\',\'Solved\')">Solve</button></div></div><div class="customer-chat-messages">'+(messages||'<div style="color:#806c65;font-size:12px;padding:20px">No messages yet.</div>')+'</div><div class="customer-chat-compose"><textarea id="adminChatInput_'+safeId+'" placeholder="'+composerPlaceholder+'" '+replyDisabled+'></textarea><button type="button" data-chat-id="'+safeId+'" '+replyDisabled+' onclick="adminSendChat(this.dataset.chatId)">Send</button></div></article>';
+  return '<article class="customer-chat-card'+closedClass+'" data-status="'+escAttr(status)+'"><div class="customer-chat-head"><div><div class="customer-chat-name">'+esc(chat.customerName||'Customer')+'</div><div class="customer-chat-meta">'+esc(chat.customerEmail||'')+(chat.orderId?' · Order #'+esc(chat.orderId):'')+'</div></div><div class="customer-chat-status-actions"><span class="customer-chat-status '+(chat.unreadForAdmin?'new ':'')+statusClass+'">'+esc(statusLabel)+'</span><button type="button" '+(status==='Open'?'class="active"':'')+' '+(status==='Closed'?'disabled':'')+' onclick="setCustomerChatStatus_(\''+safeId+'\',\'Open\')">Open</button><button type="button" '+(status==='Solved'?'class="active"':'')+' '+(status==='Closed'?'disabled':'')+' onclick="setCustomerChatStatus_(\''+safeId+'\',\'Solved\')">Solve</button></div></div><div class="customer-chat-messages">'+(messages||'<div style="color:#806c65;font-size:12px;padding:20px">No messages yet.</div>')+'</div><div class="customer-chat-compose"><div id="adminTyping_'+safeId+'" class="admin-typing-indicator" aria-live="polite">Customer is typing…</div><textarea id="adminChatInput_'+safeId+'" placeholder="'+composerPlaceholder+'" '+replyDisabled+'></textarea><button type="button" data-chat-id="'+safeId+'" '+replyDisabled+' onclick="adminSendChat(this.dataset.chatId)">Send</button></div></article>';
 }
 
+let adminTypingTimers={};
+async function setAdminTyping_(chatId,isTyping){try{const f=await adminFirebase_();if(!f.auth.currentUser)return;const ref=f.doc(f.db,'supportChats',String(chatId));await f.updateDoc(ref,{typingBy:{customer:false,admin:!!isTyping}});}catch(e){}}
+function bindAdminTyping_(input){if(!input||input.dataset.typingBound==='1')return;input.dataset.typingBound='1';const chatId=String(input.id||'').replace(/^adminChatInput_/,'');input.addEventListener('input',function(){const active=!!String(input.value||'').trim();setAdminTyping_(chatId,active);clearTimeout(adminTypingTimers[chatId]);adminTypingTimers[chatId]=setTimeout(function(){setAdminTyping_(chatId,false);},1800);});}
 async function adminSendChat(chatId){
   const input=document.getElementById('adminChatInput_'+String(chatId));if(!input)return;const text=String(input.value||'').trim();if(!text)return;input.disabled=true;
-  try{const f=await adminFirebase_();if(!f.auth.currentUser)throw new Error('Please log in again.');const ref=f.doc(f.db,'supportChats',String(chatId));const snap=await f.getDoc(ref);if(!snap.exists())throw new Error('Chat not found.');const d=snap.data()||{};if(String(d.status||'Open')!=='Open')throw new Error('This conversation is solved.');const messages=Array.isArray(d.messages)?d.messages.slice():[];const now=new Date().toISOString();messages.push({senderType:'admin',text:text,createdAt:now});await f.updateDoc(ref,{messages:messages,updatedAt:now,lastActivityAt:now,lastSenderType:'admin',status:'Open',unreadForAdmin:false,unreadForCustomer:true,autoClosePending:false});input.value='';}catch(e){alert(e&&e.message?e.message:'Unable to send message.');}finally{input.disabled=false;}}
+  try{const f=await adminFirebase_();if(!f.auth.currentUser)throw new Error('Please log in again.');const ref=f.doc(f.db,'supportChats',String(chatId));const snap=await f.getDoc(ref);if(!snap.exists())throw new Error('Chat not found.');const d=snap.data()||{};if(String(d.status||'Open')!=='Open')throw new Error('This conversation is solved.');const messages=Array.isArray(d.messages)?d.messages.slice():[];const now=new Date().toISOString();messages.push({senderType:'admin',text:text,createdAt:now});await f.updateDoc(ref,{messages:messages,updatedAt:now,lastActivityAt:now,lastSenderType:'admin',status:'Open',unreadForAdmin:false,unreadForCustomer:true,autoClosePending:false,typingBy:{customer:false,admin:false}});input.value='';}catch(e){alert(e&&e.message?e.message:'Unable to send message.');}finally{input.disabled=false;}}
 
 async function setCustomerChatStatus_(chatId,status){
   status=String(status||'Open');
