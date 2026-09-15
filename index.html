@@ -7915,11 +7915,17 @@ function organizeCustomerMenuByCategory_() {
 async function loadPublishedMenuRatings_(){
   try{
     const loadReviews = function(){
-      return new Promise(function(resolve,reject){
-        if(window.google&&google.script&&google.script.run){
-          google.script.run.withSuccessHandler(function(v){resolve(Array.isArray(v)?v:[]);}).withFailureHandler(function(e){reject(e);}).getPublishedReviews();
-        }else{ reject(new Error('Review service unavailable')); }
-      });
+      /* Customer pages on GitHub Pages must use the same Firebase-only path as
+         the survey. Do not depend on the legacy Apps Script bridge here: that
+         bridge is intentionally temporary and may be restored/removed by the
+         product renderer, which caused published reviews to disappear. */
+      if(window.MckenzieFirebaseReady && typeof window.MckenzieFirebaseReady.then==='function'){
+        return Promise.resolve(window.MckenzieFirebaseReady).then(function(f){
+          if(!f || typeof f.getPublishedReviews!=='function') throw new Error('Review service unavailable');
+          return f.getPublishedReviews();
+        });
+      }
+      return Promise.reject(new Error('Review service unavailable'));
     };
     const reviews=await loadReviews();
     const stats={};
@@ -7952,18 +7958,39 @@ async function loadPublishedMenuRatings_(){
     document.querySelectorAll('.product-card[data-product-id]').forEach(function(card){
       const pid=String(card.getAttribute('data-product-id')||'').trim();
       const name=reviewNameKey_(card.getAttribute('data-product-name')||'');
-      const key=stats['pid:'+pid] ? 'pid:'+pid : ('name:'+name);
-      const st=stats[key];
+
+      /* Merge both identifiers instead of choosing only one. Older reviews can
+         have a stale/missing productId while newer reviews have the current
+         productId. Both records still belong to the same menu when their
+         normalized product name matches. Deduplicate by reviewId so a review
+         that matches both identifiers is counted only once. */
+      const candidates=(grouped['pid:'+pid]||[]).concat(grouped['name:'+name]||[]);
+      const seen={};
+      const list=candidates.filter(function(r){
+        const rid=String(r.reviewId||r.id||'');
+        const fallback=String(r.orderId||'')+'|'+String(r.customerId||'')+'|'+String(r.productName||'')+'|'+String(r.submittedAt||'')+'|'+String(r.rating||'');
+        const key=rid||fallback;
+        if(seen[key]) return false;
+        seen[key]=true;
+        return true;
+      });
+      const st=list.reduce(function(acc,r){
+        const rating=Number(r.rating||0);
+        if(rating>=1&&rating<=5){acc.sum+=rating;acc.count++;}
+        return acc;
+      },{sum:0,count:0});
       const el=card.querySelector('[data-product-rating]');
       const reviewBox=card.querySelector('[data-product-reviews]');
-      if(el&&st&&st.count){
+      if(el&&st.count){
         const avg=st.sum/st.count;
         const rounded=Math.round(avg);
         el.classList.add('has-rating');
         el.innerHTML=Array.from({length:5},function(_,i){return i<rounded?'★':'☆';}).join('')+' <span>'+avg.toFixed(1)+' <span class="rating-count">('+st.count+' review'+(st.count===1?'':'s')+')</span></span>';
+      }else if(el){
+        el.classList.remove('has-rating');
+        el.innerHTML='☆ <span>Not yet rated</span>';
       }
       if(reviewBox){
-        const list=grouped[key]||[];
         if(list.length){
           reviewBox.style.display='block';
           reviewBox.innerHTML='<div class="product-card-reviews-title">Customer Reviews ('+list.length+')</div>'+list.map(function(r){
