@@ -8915,13 +8915,22 @@ if (window.MckenzieFirebaseReady && typeof window.MckenzieFirebaseReady.then ===
           var byProduct={};
           rs.docs.forEach(function(d){
             var r=d.data()||{};
-            if(String(r.orderId||'')===String(params.orderId||'')) byProduct[String(r.productId||'')]=r;
+            if(String(r.orderId||'')===String(params.orderId||'')){
+              var pid=String(r.productId||'');
+              if(!byProduct[pid])byProduct[pid]=[];
+              byProduct[pid].push(r);
+            }
           });
           var rawItems=Array.isArray(order.items)?order.items:[];
-          var items=rawItems.map(function(item){
+          var items=[];
+          rawItems.forEach(function(item){
             var pid=String(item.productId||item.id||'');
-            var r=byProduct[pid];
-            return {productId:pid,productName:item.productName||item.name||'Ramen item',image:String(item.image||item.productImage||''),quantity:Number(item.quantity||0),reviewed:!!r,existingRating:r?Number(r.rating||0):0,existingReview:r?String(r.review||''):''};
+            var qty=Math.max(1,Number(item.quantity||1));
+            var existing=(byProduct[pid]||[]).slice().sort(function(a,b){return new Date(a.submittedAt||0)-new Date(b.submittedAt||0);});
+            for(var unit=0;unit<qty;unit++){
+              var r=existing[unit]||null;
+              items.push({productId:pid,productName:item.productName||item.name||'Ramen item',image:String(item.image||item.productImage||''),quantity:qty,unitIndex:unit+1,reviewed:!!r,existingRating:r?Number(r.rating||0):0,existingReview:r?String(r.review||''):''});
+            }
           });
           await Promise.all(items.map(async function(item){
             if(item.image||!item.productId)return;
@@ -8948,8 +8957,8 @@ if (window.MckenzieFirebaseReady && typeof window.MckenzieFirebaseReady.then ===
           var orderItems=Array.isArray(odb.items)?odb.items:[];
           var existingQb=f.query(f.collection(f.db,'reviews'),f.where('customerId','==',String(u.uid)));
           var existingSb=await f.getDocs(existingQb);
-          var existingMap={}; existingSb.docs.forEach(function(d){var rr=d.data()||{};existingMap[String(rr.orderId||'')+'|'+String(rr.productId||'')]=rr;});
-          var batch=f.writeBatch(f.db),count=0;
+          var existingCounts={}; existingSb.docs.forEach(function(d){var rr=d.data()||{};var ek=String(rr.orderId||'')+'|'+String(rr.productId||'');existingCounts[ek]=(existingCounts[ek]||0)+1;});
+          var batch=f.writeBatch(f.db),count=0,submittedCounts={};
           entries.forEach(function(ent){
             var pid=String(ent.productId||''); if(!pid)return;
             var rating=Number(ent.rating||0),review=String(ent.review||'').trim();
@@ -8958,13 +8967,14 @@ if (window.MckenzieFirebaseReady && typeof window.MckenzieFirebaseReady.then ===
             var target=orderItems.find(function(item){return String(item.productId||item.id||'')===pid;});
             if(!target) throw new Error('One of the selected menu items was not part of this order.');
             var key=String(params.orderId||'')+'|'+pid;
-            /* A survey can remain open in the browser while another submission
-               (or an earlier tab/session) has already reviewed one of the items.
-               Do not reject the whole batch in that case. Simply skip the item
-               that is already reviewed and continue with any remaining items. */
-            if(existingMap[key]) return;
+            var already=Number(existingCounts[key]||0)+Number(submittedCounts[key]||0);
+            var qty=Math.max(1,Number(target.quantity||1));
+            /* One review slot is created for each purchased unit. If a prior
+               submission already filled a slot, leave that slot untouched. */
+            if(already>=qty) return;
             var id='REV-'+Date.now()+'-'+Math.floor(Math.random()*100000)+'-'+count;
-            batch.set(f.doc(f.db,'reviews',id),{reviewId:id,orderId:String(params.orderId||''),customerId:String(u.uid),productId:pid,productName:String(target.productName||target.name||'Ramen item'),rating:rating,review:review,customerName:String(odb.customerName||odb.fullName||'Customer'),submittedAt:new Date().toISOString(),status:'Published'});
+            batch.set(f.doc(f.db,'reviews',id),{reviewId:id,orderId:String(params.orderId||''),customerId:String(u.uid),productId:pid,productName:String(target.productName||target.name||'Ramen item'),rating:rating,review:review,unitIndex:already+1,reviewedUnit:already+1,customerName:String(odb.customerName||odb.fullName||'Customer'),submittedAt:new Date().toISOString(),status:'Published'});
+            submittedCounts[key]=(submittedCounts[key]||0)+1;
             count++;
           });
           await batch.commit();
@@ -9015,15 +9025,15 @@ if (window.MckenzieFirebaseReady && typeof window.MckenzieFirebaseReady.then ===
     var c=document.getElementById('mckSurveyContent');if(!c||!surveyForm)return;
     if(surveyForm.completed){c.innerHTML='<div class="mck-survey-wrap"><div class="mck-survey-success">✓ Thank you! You have already reviewed every menu item in order <b>#'+surveyEsc(surveyForm.orderId)+'</b>.</div></div>';return;}
     var remaining=(surveyForm.items||[]).filter(function(i){return !i.reviewed;});
-    var html='<div class="mck-survey-wrap"><div class="mck-survey-order">Order #'+surveyEsc(surveyForm.orderId)+'</div><div class="mck-survey-meta">Customer: '+surveyEsc(surveyForm.customerName||'Customer')+' · Rate all the menu items you received, then submit once.</div>';
-    remaining.forEach(function(item,idx){html+='<div class="mck-survey-item" data-product-id="'+surveyEsc(item.productId)+'"><div class="mck-survey-item-top">'+(item.image?'<img class="mck-survey-item-photo" src="'+surveyEsc(item.image)+'" alt="'+surveyEsc(item.productName)+'">':'')+'<div><div class="mck-survey-item-name">'+surveyEsc(item.productName)+'</div><div class="mck-survey-qty">Quantity: '+Number(item.quantity||0)+'</div></div></div><div class="mck-survey-label">Your rating</div><div class="mck-survey-stars" id="mckSurveyStars_'+idx+'">'+[1,2,3,4,5].map(function(n){return '<button type="button" class="mck-survey-star" data-rating="'+n+'">★</button>';}).join('')+'</div><input type="hidden" id="mckSurveyRating_'+idx+'" value="0"><div class="mck-survey-label">Your review (optional)</div><textarea class="mck-survey-review" id="mckSurveyReview_'+idx+'" maxlength="1000" placeholder="Tell us about this menu item..."></textarea></div>';});
+    var html='<div class="mck-survey-wrap"><div class="mck-survey-order">Order #'+surveyEsc(surveyForm.orderId)+'</div><div class="mck-survey-meta">Customer: '+surveyEsc(surveyForm.customerName||'Customer')+' · Rate every purchased menu unit, then submit once. If you bought 3 Tonkutsu, you can submit 3 Tonkutsu reviews and all 3 will accumulate on that menu.</div>';
+    remaining.forEach(function(item,idx){html+='<div class="mck-survey-item" data-product-id="'+surveyEsc(item.productId)+'"><div class="mck-survey-item-top">'+(item.image?'<img class="mck-survey-item-photo" src="'+surveyEsc(item.image)+'" alt="'+surveyEsc(item.productName)+'">':'')+'<div><div class="mck-survey-item-name">'+surveyEsc(item.productName)+' — Review '+Number(item.unitIndex||1)+' of '+Number(item.quantity||1)+'</div><div class="mck-survey-qty">Purchased quantity: '+Number(item.quantity||0)+' · This review is for unit '+Number(item.unitIndex||1)+'</div></div></div><div class="mck-survey-label">Your rating</div><div class="mck-survey-stars" id="mckSurveyStars_'+idx+'">'+[1,2,3,4,5].map(function(n){return '<button type="button" class="mck-survey-star" data-rating="'+n+'">★</button>';}).join('')+'</div><input type="hidden" id="mckSurveyRating_'+idx+'" value="0"><div class="mck-survey-label">Your review (optional)</div><textarea class="mck-survey-review" id="mckSurveyReview_'+idx+'" maxlength="1000" placeholder="Tell us about this menu item..."></textarea></div>';});
     html+='<div class="mck-survey-submit-row"><button class="mck-survey-submit mck-survey-submit-all" id="mckSurveySubmitAll" type="button">Submit All Feedback</button></div></div>';c.innerHTML=html;
     remaining.forEach(function(item,idx){document.querySelectorAll('#mckSurveyStars_'+idx+' .mck-survey-star').forEach(function(b){b.onclick=function(){var n=Number(b.dataset.rating);document.getElementById('mckSurveyRating_'+idx).value=n;document.querySelectorAll('#mckSurveyStars_'+idx+' .mck-survey-star').forEach(function(x){x.classList.toggle('active',Number(x.dataset.rating)<=n);});};});});
     var allBtn=document.getElementById('mckSurveySubmitAll');if(allBtn)allBtn.onclick=function(){submitSurveyAll_(remaining);};
   }
   function submitSurveyAll_(items){
     if(surveyBusy)return;var u=surveyUser(),entries=[];
-    (items||[]).forEach(function(item,idx){var rating=Number(document.getElementById('mckSurveyRating_'+idx).value||0),review=document.getElementById('mckSurveyReview_'+idx).value||'';entries.push({productId:item.productId,rating:rating,review:review});});
+    (items||[]).forEach(function(item,idx){var rating=Number(document.getElementById('mckSurveyRating_'+idx).value||0),review=document.getElementById('mckSurveyReview_'+idx).value||'';entries.push({productId:item.productId,unitIndex:Number(item.unitIndex||1),rating:rating,review:review});});
     if(entries.some(function(e){return e.rating<1||e.rating>5;})){alert('Please select a rating from 1 to 5 stars for every menu item.');return;}
     surveyBusy=true;var btn=document.getElementById('mckSurveySubmitAll');if(btn){btn.disabled=true;btn.textContent='Submitting All Feedback…';}
     surveyCall('submitCustomerReviewsBatch',{userId:u.userId,orderId:surveyOrderId,entries:entries},function(v){surveyBusy=false;if(!v||!v.success){if(btn){btn.disabled=false;btn.textContent='Submit All Feedback';}alert(v&&v.error?v.error:'Unable to submit your feedback.');return;}if(btn){btn.textContent='✓ Feedback Submitted';}var c=document.getElementById('mckSurveyContent');if(c)c.innerHTML='<div class="mck-survey-wrap"><div class="mck-survey-success">✓ Thank you for supporting McKenzie Ramen House!<br><span style="font-weight:600;opacity:.8">Your feedback has been submitted successfully.</span></div></div>';setTimeout(function(){closeSurveyModal_();},1700);});
@@ -9104,6 +9114,9 @@ function showThankYouThenSurvey_(orderId){
 #mckReceiptNo{background:#fff;color:#8b1118}
 #mckReceiptContact{display:none;margin-top:18px;text-align:left;background:#fff;border:1px solid #ead8cf;border-radius:14px;padding:15px;font-size:13px;line-height:1.7;color:#4d3731}
 #mckReceiptContact strong{color:#6b111b}
+#mckReceiptModal,#mckReceiptBox,#mckReceiptTopbar,#mckReceiptYes,#mckReceiptNo,#mckReceiptClose,#mckReceiptBack{pointer-events:auto;}
+#mckReceiptTopbar{position:relative;z-index:20;}
+#mckReceiptActions{position:relative;z-index:20;}
 </style>
 <div id="mckReceiptModal" aria-modal="true" role="dialog">
   <div id="mckReceiptBox">
@@ -9321,10 +9334,11 @@ function showThankYouThenSurvey_(orderId){
     poll();
   }
   document.addEventListener('DOMContentLoaded',function(){
-    document.getElementById('mckReceiptYes').onclick=function(){respond(true);};
-    document.getElementById('mckReceiptNo').onclick=function(){respond(false);};
-    document.getElementById('mckReceiptClose').onclick=closeReceipt_;
-    document.getElementById('mckReceiptBack').onclick=handleReceiptBack_;
+    var yes=document.getElementById('mckReceiptYes'),no=document.getElementById('mckReceiptNo'),close=document.getElementById('mckReceiptClose'),back=document.getElementById('mckReceiptBack');
+    if(yes)yes.onclick=function(e){e.preventDefault();e.stopPropagation();respond(true);};
+    if(no)no.onclick=function(e){e.preventDefault();e.stopPropagation();respond(false);};
+    if(close)close.onclick=function(e){e.preventDefault();e.stopPropagation();closeReceipt_();};
+    if(back)back.onclick=function(e){e.preventDefault();e.stopPropagation();handleReceiptBack_();};
     start();
   });
 })();
@@ -9374,7 +9388,7 @@ document.addEventListener('click',function(e){
 #mckCustomerChatMessages{flex:1;overflow:auto;padding:16px;display:grid;align-content:start;gap:9px;background:#fff7ed}
 .mck-chat-msg{max-width:82%;padding:10px 12px;border-radius:14px;font-size:12px;line-height:1.55}.mck-chat-msg.customer{justify-self:end;background:#fbe0e4;color:#5f1018}.mck-chat-msg.ai,.mck-chat-msg.admin{justify-self:start;background:#fff5df;color:#4d3731}.mck-chat-msg small{display:block;font-size:9px;opacity:.55;margin-top:4px}
 #mckCustomerChatComposer{display:flex;gap:8px;padding:12px;border-top:1px solid #ead8cf;background:#fffaf5}.mck-chat-input{flex:1;min-height:46px;max-height:110px;resize:vertical;border:1px solid #dfc9bd;border-radius:11px;padding:10px 11px;outline:none}.mck-chat-send{border:0;background:#a51620;color:#fff;border-radius:11px;padding:10px 15px;font-weight:900;cursor:pointer}.mck-chat-start{text-align:center;padding:70px 24px;color:#3a211c}.mck-chat-start-icon{font-size:48px;margin-bottom:12px}.mck-chat-start h3{font-size:24px;margin:0 0 8px}.mck-chat-start p{font-size:13px;color:#806c65;line-height:1.5;max-width:420px;margin:0 auto 24px}.mck-chat-start-btn{border:0;background:#a51620;color:#fff;border-radius:12px;padding:13px 22px;font-weight:900;cursor:pointer}.mck-chat-start-btn:disabled{opacity:.55;cursor:wait}.mck-chat-send:disabled{opacity:.55;cursor:wait}
-@media(max-width:600px){#mckCustomerChatModal{padding:0}#mckCustomerChatBox{width:100%;height:100%;border-radius:0}#mckCustomerChatHead{padding:14px 15px}}
+@media(max-width:600px){#mckCustomerChatModal{padding:0}#mckCustomerChatBox{width:100%;height:100%;border-radius:0}#mckCustomerChatHead{padding:14px 64px 14px 15px;position:relative}#mckCustomerChatClose{position:absolute !important;top:12px !important;right:14px !important;z-index:10000050 !important}.mck-chat-input{font-size:16px !important;line-height:1.4;}}
 
 .mck-chat-ticket-list{display:grid;gap:7px;max-height:230px;overflow:auto;text-align:left;margin:0 auto 14px;max-width:470px}.mck-chat-ticket{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 11px;border:1px solid #ead4c9;border-radius:11px;background:#fff;color:#3a0709;cursor:pointer;text-align:left}.mck-chat-ticket:hover{background:#fff1e7;border-color:#d8b4a7}.mck-chat-ticket span{min-width:0}.mck-chat-ticket b{display:block;font-size:11px}.mck-chat-ticket small{display:block;margin-top:3px;color:#806c65;font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:330px}.mck-chat-ticket strong{color:#a51620;font-size:10px;white-space:nowrap}
 </style>
@@ -9432,10 +9446,11 @@ document.addEventListener('click',function(e){
     var m=document.getElementById('mckCustomerChatModal');if(!m||!existingId)return;clearAutoClose_();if(chatUnsub)try{chatUnsub();}catch(e){}chatUnsub=null;chatId=String(existingId);m.classList.add('show');document.body.style.overflow='hidden';var o=document.getElementById('mckCustomerChatOrder');if(o)o.textContent='McKenzie Customer Service';var c=document.getElementById('mckCustomerChatMessages');if(c)c.innerHTML='<div style="text-align:center;color:#806c65;font-size:12px;padding:35px">Opening conversation…</div>';showComposer_();try{await attachChatListener_();}catch(e){if(c)c.innerHTML='<div style="text-align:center;color:#a51620;font-size:12px;padding:35px">Unable to load chat: '+chatEsc(e&&e.message?e.message:'Missing or insufficient permissions.')+'</div>';}}
   window.openCustomerSupportChat_=async function(orderId){var m=document.getElementById('mckCustomerChatModal');if(!m)return;window.__mckPendingChatOrderId=String(orderId||'');clearAutoClose_();if(chatUnsub)try{chatUnsub();}catch(e){}chatUnsub=null;chatId='';m.classList.add('show');document.body.style.overflow='hidden';var o=document.getElementById('mckCustomerChatOrder');if(o)o.textContent=orderId?'Order #'+orderId:'McKenzie Customer Service';var c=document.getElementById('mckCustomerChatMessages');if(c)c.innerHTML='<div style="text-align:center;color:#806c65;font-size:12px;padding:35px">Loading your support tickets…</div>';try{var f=await chatFirebase(),u=await customerWaitForAuthUser_(f,'');if(!u)throw new Error('Please log in again.');var snap=await f.getDocs(f.query(f.collection(f.db,'supportChats'),f.where('userId','==',String(u.uid))));var tickets=snap.docs.map(function(ds){return Object.assign({chatId:ds.id},ds.data()||{});}).sort(function(a,b){return String(b.updatedAt||b.createdAt||'').localeCompare(String(a.updatedAt||a.createdAt||''));});var openTicket=tickets.find(function(t){return String(t.status||'Open')==='Open';});if(openTicket){openExistingCustomerSupportChat_(openTicket.chatId);return;}showStartScreen_(tickets);var sb=document.getElementById('mckStartAgentBtn');if(sb)sb.onclick=beginNewCustomerChat_;}catch(e){showStartScreen_([]);var sb=document.getElementById('mckStartAgentBtn');if(sb)sb.onclick=beginNewCustomerChat_;}};
   function closeChat_(){var m=document.getElementById('mckCustomerChatModal');if(m)m.classList.remove('show');document.body.style.overflow='';clearAutoClose_();if(chatUnsub){try{chatUnsub();}catch(e){}chatUnsub=null;}}
+  window.closeCustomerSupportChat_=closeChat_;
   document.addEventListener('DOMContentLoaded',function(){var b=document.getElementById('mckCustomerChatSend'),x=document.getElementById('mckCustomerChatClose');if(b)b.onclick=sendChat_;if(x)x.onclick=closeChat_;var i=document.getElementById('mckCustomerChatInput');if(i)i.addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendChat_();}});});
 })();
 
-  document.addEventListener('DOMContentLoaded',function(){var back=document.getElementById('mckCustomerChatBack');if(back)back.onclick=function(){backToCustomerSupportTickets_();};var close=document.getElementById('mckCustomerChatClose');if(close)close.onclick=function(){closeCustomerSupportChat_();};});
+  document.addEventListener('DOMContentLoaded',function(){var back=document.getElementById('mckCustomerChatBack');if(back)back.onclick=function(){backToCustomerSupportTickets_();};var close=document.getElementById('mckCustomerChatClose');if(close)close.onclick=function(){closeChat_();};});
 </script>
 
 
@@ -9455,6 +9470,12 @@ document.addEventListener('click',function(e){
 .account-subcard .account-subclose,.address-card .address-close,#mckSurveyClose,#mckCustomerChatClose{position:absolute !important;top:12px !important;right:14px !important;z-index:30 !important;}
 #mckSurveyHead,#mckCustomerChatHead{position:relative;padding-right:64px !important;}
 @media(max-width:700px){#mckReceiptModal,#mckSurveyModal,#mckCustomerChatModal,.account-submodal,#addAddressModal,#orderConfirmModal{z-index:10000000 !important;}#mobileSiteNavButton{z-index:9000 !important;}}
+</style>
+<style id="mckenzie-customer-chat-final-controls">
+#mckCustomerChatBox{position:relative;}
+#mckCustomerChatHead{position:relative;}
+#mckCustomerChatClose{position:absolute !important;top:12px !important;right:14px !important;margin:0 !important;z-index:10000050 !important;pointer-events:auto !important;}
+@media(max-width:600px){.mck-chat-input{font-size:16px !important;}}
 </style>
 
 <style id="mckenzie-customer-chat-live-notice-style">
