@@ -6061,7 +6061,7 @@ async function customerGetOrdersDirect_() {
     // the Firestore rules intentionally block collection-wide customer reads.
     var q=f.query(f.collection(f.db,"orders"),f.where("userId","==",uid));
     var snap=await f.getDocs(q);
-    return snap.docs.map(function(doc){var o=doc.data()||{};return {orderId:String(o.orderId||doc.id),userId:String(o.userId||""),customerName:o.customerName||o.fullName||"Customer",fullName:o.fullName||o.customerName||"Customer",email:o.email||u.email||"",mobile:o.mobile||"",items:Array.isArray(o.items)?o.items.map(function(it,idx){return {itemIndex:idx,productId:String(it.productId||it.id||""),productName:it.productName||it.name||"Ramen item",image:String(it.image||it.productImage||""),price:Number(it.price||0),quantity:Number(it.quantity||0),subtotal:Number(it.subtotal!=null?it.subtotal:Number(it.price||0)*Number(it.quantity||0)),itemStatus:String(it.itemStatus||"Preparing")};}):[],total:Number(o.total||0),paymentMethod:o.paymentMethod||"",paymentStatus:o.paymentStatus||"Pending",orderStatus:o.orderStatus==="Pending"?"Preparing":(o.orderStatus||"Preparing"),address:o.address||"",instruction:o.instruction||o.additionalInstruction||"",orderedAt:o.orderedAt&&o.orderedAt.toDate?o.orderedAt.toDate().toISOString():String(o.orderedAt||""),customerConfirmed:!!o.customerConfirmed,confirmedAt:o.confirmedAt&&o.confirmedAt.toDate?o.confirmedAt.toDate().toISOString():String(o.confirmedAt||""),deliveredAt:o.deliveredAt&&o.deliveredAt.toDate?o.deliveredAt.toDate().toISOString():String(o.deliveredAt||""),closed:!!o.closed,canRate:o.orderStatus==="Delivered"&&!!o.customerConfirmed};}).sort(function(a,b){return String(b.orderedAt).localeCompare(String(a.orderedAt));});
+    return snap.docs.map(function(doc){var o=doc.data()||{};return {orderId:String(o.orderId||doc.id),userId:String(o.userId||""),customerName:o.customerName||o.fullName||"Customer",fullName:o.fullName||o.customerName||"Customer",email:o.email||u.email||"",mobile:o.mobile||"",items:Array.isArray(o.items)?o.items.map(function(it,idx){return {itemIndex:idx,productId:String(it.productId||it.id||""),productName:it.productName||it.name||"Ramen item",image:String(it.image||it.productImage||""),price:Number(it.price||0),quantity:Number(it.quantity||0),subtotal:Number(it.subtotal!=null?it.subtotal:Number(it.price||0)*Number(it.quantity||0)),itemStatus:String(it.itemStatus||"Preparing")};}):[],total:Number(o.total||0),paymentMethod:o.paymentMethod||"",paymentStatus:o.paymentStatus||"Pending",orderStatus:o.orderStatus==="Pending"?"Preparing":(o.orderStatus||"Preparing"),address:o.address||"",instruction:o.instruction||o.additionalInstruction||"",orderedAt:o.orderedAt&&o.orderedAt.toDate?o.orderedAt.toDate().toISOString():String(o.orderedAt||""),customerConfirmed:!!o.customerConfirmed,confirmedAt:o.confirmedAt&&o.confirmedAt.toDate?o.confirmedAt.toDate().toISOString():String(o.confirmedAt||""),deliveredAt:o.deliveredAt&&o.deliveredAt.toDate?o.deliveredAt.toDate().toISOString():String(o.deliveredAt||""),closed:!!o.closed,receiptPromptDismissed:!!o.receiptPromptDismissed,reviewPromptDismissed:!!o.reviewPromptDismissed,canRate:o.orderStatus==="Delivered"&&!!o.customerConfirmed};}).sort(function(a,b){return String(b.orderedAt).localeCompare(String(a.orderedAt));});
   },"Unable to load your orders right now.");
 }
 
@@ -6684,17 +6684,34 @@ function openRatingPage_(orderId) {
   if (!id) return;
   const modal = document.getElementById("mckSurveyModal");
   if (!modal) return;
+  modal.dataset.orderId = id;
   modal.classList.add("show");
   document.body.style.overflow = "hidden";
   loadInlineSurvey_(id);
 }
 
+async function markSurveyDismissed_(orderId) {
+  const id = String(orderId || "").trim();
+  const uid = customerCurrentUserId_();
+  if (!id || !uid || !window.MckenzieFirebaseReady) return;
+  try {
+    const f = await customerWaitForAuthUser_(await window.MckenzieFirebaseReady, uid);
+    if (!f) return;
+    const ref = f.doc(f.db, "orders", id);
+    const snap = await f.getDoc(ref);
+    if (!snap.exists() || String((snap.data()||{}).userId||"") !== String(uid)) return;
+    await f.updateDoc(ref, {reviewPromptDismissed:true, reviewPromptDismissedAt:new Date().toISOString()});
+  } catch (e) { console.warn("Unable to record survey dismissal:", e); }
+}
+
 function closeSurveyModal_() {
   const modal = document.getElementById("mckSurveyModal");
   const content = document.getElementById("mckSurveyContent");
+  const orderId = modal ? String(modal.dataset.orderId || "") : "";
   if (modal) modal.classList.remove("show");
   if (content) content.innerHTML = '<div class="mck-survey-loading">Loading your order…</div>';
   document.body.style.overflow = "";
+  if (orderId) markSurveyDismissed_(orderId);
 }
 
 function openOrderDetail_(order) {
@@ -8967,10 +8984,10 @@ if (window.MckenzieFirebaseReady && typeof window.MckenzieFirebaseReady.then ===
 #mckSurveyModal{display:none;position:fixed;inset:0;z-index:1000000;background:rgba(9,3,3,.76);align-items:center;justify-content:center;padding:18px}
 #mckSurveyModal.show{display:flex}
 #mckSurveyBox{width:min(920px,100%);height:min(88vh,820px);background:#fffaf5;border:1px solid #ead8cf;border-radius:24px;box-shadow:0 30px 100px rgba(0,0,0,.42);overflow:hidden;display:flex;flex-direction:column}
-#mckSurveyHead{flex:0 0 auto;padding:17px 20px;background:#130807;color:#fff;display:flex;align-items:center;justify-content:space-between;gap:15px}
+#mckSurveyHead{flex:0 0 auto;position:relative;padding:17px 70px 17px 20px;background:#130807;color:#fff;display:flex;align-items:center;justify-content:space-between;gap:15px}
 #mckSurveyHead .survey-brand{font-size:10px;letter-spacing:3px;font-weight:900;color:#e9ad35}
 #mckSurveyHead h2{margin:3px 0 0;font-family:"Playfair Display",serif;font-size:25px;color:#fff}
-#mckSurveyClose{border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:#fff;width:38px;height:38px;border-radius:50%;font-size:21px;cursor:pointer}
+#mckSurveyClose{position:absolute;top:12px;right:14px;z-index:10000030;pointer-events:auto;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:#fff;width:38px;height:38px;border-radius:50%;font-size:21px;cursor:pointer}
 #mckSurveyFrame{width:100%;height:100%;border:0;background:#fff7ed;display:block}
 @media(max-width:600px){#mckSurveyModal{padding:0}#mckSurveyBox{width:100%;height:100%;border-radius:0}#mckSurveyHead{padding:14px 16px}#mckSurveyHead h2{font-size:21px}}
 </style>
@@ -8978,7 +8995,7 @@ if (window.MckenzieFirebaseReady && typeof window.MckenzieFirebaseReady.then ===
   <div id="mckSurveyBox">
     <div id="mckSurveyHead">
       <div><div class="survey-brand">✦ MCKENZIE RAMEN HOUSE ✦</div><h2>Share Your Experience</h2></div>
-      <button id="mckSurveyClose" type="button" aria-label="Close survey">×</button>
+      <button id="mckSurveyClose" type="button" aria-label="Close survey" onclick="closeSurveyModal_();return false;">×</button>
     </div>
     <div id="mckSurveyContent" class="mck-inline-survey-content"><div class="mck-survey-loading">Loading your order…</div></div>
   </div>
@@ -9074,8 +9091,12 @@ function showThankYouThenSurvey_(orderId){
   var receiptPollBusy=false;
   var STORAGE_PREFIX='mckenzie_receipt_popup_done_';
   function user(){try{return JSON.parse(localStorage.getItem('mckenzieUser')||'null')||{};}catch(e){return {};}}
-  function wasShown(orderId){ return false; }
-  function rememberShown(orderId){ /* Firebase customerConfirmed/closed is the source of truth. */ }
+  function wasShown(orderId){
+    try{return localStorage.getItem(STORAGE_PREFIX+String(orderId||''))==='1';}catch(e){return false;}
+  }
+  function rememberShown(orderId){
+    try{localStorage.setItem(STORAGE_PREFIX+String(orderId||''),'1');}catch(e){}
+  }
   function callApi(api,params,done){
     if(window.MckenzieFirebaseReady){
       Promise.resolve(window.MckenzieFirebaseReady).then(async function(f){
@@ -9103,7 +9124,7 @@ function showThankYouThenSurvey_(orderId){
           var order=snap.data()||{};
           if(String(order.userId||'')!==uid) throw new Error('Invalid customer account.');
           if(String(order.orderStatus||'')!=='Delivered') throw new Error('The order has not been marked as delivered yet.');
-          await f.updateDoc(ref,{customerConfirmed:received,confirmedAt:received?new Date().toISOString():'',closed:received});
+          await f.updateDoc(ref,{customerConfirmed:received,confirmedAt:received?new Date().toISOString():'',closed:received,receiptPromptDismissed:true,receiptPromptDismissedAt:new Date().toISOString()});
           if(params.notificationId){
             var nref2=f.doc(f.db,'notifications',String(params.notificationId));
             var ns2=await f.getDoc(nref2);
@@ -9172,12 +9193,20 @@ function showThankYouThenSurvey_(orderId){
       if(!v||!v.success){document.querySelectorAll('#mckReceiptActions button').forEach(function(b){b.disabled=false;});alert((v&&v.error)||'Unable to save your response. Please try again.');return;}
       rememberShown(orderId);
       if(received){modal.classList.remove('show');document.body.style.overflow='';showThankYouThenSurvey_(orderId);}
-      else{document.getElementById('mckReceiptActions').style.display='none';document.getElementById('mckReceiptTitle').textContent='We are sorry about that.';document.getElementById('mckReceiptMessage').textContent='Please contact McKenzie Ramen House so we can help you with your order.';document.getElementById('mckReceiptContact').style.display='block';var cb=document.getElementById('mckReceiptChatBtn');if(cb){cb.onclick=function(){closeReceipt_();openCustomerSupportChat_(orderId);};}}
+      else{
+        document.getElementById('mckReceiptActions').style.display='none';
+        document.getElementById('mckReceiptTitle').textContent='We are sorry about that.';
+        document.getElementById('mckReceiptMessage').textContent='Please contact McKenzie Ramen House so we can help you with your order.';
+        document.getElementById('mckReceiptContact').style.display='block';
+        var cb=document.getElementById('mckReceiptChatBtn');
+        if(cb){cb.onclick=function(){closeReceipt_();openCustomerSupportChat_(orderId);};}
+        setTimeout(function(){closeReceipt_();if(typeof openCustomerSupportChat_==='function')openCustomerSupportChat_(orderId);},650);
+      }
     });
   }
   function handleDeliveredOrder(order){
     var id=String(order.orderId||'');
-    if(!id||String(order.orderStatus||'')!=='Delivered'||order.customerConfirmed||order.closed||wasShown(id))return;
+    if(!id||String(order.orderStatus||'')!=='Delivered'||order.customerConfirmed||order.closed||order.receiptPromptDismissed||wasShown(id))return;
     open({orderId:id,title:'Did you receive your order?',message:'Your order was marked as Delivered. Did you receive your food?'});
   }
   function startRealtime(){
@@ -9390,7 +9419,7 @@ document.addEventListener('click',function(e){
       });
     }).catch(function(e){console.warn('Closed chat notification startup:',e);});
   }
-  document.addEventListener('DOMContentLoaded',start);
+  document.addEventListener('DOMContentLoaded',start);0
 })();
 </script>
 </body>
