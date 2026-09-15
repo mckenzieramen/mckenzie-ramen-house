@@ -1797,7 +1797,7 @@ function renderCustomerChats(){
   if(!list.length){c.innerHTML='<div class="customer-chat-empty">'+(q?'No matching customer conversations.':'No customer conversations yet. When a customer chats with McKenzie Customer Service, the conversation will appear here.')+'</div>';return;}
   c.innerHTML=list.map(renderAdminChat_).join('');
   c.querySelectorAll('textarea[id^="adminChatInput_"]').forEach(function(input){bindAdminTyping_(input);});
-  list.forEach(function(chat){var el=document.getElementById('adminTyping_'+String(chat.chatId));if(el)el.classList.toggle('show',!!(chat.typingBy&&chat.typingBy.customer));});
+  list.forEach(function(chat){var el=document.getElementById('adminTyping_'+String(chat.chatId));if(el)el.classList.toggle('show',!!(chat.typingBy&&chat.typingBy.customer) || !!chat.typingCustomer);});
   requestAnimationFrame(function(){
     c.querySelectorAll('.customer-chat-messages').forEach(function(box){ box.scrollTop=box.scrollHeight; });
   });
@@ -1824,7 +1824,7 @@ function renderAdminChat_(chat){
 }
 
 let adminTypingTimers={};
-async function setAdminTyping_(chatId,isTyping){try{const f=await adminFirebase_();if(!f.auth.currentUser)return;const ref=f.doc(f.db,'supportChats',String(chatId));await f.updateDoc(ref,{typingBy:{customer:false,admin:!!isTyping}});}catch(e){}}
+async function setAdminTyping_(chatId,isTyping){try{const f=await adminFirebase_();if(!f.auth.currentUser)return;const ref=f.doc(f.db,'supportChats',String(chatId));await f.updateDoc(ref,{'typingBy.admin':!!isTyping});}catch(e){}}
 function bindAdminTyping_(input){if(!input||input.dataset.typingBound==='1')return;input.dataset.typingBound='1';const chatId=String(input.id||'').replace(/^adminChatInput_/,'');input.addEventListener('input',function(){const active=!!String(input.value||'').trim();setAdminTyping_(chatId,active);clearTimeout(adminTypingTimers[chatId]);adminTypingTimers[chatId]=setTimeout(function(){setAdminTyping_(chatId,false);},1800);});}
 async function adminSendChat(chatId){
   const input=document.getElementById('adminChatInput_'+String(chatId));if(!input)return;const text=String(input.value||'').trim();if(!text)return;input.disabled=true;
@@ -2190,27 +2190,11 @@ function updateOrderBadge(list){
 }
 
 function showNewOrderNotification(newOrders){
-  const count=newOrders.length;
-  const names=newOrders.slice(0,2).map(function(o){return o.customerName||'Customer';}).join(', ');
-  const text=count===1 ? 'New order received from '+names+'!' : count+' new orders received!';
-  let toast=document.getElementById('newOrderToast');
-  if(!toast){
-    toast=document.createElement('div');
-    toast.id='newOrderToast';
-    toast.style.cssText='position:fixed;right:24px;top:24px;z-index:100;background:#130807;color:#fff;border:2px solid #e4ad32;border-radius:14px;padding:16px 18px;box-shadow:0 14px 40px #0008;max-width:360px;font-weight:800;cursor:pointer';
-    document.body.appendChild(toast);
-  }
-  toast.innerHTML='🔔 '+esc(text)+'<div style="font-size:11px;color:#e8d8cf;margin-top:5px">Click Orders to view and process the order.</div>';
-  toast.style.display='block';
-  toast.onclick=function(){ showSection('orders'); loadOrders(); toast.style.display='none'; };
-  setTimeout(function(){ if(toast) toast.style.display='none'; },9000);
-  try{
-    if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)();
-    if(audioCtx.state==='suspended') audioCtx.resume();
-    const osc=audioCtx.createOscillator(), gain=audioCtx.createGain();
-    osc.frequency.value=880; gain.gain.value=.08; osc.connect(gain); gain.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime+.18);
-  }catch(err){}
+  // No floating toast. New orders are surfaced through the Orders badge and notification/bell UI.
+  try{ if(typeof updateOrderBadge==='function') updateOrderBadge(orders||[]); }catch(e){}
+  try{ playAdminBellNotification_(); }catch(e){}
 }
+
 
 function loadReviews(){
   const btn=document.getElementById('refreshReviewsBtn');
@@ -2462,3 +2446,9 @@ document.addEventListener('click',function(e){
   if(nav && !nav.classList.contains('logout')) closeAdminMobileMenu_();
 });
 </script>
+
+<style id="mck-v18-admin-close-controls">
+/* All admin close controls stay clickable and pinned to the upper-right. */
+.admin-mobile-menu-close,.toast-close{position:absolute !important;top:10px !important;right:10px !important;z-index:2147483647 !important;pointer-events:auto !important;}
+#adminMobileMenuClose{display:flex !important;}
+</style>
