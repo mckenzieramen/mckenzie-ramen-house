@@ -3,7 +3,7 @@
 
 <head>
 
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <base target="_top">
 
   <title>Mckenzie Ramen House</title>
@@ -9620,16 +9620,49 @@ document.addEventListener('click',function(e){
     }catch(e){var c=document.getElementById('mckCustomerChatMessages');if(c)c.innerHTML='<div style="text-align:center;color:#a51620;font-size:12px;padding:35px">'+chatEsc(e&&e.message?e.message:'Unable to start chat.')+'</div>';if(btn)btn.disabled=false;}}
   async function attachChatListener_(){if(chatUnsub)try{chatUnsub();}catch(e){}chatUnsub=null;var f=await chatFirebase(),ref=f.doc(f.db,'supportChats',chatId);if(typeof f.onSnapshot==='function'){chatUnsub=f.onSnapshot(ref,function(ds){if(!ds.exists())return;var d=ds.data()||{};chatFormat(Array.isArray(d.messages)?d.messages:[]);showComposer_();var typing=d.typingBy||{};var typingEl=document.getElementById('mckCustomerChatTyping');if(typingEl){var agentTyping=!!typing.admin || !!d.typingAdmin;typingEl.classList.toggle('show',agentTyping);}var closed=String(d.status||'Open')==='Closed'||String(d.status||'Open')==='Solved';var ci=document.getElementById('mckCustomerChatInput'),cs=document.getElementById('mckCustomerChatSend');if(ci)ci.disabled=closed;if(cs)cs.disabled=closed;if(ci)ci.placeholder=String(d.status||'Open')==='Closed'?'This conversation is closed.':(String(d.status||'Open')==='Solved'?'This conversation has been solved.':'Type your concern…');if(String(d.status||'Open')==='Closed')clearAutoClose_();else if(String(d.status||'Open')==='Open')scheduleAutoClose_(d);},function(err){var c=document.getElementById('mckCustomerChatMessages');if(c)c.innerHTML='<div style="text-align:center;color:#a51620;font-size:12px;padding:35px">Unable to load chat: '+chatEsc(err&&err.message?err.message:'Missing or insufficient permissions.')+'</div>';});}}
   var customerTypingTimer=null;
+  var customerTypingChannel=null;
+  function broadcastCustomerTyping_(active){
+    var payload={chatId:String(chatId||''),role:'customer',active:!!active,at:Date.now()};
+    try{if(window.BroadcastChannel){if(!customerTypingChannel)customerTypingChannel=new BroadcastChannel('mckenzie-support-typing');customerTypingChannel.postMessage(payload);}}catch(e){}
+    try{localStorage.setItem('mckenzie-support-typing-event',JSON.stringify(payload));localStorage.removeItem('mckenzie-support-typing-event');}catch(e){}
+  }
   async function setCustomerTyping_(isTyping){
     if(!chatId)return;
-    try{var f=await chatFirebase(),ref=f.doc(f.db,'supportChats',chatId);await f.updateDoc(ref,{'typingBy.customer':!!isTyping});}catch(e){}
+    var active=!!isTyping;
+    broadcastCustomerTyping_(active);
+    try{
+      var f=await chatFirebase(),ref=f.doc(f.db,'supportChats',chatId);
+      var fp=f.FieldPath?new f.FieldPath('typingBy','customer'):'typingBy.customer';
+      if(f.FieldPath) await f.updateDoc(ref,fp,active);
+      else await f.updateDoc(ref,{'typingBy.customer':active});
+    }catch(e){
+      /* Firestore typing is best-effort; same-browser BroadcastChannel/storage keeps the indicator live. */
+    }
   }
   function bindCustomerTyping_(){
     var input=document.getElementById('mckCustomerChatInput');if(!input||input.dataset.typingBound==='1')return;input.dataset.typingBound='1';
     input.addEventListener('input',function(){
-      setCustomerTyping_(!!String(input.value||'').trim());
+      var active=!!String(input.value||'').trim();
+      setCustomerTyping_(active);
       clearTimeout(customerTypingTimer);
       customerTypingTimer=setTimeout(function(){setCustomerTyping_(false);},1800);
+    });
+  }
+  function handleAdminTypingFallback_(payload){
+    if(!payload||payload.role!=='admin'||String(payload.chatId||'')!==String(chatId||''))return;
+    var el=document.getElementById('mckCustomerChatTyping');
+    if(el)el.classList.toggle('show',!!payload.active);
+  }
+  function bindCustomerTypingFallback_(){
+    try{
+      if(window.BroadcastChannel){
+        if(!customerTypingChannel)customerTypingChannel=new BroadcastChannel('mckenzie-support-typing');
+        customerTypingChannel.onmessage=function(e){handleAdminTypingFallback_(e.data||{});};
+      }
+    }catch(e){}
+    window.addEventListener('storage',function(e){
+      if(e.key!=='mckenzie-support-typing-event'||!e.newValue)return;
+      try{handleAdminTypingFallback_(JSON.parse(e.newValue));}catch(err){}
     });
   }
   async function sendChat_(){if(chatSending)return;var input=document.getElementById('mckCustomerChatInput'),btn=document.getElementById('mckCustomerChatSend'),text=String(input&&input.value||'').trim();if(!text||!chatId)return;chatSending=true;if(input)input.disabled=true;if(btn)btn.disabled=true;try{var f=await chatFirebase(),ref=f.doc(f.db,'supportChats',chatId),snap=await f.getDoc(ref);if(!snap.exists())throw new Error('Chat could not be opened.');var d=snap.data()||{},status=String(d.status||'Open');if(status==='Closed')throw new Error('This conversation is closed. Please start a new conversation.');if(status==='Solved')throw new Error('This conversation has been solved.');var messages=Array.isArray(d.messages)?d.messages.slice():[],now=new Date().toISOString(),customerCount=messages.filter(function(m){return m&&m.senderType==='customer';}).length;messages.push({senderType:'customer',text:text,createdAt:now});var patch={messages:messages,updatedAt:now,lastActivityAt:now,lastSenderType:'customer',unreadForAdmin:true,unreadForCustomer:false,autoClosePending:false};if(customerCount===0){messages.push({senderType:'ai',text:SECOND_REPLY,createdAt:new Date().toISOString()});patch.messages=messages;patch.aiReplied=true;patch.updatedAt=new Date().toISOString();patch.lastActivityAt=patch.updatedAt;patch.lastSenderType='ai';}patch.typingBy={customer:false,admin:false};await f.updateDoc(ref,patch);if(input)input.value='';scheduleAutoClose_(patch);}catch(e){alert(e&&e.message?e.message:'Unable to send your message.');}finally{chatSending=false;var closedNow=false;try{if(chatId){var ff=await chatFirebase(),ss=await ff.getDoc(ff.doc(ff.db,'supportChats',chatId));if(ss.exists()){var dd=ss.data()||{};var st=String(dd.status||'Open');closedNow=st==='Closed'||st==='Solved';}}}catch(e){}if(input)input.disabled=closedNow;if(btn)btn.disabled=closedNow;if(input&&!closedNow)input.focus();}}
@@ -9654,11 +9687,11 @@ document.addEventListener('click',function(e){
   }
   window.backToCustomerSupportTickets_=backToCustomerSupportTickets_;
   window.openExistingCustomerSupportChat_=async function(existingId){
-    var m=document.getElementById('mckCustomerChatModal');if(!m||!existingId)return;clearAutoClose_();if(chatUnsub)try{chatUnsub();}catch(e){}chatUnsub=null;chatId=String(existingId);m.classList.add('show');document.body.style.overflow='hidden';var o=document.getElementById('mckCustomerChatOrder');if(o)o.textContent='McKenzie Customer Service';var c=document.getElementById('mckCustomerChatMessages');if(c)c.innerHTML='<div style="text-align:center;color:#806c65;font-size:12px;padding:35px">Opening conversation…</div>';showComposer_();try{await attachChatListener_();}catch(e){if(c)c.innerHTML='<div style="text-align:center;color:#a51620;font-size:12px;padding:35px">Unable to load chat: '+chatEsc(e&&e.message?e.message:'Missing or insufficient permissions.')+'</div>';}}
-  window.openCustomerSupportChat_=async function(orderId){var m=document.getElementById('mckCustomerChatModal');if(!m)return;window.__mckPendingChatOrderId=String(orderId||'');clearAutoClose_();if(chatUnsub)try{chatUnsub();}catch(e){}chatUnsub=null;chatId='';m.classList.add('show');document.body.style.overflow='hidden';var o=document.getElementById('mckCustomerChatOrder');if(o)o.textContent=orderId?'Order #'+orderId:'McKenzie Customer Service';var c=document.getElementById('mckCustomerChatMessages');if(c)c.innerHTML='<div style="text-align:center;color:#806c65;font-size:12px;padding:35px">Loading your support tickets…</div>';try{var f=await chatFirebase(),u=await customerWaitForAuthUser_(f,'');if(!u)throw new Error('Please log in again.');var snap=await f.getDocs(f.query(f.collection(f.db,'supportChats'),f.where('userId','==',String(u.uid))));var tickets=snap.docs.map(function(ds){return Object.assign({chatId:ds.id},ds.data()||{});}).sort(function(a,b){return String(b.updatedAt||b.createdAt||'').localeCompare(String(a.updatedAt||a.createdAt||''));});var openTicket=tickets.find(function(t){return String(t.status||'Open')==='Open';});if(openTicket){openExistingCustomerSupportChat_(openTicket.chatId);return;}showStartScreen_(tickets);var sb=document.getElementById('mckStartAgentBtn');if(sb)sb.onclick=beginNewCustomerChat_;}catch(e){showStartScreen_([]);var sb=document.getElementById('mckStartAgentBtn');if(sb)sb.onclick=beginNewCustomerChat_;}};
-  function closeChat_(){setCustomerTyping_(false);var m=document.getElementById('mckCustomerChatModal');if(m)m.classList.remove('show');document.body.style.overflow='';clearAutoClose_();if(chatUnsub){try{chatUnsub();}catch(e){}chatUnsub=null;}}
+    var m=document.getElementById('mckCustomerChatModal');if(!m||!existingId)return;clearAutoClose_();if(chatUnsub)try{chatUnsub();}catch(e){}chatUnsub=null;chatId=String(existingId);m.classList.add('show');document.body.classList.add('mck-chat-open');document.body.style.overflow='hidden';var o=document.getElementById('mckCustomerChatOrder');if(o)o.textContent='McKenzie Customer Service';var c=document.getElementById('mckCustomerChatMessages');if(c)c.innerHTML='<div style="text-align:center;color:#806c65;font-size:12px;padding:35px">Opening conversation…</div>';showComposer_();try{await attachChatListener_();}catch(e){if(c)c.innerHTML='<div style="text-align:center;color:#a51620;font-size:12px;padding:35px">Unable to load chat: '+chatEsc(e&&e.message?e.message:'Missing or insufficient permissions.')+'</div>';}}
+  window.openCustomerSupportChat_=async function(orderId){var m=document.getElementById('mckCustomerChatModal');if(!m)return;window.__mckPendingChatOrderId=String(orderId||'');clearAutoClose_();if(chatUnsub)try{chatUnsub();}catch(e){}chatUnsub=null;chatId='';m.classList.add('show');document.body.classList.add('mck-chat-open');document.body.style.overflow='hidden';var o=document.getElementById('mckCustomerChatOrder');if(o)o.textContent=orderId?'Order #'+orderId:'McKenzie Customer Service';var c=document.getElementById('mckCustomerChatMessages');if(c)c.innerHTML='<div style="text-align:center;color:#806c65;font-size:12px;padding:35px">Loading your support tickets…</div>';try{var f=await chatFirebase(),u=await customerWaitForAuthUser_(f,'');if(!u)throw new Error('Please log in again.');var snap=await f.getDocs(f.query(f.collection(f.db,'supportChats'),f.where('userId','==',String(u.uid))));var tickets=snap.docs.map(function(ds){return Object.assign({chatId:ds.id},ds.data()||{});}).sort(function(a,b){return String(b.updatedAt||b.createdAt||'').localeCompare(String(a.updatedAt||a.createdAt||''));});var openTicket=tickets.find(function(t){return String(t.status||'Open')==='Open';});if(openTicket){openExistingCustomerSupportChat_(openTicket.chatId);return;}showStartScreen_(tickets);var sb=document.getElementById('mckStartAgentBtn');if(sb)sb.onclick=beginNewCustomerChat_;}catch(e){showStartScreen_([]);var sb=document.getElementById('mckStartAgentBtn');if(sb)sb.onclick=beginNewCustomerChat_;}};
+  function closeChat_(){setCustomerTyping_(false);var m=document.getElementById('mckCustomerChatModal');if(m)m.classList.remove('show');document.body.classList.remove('mck-chat-open');document.body.style.overflow='';clearAutoClose_();if(chatUnsub){try{chatUnsub();}catch(e){}chatUnsub=null;}}
   window.closeCustomerSupportChat_=closeChat_;
-  document.addEventListener('DOMContentLoaded',function(){var b=document.getElementById('mckCustomerChatSend'),x=document.getElementById('mckCustomerChatClose');if(b)b.onclick=sendChat_;if(x)x.onclick=closeChat_;var i=document.getElementById('mckCustomerChatInput');if(i)i.addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendChat_();}});});
+  document.addEventListener('DOMContentLoaded',function(){var b=document.getElementById('mckCustomerChatSend'),x=document.getElementById('mckCustomerChatClose');if(b)b.onclick=sendChat_;if(x)x.onclick=closeChat_;var i=document.getElementById('mckCustomerChatInput');if(i)i.addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendChat_();}});bindCustomerTypingFallback_();});
 })();
 
   document.addEventListener('DOMContentLoaded',function(){var back=document.getElementById('mckCustomerChatBack');if(back)back.onclick=function(){backToCustomerSupportTickets_();};var close=document.getElementById('mckCustomerChatClose');if(close)close.onclick=function(){closeChat_();};});
@@ -9847,6 +9880,216 @@ document.addEventListener('click',function(e){
 })();
 </script>
 
+
+<style id="mckenzie-latest-baseline-mobile-ux-fix">
+/* Latest baseline: keep mobile close buttons visible and prevent iOS input zoom. */
+@media (max-width: 700px) {
+  /* Customer chat close button must remain in the upper-right of its own header. */
+  #mckCustomerChatBox { position: relative !important; }
+  #mckCustomerChatHead {
+    position: sticky !important;
+    top: 0 !important;
+    min-height: 58px !important;
+    box-sizing: border-box !important;
+    padding-right: 62px !important;
+    z-index: 10000025 !important;
+  }
+  #mckCustomerChatClose {
+    position: absolute !important;
+    top: 10px !important;
+    right: 12px !important;
+    width: 38px !important;
+    height: 38px !important;
+    margin: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    z-index: 10000060 !important;
+    pointer-events: auto !important;
+  }
+
+  /* Checkout close stays pinned while the checkout card itself scrolls. */
+  #checkoutModal .checkout-card {
+    position: relative !important;
+    overflow-y: auto !important;
+  }
+  #checkoutModal .checkout-card > .account-subclose {
+    position: sticky !important;
+    top: 0 !important;
+    right: auto !important;
+    align-self: flex-end !important;
+    margin: 0 0 -38px auto !important;
+    width: 38px !important;
+    height: 38px !important;
+    flex: 0 0 38px !important;
+    z-index: 10000060 !important;
+  }
+
+  /* Cart close remains at the card's upper-right while cart content scrolls. */
+  #cartModal .cart-card {
+    position: relative !important;
+    overflow-y: auto !important;
+  }
+  #cartModal .cart-card > .cart-close {
+    position: sticky !important;
+    top: 0 !important;
+    right: auto !important;
+    align-self: flex-end !important;
+    margin: 0 0 -36px auto !important;
+    z-index: 10000060 !important;
+  }
+
+  /* Restore the customer profile's three-line control without hiding it.
+     Keep the site-navigation hamburger separate on the far right. */
+  .account-menu-wrap {
+    position: fixed !important;
+    top: 68px !important;
+    right: 12px !important;
+    z-index: 10000015 !important;
+  }
+  .account-menu-button {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    width: 42px !important;
+    height: 42px !important;
+  }
+  .account-icon-person { display: none !important; }
+  .account-icon-lines { display: flex !important; }
+  .account-icon-lines i {
+    display: block !important;
+    width: 18px !important;
+    height: 2px !important;
+  }
+
+  /* Prevent Safari/iOS automatic zoom when any form control receives focus. */
+  input,
+  textarea,
+  select,
+  button {
+    font-size: 16px !important;
+  }
+  .mck-chat-input,
+  #mckCustomerChatInput,
+  #mckCustomerChatComposer input,
+  #mckCustomerChatComposer textarea {
+    font-size: 16px !important;
+    line-height: 1.4 !important;
+  }
+}
+</style>
+
+
+<style id="mck-v19-mobile-zoom-and-close-fix">
+/* v19: prevent iOS Safari focus zoom and keep modal close controls above global mobile controls. */
+html,body{
+  -webkit-text-size-adjust:100% !important;
+  text-size-adjust:100% !important;
+}
+@media(max-width:700px){
+  input,textarea,select,button,[contenteditable="true"]{
+    font-size:16px !important;
+    -webkit-text-size-adjust:100% !important;
+  }
+  #mckCustomerChatInput,
+  .mck-chat-input{
+    font-size:16px !important;
+    min-height:46px !important;
+    line-height:1.4 !important;
+  }
+  /* The site hamburger/cart/search must not cover a modal's X. */
+  body:has(#mckCustomerChatModal.show) #mobileSiteNavButton,
+  body:has(#mckCustomerChatModal.show) .sticky-cart-button,
+  body:has(#mckCustomerChatModal.show) .sticky-search-button,
+  body:has(#mckCustomerChatModal.show) .account-menu-wrap,
+  body:has(#mckReceiptModal.show) #mobileSiteNavButton,
+  body:has(#mckSurveyModal.show) #mobileSiteNavButton{
+    display:none !important;
+    pointer-events:none !important;
+  }
+  #mckCustomerChatModal.show{
+    z-index:2147483000 !important;
+  }
+  #mckCustomerChatBox{
+    z-index:2147483001 !important;
+  }
+  #mckCustomerChatHead{
+    position:relative !important;
+    padding-right:68px !important;
+    min-height:64px !important;
+  }
+  #mckCustomerChatClose{
+    display:flex !important;
+    visibility:visible !important;
+    opacity:1 !important;
+    position:absolute !important;
+    top:12px !important;
+    right:12px !important;
+    width:40px !important;
+    height:40px !important;
+    margin:0 !important;
+    align-items:center !important;
+    justify-content:center !important;
+    z-index:2147483647 !important;
+    pointer-events:auto !important;
+    touch-action:manipulation !important;
+    font-size:25px !important;
+  }
+  #mckCustomerChatTyping{
+    min-height:28px !important;
+    box-sizing:border-box !important;
+    padding:6px 14px !important;
+    font-size:12px !important;
+    line-height:1.3 !important;
+  }
+  #mckReceiptTopbar{
+    position:relative !important;
+    min-height:42px !important;
+    z-index:100 !important;
+  }
+  #mckReceiptClose,#mckReceiptBack{
+    display:flex !important;
+    visibility:visible !important;
+    opacity:1 !important;
+    position:relative !important;
+    z-index:101 !important;
+    flex:0 0 38px !important;
+    pointer-events:auto !important;
+    touch-action:manipulation !important;
+  }
+  #mckSurveyHead{
+    position:relative !important;
+    padding-right:68px !important;
+  }
+  #mckSurveyClose{
+    display:flex !important;
+    visibility:visible !important;
+    opacity:1 !important;
+    z-index:2147483647 !important;
+    pointer-events:auto !important;
+    touch-action:manipulation !important;
+  }
+}
+</style>
+
+<style id="mck-v19-all-close-controls">
+/* v19: every existing modal X/back control is visible and tappable on mobile. */
+@media(max-width:700px){
+  .login-close,.create-account-close,.cart-close,.account-subclose,.address-close,.password-close,.verification-close,
+  #mckSurveyClose,#mckReceiptClose,#mckCustomerChatClose{
+    display:flex !important;
+    visibility:visible !important;
+    opacity:1 !important;
+    align-items:center !important;
+    justify-content:center !important;
+    pointer-events:auto !important;
+    touch-action:manipulation !important;
+  }
+  #mckReceiptModal.show,#mckSurveyModal.show,#mckCustomerChatModal.show{
+    isolation:isolate !important;
+  }
+}
+</style>
 </body>
 </html>
 
