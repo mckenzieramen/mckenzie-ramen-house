@@ -2634,6 +2634,7 @@ body.quick-loading {
 .customer-reviews-title{text-align:center;margin:12px 0 10px;font-family:"Playfair Display",serif;font-size:clamp(40px,5vw,62px);color:#a91931}
 .customer-reviews-note{text-align:center;max-width:620px;margin:0 auto 42px;color:#66534b;font-size:14px;line-height:1.6}
 .customer-review-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px}
+.customer-review-stream{height:620px;overflow:hidden;position:relative;display:block;padding:0 2px}.customer-review-stream-track{display:flex;flex-direction:column;gap:14px;will-change:transform;animation:mckReviewScrollUp 32s linear infinite}.customer-review-stream:hover .customer-review-stream-track{animation-play-state:paused}.customer-review-stream .customer-review-card{min-height:108px;box-sizing:border-box}.customer-review-stream .customer-review-card:hover{transform:none}.customer-review-stream-empty{min-height:220px;display:flex;align-items:center;justify-content:center}.customer-review-stream-track--short{animation:none!important}.customer-review-stream-track--short .customer-review-card{min-height:108px}@keyframes mckReviewScrollUp{from{transform:translateY(0)}to{transform:translateY(-50%)}}
 .customer-review-card{background:#fffdf8;border:1px solid #ead8cf;border-radius:18px;padding:27px;box-shadow:0 12px 30px rgba(55,20,10,.10);transition:transform .3s ease,box-shadow .3s ease}
 .customer-review-card:hover{transform:translateY(-7px);box-shadow:0 20px 40px rgba(55,20,10,.16)}
 .customer-review-stars{color:#e9ad35;font-size:20px;letter-spacing:3px;margin-bottom:13px}
@@ -7912,7 +7913,10 @@ function organizeCustomerMenuByCategory_() {
   filterMenuCategory_(mckenzieMenuCategoryFilter_);
 }
 
-async function loadPublishedMenuRatings_(){
+let mckPublishedReviewUnsub_=null;
+let mckPublishedReviewListenerStarted_=false;
+
+async function loadPublishedMenuRatings_(reviewsOverride){
   try{
     const loadReviews = function(){
       /* Customer pages on GitHub Pages must use the same Firebase-only path as
@@ -7929,7 +7933,7 @@ async function loadPublishedMenuRatings_(){
     };
     let reviews=[];
     try {
-      reviews=await loadReviews();
+      reviews=Array.isArray(reviewsOverride) ? reviewsOverride : await loadReviews();
     } catch(primaryError) {
       /* Keep the customer page compatible with the existing deployed bridge.
          Firebase remains the primary source; the legacy bridge is only a
@@ -8042,21 +8046,54 @@ async function loadPublishedMenuRatings_(){
 
     const grid=document.getElementById('customerReviewGrid');
     if(grid){
-      const published=(Array.isArray(reviews)?reviews:[]).filter(function(r){return String(r.status||'Published').toLowerCase()==='published' && Number(r.rating)>=1 && Number(r.rating)<=5;});
+      /* Only reviews that contain a written comment belong in the public
+         Customer Reviews carousel. Ratings without comments still count
+         toward their menu card totals above. */
+      const published=(Array.isArray(reviews)?reviews:[]).filter(function(r){
+        return String(r.status||'Published').toLowerCase()==='published' &&
+          Number(r.rating)>=1 && Number(r.rating)<=5 && String(r.review||'').trim().length>0;
+      });
       if(!published.length){
-        grid.innerHTML='<article class="customer-review-card customer-review-empty" style="grid-column:1/-1;text-align:center;"><div class="customer-review-stars">☆ ☆ ☆ ☆ ☆</div><p class="customer-review-text" style="font-style:normal;">No customer reviews yet.</p><div class="customer-review-name" style="margin-top:10px;">Be the first to share your McKenzie Ramen House experience.</div></article>';
+        grid.innerHTML='<div class="customer-review-stream customer-review-stream-empty"><article class="customer-review-card customer-review-empty" style="width:100%;text-align:center;"><div class="customer-review-stars">☆ ☆ ☆ ☆ ☆</div><p class="customer-review-text" style="font-style:normal;">No written customer reviews yet.</p><div class="customer-review-name" style="margin-top:10px;">Be the first to share your McKenzie Ramen House experience.</div></article></div>';
       }else{
-        grid.innerHTML=published.map(function(r){
+        const cards=published.map(function(r){
           const rating=Math.max(1,Math.min(5,Number(r.rating||0)));
           const stars=Array.from({length:5},function(_,i){return i<Math.round(rating)?'★':'☆';}).join(' ');
           const when=r.submittedAt?new Date(r.submittedAt).toLocaleDateString() : '';
-          return '<article class="customer-review-card"><div class="customer-review-menu">🍜 '+escapeHtml(String(r.productName||'Menu item'))+'</div><div class="customer-review-stars">'+stars+'</div><p class="customer-review-text">'+(String(r.review||'').trim()? '“'+escapeHtml(String(r.review).trim())+'”':'No written comment.')+'</p><div class="customer-review-name">— '+escapeHtml(String(r.customerName||'Customer'))+'</div>'+(when?'<div class="customer-review-date">'+escapeHtml(when)+'</div>':'')+'</article>';
+          return '<article class="customer-review-card"><div class="customer-review-menu">🍜 '+escapeHtml(String(r.productName||'Menu item'))+'</div><div class="customer-review-stars">'+stars+'</div><p class="customer-review-text">“'+escapeHtml(String(r.review).trim())+'”</p><div class="customer-review-name">— '+escapeHtml(String(r.customerName||'Customer'))+'</div>'+(when?'<div class="customer-review-date">'+escapeHtml(when)+'</div>':'')+'</article>';
         }).join('');
+        /* Duplicate the exact comment set so the CSS animation can loop
+           continuously without a visible jump. The viewport shows five
+           comment slots at a time. */
+        const trackClass='customer-review-stream-track';
+        grid.innerHTML='<div class="customer-review-stream"><div class="'+trackClass+'">'+cards+cards+'</div></div>';
       }
     }
+
   }catch(e){
     console.warn('Menu ratings and customer reviews could not be loaded:',e);
   }
+}
+
+function startPublishedReviewRealtime_(){
+  if(mckPublishedReviewListenerStarted_) return;
+  mckPublishedReviewListenerStarted_=true;
+  if(!window.MckenzieFirebaseReady || typeof window.MckenzieFirebaseReady.then!=='function') return;
+  Promise.resolve(window.MckenzieFirebaseReady).then(function(f){
+    if(!f || typeof f.onSnapshot!=='function' || typeof f.collection!=='function' || typeof f.query!=='function' || typeof f.where!=='function') return;
+    try{
+      const q=f.query(f.collection(f.db,'reviews'),f.where('status','==','Published'));
+      mckPublishedReviewUnsub_=f.onSnapshot(q,function(snap){
+        const rows=(snap.docs||[]).map(function(d){
+          const r=d.data()||{};
+          return {reviewId:r.reviewId||d.id,orderId:r.orderId,productId:r.productId,productName:r.productName,rating:r.rating,review:r.review,customerName:r.customerName,submittedAt:r.submittedAt,status:r.status};
+        });
+        loadPublishedMenuRatings_(rows).catch(function(e){console.warn('Realtime review render:',e);});
+      },function(e){
+        console.warn('Realtime published review listener:',e);
+      });
+    }catch(e){ console.warn('Realtime published review setup:',e); }
+  }).catch(function(e){console.warn('Realtime published review startup:',e);});
 }
 
 function loadProducts() {
@@ -8353,6 +8390,7 @@ function loadProducts() {
         saveCart_();
         renderAllCartControls_();
         loadPublishedMenuRatings_();
+        startPublishedReviewRealtime_();
         /* Re-apply after the product DOM has settled. Some existing baseline
            flows can finish a menu render asynchronously; this makes review
            totals persist without changing the renderer or review source. */
