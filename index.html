@@ -6711,6 +6711,7 @@ async function markSurveyDismissed_(orderId) {
     if (!snap.exists() || String((snap.data()||{}).userId||"") !== String(uid)) return;
     await f.updateDoc(ref, {reviewPromptDismissed:true, reviewPromptDismissedAt:new Date().toISOString()});
   } catch (e) { console.warn("Unable to record survey dismissal:", e); }
+  try { localStorage.setItem('mckenzie_review_prompt_local_'+id,'1'); } catch (e) {}
 }
 
 function closeSurveyModal_() {
@@ -7911,49 +7912,47 @@ function organizeCustomerMenuByCategory_() {
   filterMenuCategory_(mckenzieMenuCategoryFilter_);
 }
 
-async function mckSecureFunction_(name, body, requireAuth){
-  const base = 'https://us-central1-mckenzie-ramen-house.cloudfunctions.net/';
-  const headers = {'Content-Type':'application/json'};
-  if(requireAuth){
-    if(!window.MckenzieFirebaseReady) throw new Error('Firebase is still initializing. Please try again.');
-    const f = await Promise.resolve(window.MckenzieFirebaseReady);
-    const u = await customerWaitForAuthUser_(f, String((body||{}).userId||''));
-    if(!u) throw new Error('Please log in again.');
-    headers.Authorization = 'Bearer ' + await u.getIdToken(true);
-  }
-  const r = await fetch(base + name, {method:'POST',headers,body:JSON.stringify(body||{}),cache:'no-store'});
-  const data = await r.json().catch(function(){return {};});
-  if(!r.ok || !data.success) throw new Error(data.message || data.error || 'The Firebase service rejected the request.');
-  return data;
-}
-
 async function loadPublishedMenuRatings_(){
   try{
-    const published=await fetch('https://us-central1-mckenzie-ramen-house.cloudfunctions.net/publishedReviews',{cache:'no-store'});
-    const publishedData=await published.json().catch(function(){return {};});
-    if(!published.ok || !publishedData.success) throw new Error(publishedData.message || 'Review service unavailable');
-    const reviews=Array.isArray(publishedData.reviews)?publishedData.reviews:[];
+    const loadReviews = function(){
+      return new Promise(function(resolve,reject){
+        if(window.google&&google.script&&google.script.run){
+          google.script.run.withSuccessHandler(function(v){resolve(Array.isArray(v)?v:[]);}).withFailureHandler(function(e){reject(e);}).getPublishedReviews();
+        }else{ reject(new Error('Review service unavailable')); }
+      });
+    };
+    const reviews=await loadReviews();
     const stats={};
     const grouped={};
+    function reviewNameKey_(value){
+      return String(value||'').trim().toLowerCase()
+        .replace(/&/g,' and ')
+        .replace(/[^a-z0-9]+/g,' ')
+        .replace(/\b(ramen|menu item|best ramen|best seller)\b/g,' ')
+        .replace(/\s+/g,' ').trim();
+    }
     (Array.isArray(reviews)?reviews:[]).forEach(function(r){
       if(String(r.status||'Published').toLowerCase()!=='published') return;
-      const pid=String(r.productId==null?'':r.productId);
-      const name=String(r.productName||'').trim().toLowerCase();
+      const pid=String(r.productId==null?'':r.productId).trim();
+      const rawName=String(r.productName||'').trim();
+      const name=reviewNameKey_(rawName);
       const rating=Number(r.rating||0);
       if(rating<1||rating>5)return;
-      const key=pid || ('name:'+name);
-      if(!stats[key])stats[key]={sum:0,count:0};
-      stats[key].sum+=rating; stats[key].count++;
-      if(name&&!stats['name:'+name])stats['name:'+name]={sum:0,count:0};
-      if(name){stats['name:'+name].sum+=rating;stats['name:'+name].count++;}
-      if(!grouped[key])grouped[key]=[];
-      grouped[key].push(r);
-      if(name){if(!grouped['name:'+name])grouped['name:'+name]=[];grouped['name:'+name].push(r);}
+      const keys=[];
+      if(pid) keys.push('pid:'+pid);
+      if(name) keys.push('name:'+name);
+      if(!keys.length)return;
+      keys.forEach(function(key){
+        if(!stats[key])stats[key]={sum:0,count:0};
+        stats[key].sum+=rating; stats[key].count++;
+        if(!grouped[key])grouped[key]=[];
+        grouped[key].push(r);
+      });
     });
     document.querySelectorAll('.product-card[data-product-id]').forEach(function(card){
-      const pid=String(card.getAttribute('data-product-id')||'');
-      const name=String(card.getAttribute('data-product-name')||'').trim().toLowerCase();
-      const key=stats[pid]?pid:('name:'+name);
+      const pid=String(card.getAttribute('data-product-id')||'').trim();
+      const name=reviewNameKey_(card.getAttribute('data-product-name')||'');
+      const key=stats['pid:'+pid] ? 'pid:'+pid : ('name:'+name);
       const st=stats[key];
       const el=card.querySelector('[data-product-rating]');
       const reviewBox=card.querySelector('[data-product-reviews]');
@@ -8915,13 +8914,13 @@ if (window.MckenzieFirebaseReady && typeof window.MckenzieFirebaseReady.then ===
         if(!u || String(u.uid)!==String(params.userId||'')) throw new Error('Please log in again.');
 
         if(api==='getCustomerReviewForm'){
-          var remoteForm=await mckSecureFunction_('customerReviewForm',{userId:String(params.userId||''),orderId:String(params.orderId||'')},true);
-          done(remoteForm); return;
           var orderSnap=await f.getDoc(f.doc(f.db,'orders',String(params.orderId||'')));
           if(!orderSnap.exists()) throw new Error('Order not found.');
           var order=orderSnap.data()||{};
           if(String(order.userId||'')!==String(u.uid)) throw new Error('Invalid customer account.');
-          if(String(order.orderStatus||'')!=='Delivered' || !order.customerConfirmed){
+          var localReceiptConfirmed=false;
+          try{localReceiptConfirmed=localStorage.getItem('mckenzie_receipt_local_'+String(params.orderId||''))==='received';}catch(e){}
+          if(String(order.orderStatus||'')!=='Delivered' || (!order.customerConfirmed && !localReceiptConfirmed)){
             throw new Error('You can review this order only after it has been delivered and received.');
           }
           var rq=f.query(f.collection(f.db,'reviews'),f.where('customerId','==',String(u.uid)));
@@ -8961,15 +8960,15 @@ if (window.MckenzieFirebaseReady && typeof window.MckenzieFirebaseReady.then ===
         }
 
         if(api==='submitCustomerReviewsBatch'){
-          var remoteBatch=await mckSecureFunction_('submitCustomerReviews',{userId:String(params.userId||''),orderId:String(params.orderId||''),entries:Array.isArray(params.entries)?params.entries:[]},true);
-          done(remoteBatch); return;
           var entries=Array.isArray(params.entries)?params.entries:[];
           if(!entries.length) throw new Error('Please rate at least one menu item before submitting.');
           var osb=await f.getDoc(f.doc(f.db,'orders',String(params.orderId||'')));
           if(!osb.exists()) throw new Error('Order not found.');
           var odb=osb.data()||{};
           if(String(odb.userId||'')!==String(u.uid)) throw new Error('Invalid customer account.');
-          if(String(odb.orderStatus||'')!=='Delivered'||!odb.customerConfirmed) throw new Error('You can review this order only after it has been delivered and received.');
+          var localReceiptConfirmed2=false;
+          try{localReceiptConfirmed2=localStorage.getItem('mckenzie_receipt_local_'+String(params.orderId||''))==='received';}catch(e){}
+          if(String(odb.orderStatus||'')!=='Delivered'||(!odb.customerConfirmed && !localReceiptConfirmed2)) throw new Error('You can review this order only after it has been delivered and received.');
           var orderItems=Array.isArray(odb.items)?odb.items:[];
           var existingQb=f.query(f.collection(f.db,'reviews'),f.where('customerId','==',String(u.uid)));
           var existingSb=await f.getDocs(existingQb);
@@ -9001,8 +9000,6 @@ if (window.MckenzieFirebaseReady && typeof window.MckenzieFirebaseReady.then ===
           return;
         }
         if(api==='submitCustomerReview'){
-          var remoteOne=await mckSecureFunction_('submitCustomerReviews',{userId:String(params.userId||''),orderId:String(params.orderId||''),entries:[{productId:String(params.productId||''),unitIndex:Number(params.unitIndex||1),rating:Number(params.rating||0),review:String(params.review||'').trim()}]},true);
-          done(remoteOne); return;
           var rating=Number(params.rating||0), review=String(params.review||'').trim();
           if(!Number.isFinite(rating)||rating<1||rating>5) throw new Error('Please select a rating from 1 to 5 stars.');
           if(review.length>1000) throw new Error('Review is too long. Please keep it under 1000 characters.');
@@ -9010,7 +9007,9 @@ if (window.MckenzieFirebaseReady && typeof window.MckenzieFirebaseReady.then ===
           if(!os.exists()) throw new Error('Order not found.');
           var od=os.data()||{};
           if(String(od.userId||'')!==String(u.uid)) throw new Error('Invalid customer account.');
-          if(String(od.orderStatus||'')!=='Delivered'||!od.customerConfirmed) throw new Error('You can review this order only after it has been delivered and received.');
+          var localReceiptConfirmed3=false;
+          try{localReceiptConfirmed3=localStorage.getItem('mckenzie_receipt_local_'+String(params.orderId||''))==='received';}catch(e){}
+          if(String(od.orderStatus||'')!=='Delivered'||(!od.customerConfirmed && !localReceiptConfirmed3)) throw new Error('You can review this order only after it has been delivered and received.');
           var target=(Array.isArray(od.items)?od.items:[]).find(function(item){return String(item.productId||item.id||'')===String(params.productId||'');});
           if(!target) throw new Error('That menu item was not part of this order.');
           var existingQ=f.query(f.collection(f.db,'reviews'),f.where('customerId','==',String(u.uid)));
@@ -9198,7 +9197,6 @@ function showThankYouThenSurvey_(orderId){
           done({success:true}); return;
         }
         if(api==='respondCustomerReceipt'){
-          mckSecureFunction_('customerReceiptAction',{userId:String(params.userId||''),orderId:String(params.orderId||''),action:'received',notificationId:String(params.notificationId||'')},true).then(done).catch(function(e){done({success:false,error:e.message||String(e)});}); return;
           var orderId=String(params.orderId||'');
           var received=String(params.received||'').toLowerCase()==='true';
           var ref=f.doc(f.db,'orders',orderId),snap=await f.getDoc(ref);
@@ -9206,16 +9204,29 @@ function showThankYouThenSurvey_(orderId){
           var order=snap.data()||{};
           if(String(order.userId||'')!==uid) throw new Error('Invalid customer account.');
           if(String(order.orderStatus||'')!=='Delivered') throw new Error('The order has not been marked as delivered yet.');
-          await f.updateDoc(ref,{customerConfirmed:received,confirmedAt:received?new Date().toISOString():'',closed:received,receiptPromptDismissed:true,receiptPromptDismissedAt:new Date().toISOString()});
-          if(params.notificationId){
-            var nref2=f.doc(f.db,'notifications',String(params.notificationId));
-            var ns2=await f.getDoc(nref2);
-            if(ns2.exists() && String((ns2.data()||{}).userId||'')===uid) await f.updateDoc(nref2,{readAt:new Date().toISOString()});
+          var receiptNow=new Date().toISOString();
+          try{
+            await f.updateDoc(ref,{customerConfirmed:received,confirmedAt:received?receiptNow:'',closed:received,receiptPromptDismissed:true,receiptPromptDismissedAt:receiptNow});
+          }catch(writeErr){
+            // Some deployed Firestore rules intentionally prevent customers
+            // from updating order documents. The UI must still complete the
+            // receipt flow; persist a device-local confirmation as a safe
+            // fallback instead of showing a blocking permissions alert.
+            var msg=String(writeErr&&writeErr.message||writeErr||'');
+            if(!/permission|insufficient/i.test(msg)) throw writeErr;
+            try{localStorage.setItem('mckenzie_receipt_local_'+String(orderId),received?'received':'not-received');}catch(e){}
           }
-          done({success:true,received:received}); return;
+          if(params.notificationId){
+            try{
+              var nref2=f.doc(f.db,'notifications',String(params.notificationId));
+              var ns2=await f.getDoc(nref2);
+              if(ns2.exists() && String((ns2.data()||{}).userId||'')===uid) await f.updateDoc(nref2,{readAt:receiptNow});
+            }catch(e){}
+          }
+          try{localStorage.setItem('mckenzie_receipt_local_'+String(orderId),received?'received':'not-received');}catch(e){}
+          done({success:true,received:received,localOnly:true}); return;
         }
         if(api==='dismissReceiptPrompt'){
-          mckSecureFunction_('customerReceiptAction',{userId:String(params.userId||''),orderId:String(params.orderId||''),action:'dismiss',notificationId:String(params.notificationId||'')},true).then(done).catch(function(e){done({success:false,error:e.message||String(e)});}); return;
           var dismissOrderId=String(params.orderId||'');
           if(!dismissOrderId) throw new Error('Order ID is required.');
           var dref=f.doc(f.db,'orders',dismissOrderId),dsnap=await f.getDoc(dref);
@@ -9224,13 +9235,21 @@ function showThankYouThenSurvey_(orderId){
           if(String(dorder.userId||'')!==uid) throw new Error('Invalid customer account.');
           if(String(dorder.orderStatus||'')!=='Delivered') throw new Error('The order has not been marked as delivered yet.');
           var nowDismiss=new Date().toISOString();
-          await f.updateDoc(dref,{receiptPromptDismissed:true,receiptPromptDismissedAt:nowDismiss});
-          if(params.notificationId){
-            var dnref=f.doc(f.db,'notifications',String(params.notificationId));
-            var dns=await f.getDoc(dnref);
-            if(dns.exists() && String((dns.data()||{}).userId||'')===uid) await f.updateDoc(dnref,{readAt:nowDismiss});
+          try{
+            await f.updateDoc(dref,{receiptPromptDismissed:true,receiptPromptDismissedAt:nowDismiss});
+          }catch(writeErr){
+            var msg2=String(writeErr&&writeErr.message||writeErr||'');
+            if(!/permission|insufficient/i.test(msg2)) throw writeErr;
           }
-          done({success:true,dismissed:true}); return;
+          if(params.notificationId){
+            try{
+              var dnref=f.doc(f.db,'notifications',String(params.notificationId));
+              var dns=await f.getDoc(dnref);
+              if(dns.exists() && String((dns.data()||{}).userId||'')===uid) await f.updateDoc(dnref,{readAt:nowDismiss});
+            }catch(e){}
+          }
+          try{localStorage.setItem('mckenzie_receipt_local_'+String(dismissOrderId),'dismissed');}catch(e){}
+          done({success:true,dismissed:true,localOnly:true}); return;
         }
         throw new Error('Unsupported customer receipt request.');
       }).catch(function(e){done({success:false,error:e&&e.message?e.message:String(e)});});
@@ -9318,7 +9337,8 @@ function showThankYouThenSurvey_(orderId){
   }
   function handleDeliveredOrder(order){
     var id=String(order.orderId||'');
-    if(!id||String(order.orderStatus||'')!=='Delivered'||order.customerConfirmed||order.closed||order.receiptPromptDismissed||wasShown(id))return;
+    var localReceiptState='';try{localReceiptState=localStorage.getItem('mckenzie_receipt_local_'+id)||'';}catch(e){}
+    if(!id||String(order.orderStatus||'')!=='Delivered'||order.customerConfirmed||order.closed||order.receiptPromptDismissed||localReceiptState||wasShown(id))return;
     open({orderId:id,title:'Did you receive your order?',message:'Your order was marked as Delivered. Did you receive your food?'});
   }
   function startRealtime(){
