@@ -3251,6 +3251,28 @@ body.quick-loading {
 #mckCustomerChatInput:disabled{background:#e5e5e5 !important;color:#777 !important;border-color:#c9c9c9 !important;cursor:not-allowed !important;}
 #mckCustomerChatSend:disabled{background:#c9c9c9 !important;color:#777 !important;border-color:#c9c9c9 !important;cursor:not-allowed !important;filter:grayscale(1) !important;}
 </style>
+
+<style id="mck-v16-enhancements-css">
+/* v16 safe enhancements */
+.mck-menu-tools{max-width:1180px;margin:0 auto 24px;display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;position:relative;z-index:30}
+.mck-menu-search{width:min(420px,92vw);padding:12px 16px;border:1px solid #e2c8bc;border-radius:999px;background:#fffdf8;color:#4f201c;outline:none;font-size:13px;box-shadow:0 6px 18px rgba(55,20,10,.07)}
+.mck-menu-search:focus{border-color:#a51620;box-shadow:0 0 0 3px rgba(165,22,32,.10)}
+.mck-menu-search-count{font-size:11px;color:#806c65;font-weight:800}
+.product-card.mck-product-hidden{display:none!important}
+.product-card.mck-oos-card{filter:saturate(.72)}
+.product-card .mck-verified-purchase{display:inline-flex;align-items:center;gap:4px;margin-top:5px;color:#198754;font-size:9px;font-weight:900}
+.product-card .product-rating-summary{cursor:pointer}
+.mck-rating-breakdown{display:none;margin-top:8px;padding:9px 10px;background:#fff8f2;border:1px solid #ead8cf;border-radius:10px;font-size:9px;color:#806c65}
+.mck-rating-breakdown.show{display:block}
+.mck-rating-row{display:flex;align-items:center;gap:6px;margin:3px 0}.mck-rating-row b{width:28px;color:#5f080c}.mck-rating-bar{height:6px;flex:1;background:#ead8cf;border-radius:99px;overflow:hidden}.mck-rating-bar i{display:block;height:100%;background:#e9ad35}
+.mck-reviews-filterbar{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin:0 auto 18px}.mck-reviews-filter{border:1px solid #e0c5b6;background:#fff;color:#8b1825;border-radius:999px;padding:7px 12px;font-size:10px;font-weight:900;cursor:pointer}.mck-reviews-filter.active{background:#8b1825;color:#fff}
+.mck-customer-review-verified{display:inline-flex;align-items:center;gap:4px;margin-left:6px;font-size:9px;color:#198754;font-style:normal;font-weight:900}
+.mck-order-progress{display:flex;align-items:center;gap:0;margin:8px 0 2px;padding:0 2px}.mck-order-progress-step{flex:1;position:relative;text-align:center;font-size:8px;font-weight:900;color:#a08b83}.mck-order-progress-step:after{content:"";position:absolute;left:50%;top:7px;width:100%;height:2px;background:#e2d4ca;z-index:0}.mck-order-progress-step:last-child:after{display:none}.mck-order-progress-step span{position:relative;z-index:2;display:inline-flex;width:15px;height:15px;align-items:center;justify-content:center;border-radius:50%;border:2px solid #d8c7b0;background:#fff;font-size:8px}.mck-order-progress-step.active,.mck-order-progress-step.done{color:#8b1825}.mck-order-progress-step.done span,.mck-order-progress-step.active span{border-color:#a51620;background:#a51620;color:#fff}
+.mck-typing{display:none;font-size:10px;color:#806c65;padding:5px 10px;font-style:italic}.mck-typing.show{display:block}
+.mck-notification-priority{border-left:3px solid #a51620!important}
+@media(max-width:600px){.mck-menu-tools{margin-bottom:16px}.mck-menu-search{width:100%}.mck-order-progress-step{font-size:7px}}
+</style>
+
 </head>
 
 
@@ -3484,6 +3506,7 @@ body.quick-loading {
       <button type="button" class="account-menu-item" onclick="openOrderHistory_()"><span class="menu-symbol">📋</span> Order History</button>
       <button type="button" class="account-menu-item" onclick="openPaymentHistory_()"><span class="menu-symbol">💳</span> Payment History</button>
       <button type="button" class="account-menu-item" onclick="openCoupons_()"><span class="menu-symbol">🎟️</span> Coupons</button>
+      <button type="button" class="account-menu-item mck-notification-menu-item" onclick="openCustomerNotifications_()"><span class="menu-symbol">🔔</span> Notifications <span id="mckCustomerNotificationBadge" class="mck-notification-badge" style="display:none;">0</span></button>
       <button type="button" class="account-menu-item" onclick="openCustomerSupportFromMenu_()"><span class="menu-symbol">💬</span> Customer Support</button>
       <button type="button" class="account-menu-item logout" onclick="logoutUser_()"><span class="menu-symbol">↪</span> Log Out</button>
     </div>
@@ -3723,6 +3746,23 @@ body.quick-loading {
     <div class="account-subkicker">MCKENZIE RAMEN HOUSE</div>
     <h2>Order History</h2>
     <div id="orderHistoryContent" class="history-empty">No completed orders yet.</div>
+  </div>
+</div>
+
+
+<!-- CUSTOMER NOTIFICATION CENTER -->
+<div id="mckCustomerNotificationsModal" class="account-submodal" role="dialog" aria-modal="true" aria-labelledby="mckCustomerNotificationsTitle">
+  <div class="account-subcard mck-notification-card">
+    <button type="button" class="account-subclose" aria-label="Close notifications" onclick="closeCustomerNotifications_()">×</button>
+    <div class="account-subkicker">MCKENZIE RAMEN HOUSE</div>
+    <h2 id="mckCustomerNotificationsTitle">Notifications</h2>
+    <div class="mck-notification-headrow">
+      <span id="mckCustomerNotificationSummary">You're all caught up.</span>
+      <button type="button" class="mck-notification-clear" onclick="clearCustomerNotifications_()">Clear read</button>
+    </div>
+    <div id="mckCustomerNotificationList" class="mck-notification-list">
+      <div class="order-feature-loading">Loading notifications…</div>
+    </div>
   </div>
 </div>
 
@@ -8060,7 +8100,7 @@ async function loadPublishedMenuRatings_(reviewsOverride){
           const rating=Math.max(1,Math.min(5,Number(r.rating||0)));
           const stars=Array.from({length:5},function(_,i){return i<Math.round(rating)?'★':'☆';}).join(' ');
           const when=r.submittedAt?new Date(r.submittedAt).toLocaleDateString() : '';
-          return '<article class="customer-review-card"><div class="customer-review-menu">🍜 '+escapeHtml(String(r.productName||'Menu item'))+'</div><div class="customer-review-stars">'+stars+'</div><p class="customer-review-text">“'+escapeHtml(String(r.review).trim())+'”</p><div class="customer-review-name">— '+escapeHtml(String(r.customerName||'Customer'))+'</div>'+(when?'<div class="customer-review-date">'+escapeHtml(when)+'</div>':'')+'</article>';
+          return '<article class="customer-review-card" data-review-menu="'+escapeHtml(String(r.productName||'Menu item'))+'"><div class="customer-review-menu">🍜 '+escapeHtml(String(r.productName||'Menu item'))+'<span class="mck-customer-review-verified">✓ Verified Purchase</span></div><div class="customer-review-stars">'+stars+'</div><p class="customer-review-text">“'+escapeHtml(String(r.review).trim())+'”</p><div class="customer-review-name">— '+escapeHtml(String(r.customerName||'Customer'))+'</div>'+(when?'<div class="customer-review-date">'+escapeHtml(when)+'</div>':'')+'</article>';
         }).join('');
         /* Duplicate the exact comment set so the CSS animation can loop
            continuously without a visible jump. The viewport shows five
@@ -9631,6 +9671,11 @@ document.addEventListener('click',function(e){
 #mckCustomerChatLiveNotice span{font-size:11px;line-height:1.45;opacity:.92}
 @keyframes mckChatNoticeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 </style>
+
+<style id="mckenzie-customer-notification-center">
+.mck-notification-menu-item{position:relative}.mck-notification-badge{margin-left:auto;min-width:19px;height:19px;padding:0 5px;border-radius:999px;background:#b51628;color:#fff;font-size:9px;font-weight:900;display:inline-flex;align-items:center;justify-content:center}.mck-notification-card{max-width:620px}.mck-notification-headrow{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 12px;color:#806c65;font-size:11px}.mck-notification-clear{border:1px solid #e0c5b6;background:#fff;color:#7b1b22;border-radius:8px;padding:7px 9px;font-size:10px;font-weight:900;cursor:pointer}.mck-notification-list{display:flex;flex-direction:column;gap:9px;max-height:58vh;overflow:auto;padding-right:3px}.mck-notification-item{display:flex;gap:11px;align-items:flex-start;border:1px solid #ead4c9;border-radius:12px;padding:11px 12px;background:#fffaf5;cursor:pointer}.mck-notification-item.unread{border-color:#c5162b;background:#fff4f2;box-shadow:0 4px 14px rgba(165,22,32,.08)}.mck-notification-icon{width:31px;height:31px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#fff0e4;flex:none;font-size:15px}.mck-notification-copy{min-width:0;flex:1}.mck-notification-title{font-size:11px;font-weight:900;color:#5f080c}.mck-notification-text{font-size:10px;color:#6e5b54;line-height:1.45;margin-top:3px}.mck-notification-time{font-size:9px;color:#9b857d;margin-top:5px}.mck-notification-dot{width:7px;height:7px;border-radius:50%;background:#b51628;flex:none;margin-top:4px}.mck-notification-empty{padding:34px 15px;text-align:center;color:#806c65;font-size:12px}
+</style>
+
 <div id="mckCustomerChatLiveNotice" role="status" aria-live="polite"><b>💬 McKenzie Customer Service</b><span id="mckCustomerChatLiveNoticeText">You have a new message.</span></div>
 <script id="mckenzie-customer-chat-live-inbox">
 (function(){
@@ -9668,5 +9713,111 @@ document.addEventListener('click',function(e){
   document.addEventListener('DOMContentLoaded',start);
 })();
 </script>
+
+<script id="mckenzie-customer-notification-center-js">
+(function(){
+  var STORAGE='mckCustomerNotifications_v1_';
+  var orderUnsub=null, supportUnsub=null, firstOrders=true, firstSupport=true, orderSnapshot={};
+  var MAX=50;
+  function uid(){return String(typeof customerCurrentUserId_==='function'?customerCurrentUserId_():'').trim();}
+  function key(){var id=uid();return id?STORAGE+id:'';}
+  function load(){if(!key())return [];try{var a=JSON.parse(localStorage.getItem(key())||'[]');return Array.isArray(a)?a:[];}catch(e){return [];}}
+  function save(a){if(!key())return;try{localStorage.setItem(key(),JSON.stringify(a.slice(0,MAX)));}catch(e){}}
+  function esc(v){return typeof escapeHtml==='function'?escapeHtml(String(v||'')):String(v||'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+  function add(type,title,text,orderId,icon,signature){
+    var a=load(),sig=String(signature||type+'|'+title+'|'+text+'|'+orderId);
+    if(a.some(function(n){return String(n.signature||'')===sig;}))return;
+    a.unshift({id:'N-'+Date.now()+'-'+Math.random().toString(36).slice(2,7),type:type,title:title,text:text,orderId:String(orderId||''),icon:icon||'🔔',createdAt:new Date().toISOString(),unread:true,signature:sig});
+    save(a);render();
+  }
+  function fmt(iso){try{return new Date(iso).toLocaleString();}catch(e){return '';}}
+  function render(){
+    var list=document.getElementById('mckCustomerNotificationList'),badge=document.getElementById('mckCustomerNotificationBadge'),sum=document.getElementById('mckCustomerNotificationSummary');if(!list)return;
+    var a=load(),unread=a.filter(function(n){return n.unread;}).length;
+    if(badge){badge.textContent=unread>99?'99+':String(unread);badge.style.display=unread?'inline-flex':'none';}
+    if(sum)sum.textContent=unread ? ('You have '+unread+' unread notification'+(unread===1?'':'s')+'.') : "You're all caught up.";
+    if(!a.length){list.innerHTML='<div class="mck-notification-empty">🔔<br><strong>No new notifications</strong><br>Order updates, support replies, and review reminders will appear here.</div>';return;}
+    list.innerHTML=a.map(function(n){return '<div class="mck-notification-item '+(n.unread?'unread':'')+'" data-notification-id="'+esc(n.id)+'" data-order-id="'+esc(n.orderId)+'"><div class="mck-notification-icon">'+esc(n.icon||'🔔')+'</div><div class="mck-notification-copy"><div class="mck-notification-title">'+esc(n.title)+'</div><div class="mck-notification-text">'+esc(n.text)+'</div><div class="mck-notification-time">'+esc(fmt(n.createdAt))+'</div></div>'+(n.unread?'<span class="mck-notification-dot"></span>':'')+'</div>';}).join('');
+    list.querySelectorAll('.mck-notification-item').forEach(function(el){el.onclick=function(){markRead(el.getAttribute('data-notification-id'));var oid=el.getAttribute('data-order-id')||'';closeCustomerNotifications_();if(oid&&typeof openOrderDetailByKey_==='function')openOrderDetailByKey_(encodeURIComponent(oid));else if(navigator&&navigator.vibrate)try{navigator.vibrate(20);}catch(e){}};});
+  }
+  function markRead(id){var a=load();var changed=false;a.forEach(function(n){if(String(n.id)===String(id)&&n.unread){n.unread=false;changed=true;}});if(changed)save(a);render();}
+  window.openCustomerNotifications_=function(){if(typeof isLoggedIn_==='function'&&!isLoggedIn_()){if(typeof accountMenuLogin_==='function')accountMenuLogin_();return;}if(typeof closeAccountMenu_==='function')closeAccountMenu_();var m=document.getElementById('mckCustomerNotificationsModal');if(m){m.classList.add('show');document.body.style.overflow='hidden';}render();};
+  window.closeCustomerNotifications_=function(){var m=document.getElementById('mckCustomerNotificationsModal');if(m)m.classList.remove('show');if(typeof closeAccountSubmodal_==='function')closeAccountSubmodal_('mckCustomerNotificationsModal');document.body.style.overflow='';};
+  window.clearCustomerNotifications_=function(){var a=load().filter(function(n){return n.unread;});save(a);render();};
+  function startOrders(f,u){if(orderUnsub)try{orderUnsub();}catch(e){};orderSnapshot={};firstOrders=true;var q=f.query(f.collection(f.db,'orders'),f.where('userId','==',String(u.uid)));orderUnsub=f.onSnapshot(q,function(snap){snap.docChanges().forEach(function(ch){var d=ch.doc.data()||{},id=String(d.orderId||ch.doc.id),status=String(d.orderStatus||'Preparing'),sig=status+'|'+String(d.updatedAt||d.deliveredAt||'');if(ch.type==='added'){orderSnapshot[id]=sig;return;}if(ch.type!=='modified'){orderSnapshot[id]=sig;return;}if(orderSnapshot[id]===sig){return;}var prev=(orderSnapshot[id]||'').split('|')[0];orderSnapshot[id]=sig;if(firstOrders)return;if(status&&status!==prev){var text='Order #'+id+' is now '+status+'.';add('order','Order status updated',text,id,status==='Delivered'?'🎉':'🍜','order|'+id+'|'+status+'|'+sig);}});firstOrders=false;},function(e){console.warn('Customer order notification listener:',e);});}
+  function startSupport(f,u){if(supportUnsub)try{supportUnsub();}catch(e){};firstSupport=true;var q=f.query(f.collection(f.db,'supportChats'),f.where('userId','==',String(u.uid)));supportUnsub=f.onSnapshot(q,function(snap){snap.docChanges().forEach(function(ch){if(ch.type==='added'){return;}var d=ch.doc.data()||{},msgs=Array.isArray(d.messages)?d.messages:[],last=msgs[msgs.length-1]||{};if(firstSupport)return;if(ch.type==='modified'&&(last.senderType==='admin'||last.senderType==='ai'||last.senderType==='system')){add('support','New customer service reply',String(last.text||'You have a new message from customer service.'),String(ch.doc.id),'💬','support|'+String(ch.doc.id)+'|'+String(last.createdAt||'')+'|'+String(last.text||''));}});firstSupport=false;},function(e){console.warn('Customer support notification listener:',e);});}
+  function start(){if(!window.MckenzieFirebaseReady){setTimeout(start,700);return;}Promise.resolve(window.MckenzieFirebaseReady).then(function(f){if(!f||!f.auth||typeof f.onAuthStateChanged!=='function'||typeof f.onSnapshot!=='function')return;f.onAuthStateChanged(f.auth,function(u){if(orderUnsub)try{orderUnsub();}catch(e){}if(supportUnsub)try{supportUnsub();}catch(e){}orderUnsub=supportUnsub=null;orderSnapshot={};firstOrders=true;firstSupport=true;if(!u){render();return;}startOrders(f,u);startSupport(f,u);render();});}).catch(function(e){console.warn('Customer notification startup:',e);});}
+  document.addEventListener('DOMContentLoaded',function(){render();start();});
+})();
+</script>
+
+
+<script id="mck-v16-enhancements-js">
+(function(){
+  'use strict';
+  var reviewRows=[];
+  function norm(v){return String(v||'').trim().toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/&/g,' and ').replace(/[^a-z0-9]+/g,' ').replace(/\s+/g,' ').trim();}
+  function esc(v){return typeof window.escapeHtml==='function'?window.escapeHtml(String(v||'')):String(v||'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+  function applyMenuSearch(){
+    var input=document.getElementById('mckMenuSearch'), count=document.getElementById('mckMenuSearchCount');
+    if(!input)return;
+    var q=norm(input.value), shown=0,total=0;
+    document.querySelectorAll('#products .menu-category-group').forEach(function(group){
+      var cards=group.querySelectorAll('.product-card'); total+=cards.length; var groupShown=0;
+      cards.forEach(function(card){var hay=norm((card.getAttribute('data-product-name')||'')+' '+(card.querySelector('.product-category')||{}).textContent);var hit=!q||hay.indexOf(q)>=0;card.classList.toggle('mck-product-hidden',!hit);if(hit){shown++;groupShown++;}});
+      var empty=group.querySelector('.menu-category-coming-soon'); if(empty)empty.style.display=q?'none':'';
+      group.style.display=(q&&groupShown===0)?'none':'';
+    });
+    if(count)count.textContent=q?(shown+' of '+total+' menus'):'';
+  }
+  function addRatingBreakdowns(){
+    document.querySelectorAll('.product-card[data-product-id]').forEach(function(card){
+      var summary=card.querySelector('[data-product-rating]'); if(!summary||summary.dataset.mckBreakdown==='1')return;
+      summary.dataset.mckBreakdown='1';
+      var box=document.createElement('div');box.className='mck-rating-breakdown';box.setAttribute('aria-hidden','true');summary.insertAdjacentElement('afterend',box);
+      summary.addEventListener('click',function(e){e.stopPropagation();box.classList.toggle('show');box.setAttribute('aria-hidden',box.classList.contains('show')?'false':'true');
+        var name=card.getAttribute('data-product-name')||'';var rows=reviewRows.filter(function(r){return norm(r.productName)===norm(name)&&Number(r.rating)>=1&&Number(r.rating)<=5;});var counts=[0,0,0,0,0];rows.forEach(function(r){counts[Math.round(Number(r.rating))-1]++;});var max=Math.max.apply(Math,counts.concat([1]));box.innerHTML='<strong>Rating breakdown</strong>'+[5,4,3,2,1].map(function(st){var n=counts[st-1]||0;return '<div class="mck-rating-row"><b>'+st+' ★</b><div class="mck-rating-bar"><i style="width:'+((n/max)*100)+'%"></i></div><span>'+n+'</span></div>';}).join('');
+      });
+    });
+  }
+  function filterPublicReviews(menu){
+    var grid=document.getElementById('customerReviewGrid');if(!grid)return;
+    var cards=grid.querySelectorAll('.customer-review-card[data-review-menu]');cards.forEach(function(card){card.style.display=(!menu||norm(card.getAttribute('data-review-menu'))===norm(menu))?'':'none';});
+    document.querySelectorAll('.mck-reviews-filter').forEach(function(b){b.classList.toggle('active',norm(b.dataset.menu||'')===norm(menu||''));});
+  }
+  function buildReviewFilter(){
+    var section=document.getElementById('reviews'),grid=document.getElementById('customerReviewGrid');if(!section||!grid||document.getElementById('mckReviewsFilterbar'))return;
+    var old=document.getElementById('mckReviewsFilterbar');if(old)old.remove();
+    var menus=[];reviewRows.filter(function(r){return String(r.review||'').trim();}).forEach(function(r){var n=String(r.productName||'Menu item').trim();if(n&&!menus.some(function(x){return norm(x)===norm(n);}))menus.push(n);});
+    if(!menus.length)return;
+    var bar=document.createElement('div');bar.id='mckReviewsFilterbar';bar.className='mck-reviews-filterbar';bar.innerHTML='<button type="button" class="mck-reviews-filter active" data-menu="">All comments</button>'+menus.map(function(n){return '<button type="button" class="mck-reviews-filter" data-menu="'+esc(n)+'">'+esc(n)+'</button>';}).join('');
+    grid.parentNode.insertBefore(bar,grid);
+    bar.querySelectorAll('button').forEach(function(b){b.onclick=function(){filterPublicReviews(b.dataset.menu||'');};});
+  }
+  function enhanceReviews(rows){
+    reviewRows=Array.isArray(rows)?rows:[];
+    buildReviewFilter();
+    addRatingBreakdowns();
+  }
+  function hookRealtime(){
+    var original=window.loadPublishedMenuRatings_;
+    if(typeof original!=='function')return;
+    /* The existing realtime listener already calls this function. Wrap it only
+       to run non-destructive UI enhancements after the baseline renderer. */
+    if(original.__mckV16Wrapped)return;
+    var wrapped=function(rows){reviewRows=Array.isArray(rows)?rows:reviewRows;return Promise.resolve(original.apply(this,arguments)).then(function(v){enhanceReviews(reviewRows);return v;});};
+    wrapped.__mckV16Wrapped=true;window.loadPublishedMenuRatings_=wrapped;
+  }
+  function addOrderProgress(){ /* baseline already renders the order tracking progress. */ }
+  function setupCartPersistence(){
+    /* Baseline already stores carts per Firebase UID. This adds a safe tab-close
+       backup so an accidental refresh cannot clear a cart during auth restore. */
+    try{window.addEventListener('pagehide',function(){if(typeof getCurrentCustomerId_==='function'&&typeof getCart_==='function'){var id=getCurrentCustomerId_();if(id)localStorage.setItem('mckCartBackup_'+id,JSON.stringify(getCart_()));}});}catch(e){}
+  }
+  function setupSearch(){var input=document.getElementById('mckMenuSearch');if(input)input.addEventListener('input',applyMenuSearch);}
+  document.addEventListener('DOMContentLoaded',function(){setupSearch();setupCartPersistence();hookRealtime();setTimeout(function(){applyMenuSearch();addRatingBreakdowns();addOrderProgress();},1200);setInterval(function(){addOrderProgress();addRatingBreakdowns();},3000);});
+})();
+</script>
+
 </body>
 </html>
