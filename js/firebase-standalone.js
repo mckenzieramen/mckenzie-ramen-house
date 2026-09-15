@@ -548,7 +548,7 @@
     const f = await READY;
     const list = await getCollection("reviews");
     return list.filter(r=>String(r.status||"Published").toLowerCase()==="published")
-      .sort((a,b)=>String(b.submittedAt||"").localeCompare(String(a.submittedAt||""))).slice(0,12)
+      .sort((a,b)=>String(b.submittedAt||"").localeCompare(String(a.submittedAt||"")))
       .map(r=>({reviewId:r.reviewId||r.id,orderId:r.orderId,productId:r.productId,productName:r.productName,rating:r.rating,review:r.review,customerName:r.customerName,submittedAt:cleanTimestamp(r.submittedAt)}));
   }
 
