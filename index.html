@@ -7911,16 +7911,28 @@ function organizeCustomerMenuByCategory_() {
   filterMenuCategory_(mckenzieMenuCategoryFilter_);
 }
 
+async function mckSecureFunction_(name, body, requireAuth){
+  const base = 'https://us-central1-mckenzie-ramen-house.cloudfunctions.net/';
+  const headers = {'Content-Type':'application/json'};
+  if(requireAuth){
+    if(!window.MckenzieFirebaseReady) throw new Error('Firebase is still initializing. Please try again.');
+    const f = await Promise.resolve(window.MckenzieFirebaseReady);
+    const u = await customerWaitForAuthUser_(f, String((body||{}).userId||''));
+    if(!u) throw new Error('Please log in again.');
+    headers.Authorization = 'Bearer ' + await u.getIdToken(true);
+  }
+  const r = await fetch(base + name, {method:'POST',headers,body:JSON.stringify(body||{}),cache:'no-store'});
+  const data = await r.json().catch(function(){return {};});
+  if(!r.ok || !data.success) throw new Error(data.message || data.error || 'The Firebase service rejected the request.');
+  return data;
+}
+
 async function loadPublishedMenuRatings_(){
   try{
-    const loadReviews = function(){
-      return new Promise(function(resolve,reject){
-        if(window.google&&google.script&&google.script.run){
-          google.script.run.withSuccessHandler(function(v){resolve(Array.isArray(v)?v:[]);}).withFailureHandler(function(e){reject(e);}).getPublishedReviews();
-        }else{ reject(new Error('Review service unavailable')); }
-      });
-    };
-    const reviews=await loadReviews();
+    const published=await fetch('https://us-central1-mckenzie-ramen-house.cloudfunctions.net/publishedReviews',{cache:'no-store'});
+    const publishedData=await published.json().catch(function(){return {};});
+    if(!published.ok || !publishedData.success) throw new Error(publishedData.message || 'Review service unavailable');
+    const reviews=Array.isArray(publishedData.reviews)?publishedData.reviews:[];
     const stats={};
     const grouped={};
     (Array.isArray(reviews)?reviews:[]).forEach(function(r){
@@ -8903,6 +8915,8 @@ if (window.MckenzieFirebaseReady && typeof window.MckenzieFirebaseReady.then ===
         if(!u || String(u.uid)!==String(params.userId||'')) throw new Error('Please log in again.');
 
         if(api==='getCustomerReviewForm'){
+          var remoteForm=await mckSecureFunction_('customerReviewForm',{userId:String(params.userId||''),orderId:String(params.orderId||'')},true);
+          done(remoteForm); return;
           var orderSnap=await f.getDoc(f.doc(f.db,'orders',String(params.orderId||'')));
           if(!orderSnap.exists()) throw new Error('Order not found.');
           var order=orderSnap.data()||{};
@@ -8947,6 +8961,8 @@ if (window.MckenzieFirebaseReady && typeof window.MckenzieFirebaseReady.then ===
         }
 
         if(api==='submitCustomerReviewsBatch'){
+          var remoteBatch=await mckSecureFunction_('submitCustomerReviews',{userId:String(params.userId||''),orderId:String(params.orderId||''),entries:Array.isArray(params.entries)?params.entries:[]},true);
+          done(remoteBatch); return;
           var entries=Array.isArray(params.entries)?params.entries:[];
           if(!entries.length) throw new Error('Please rate at least one menu item before submitting.');
           var osb=await f.getDoc(f.doc(f.db,'orders',String(params.orderId||'')));
@@ -8985,6 +9001,8 @@ if (window.MckenzieFirebaseReady && typeof window.MckenzieFirebaseReady.then ===
           return;
         }
         if(api==='submitCustomerReview'){
+          var remoteOne=await mckSecureFunction_('submitCustomerReviews',{userId:String(params.userId||''),orderId:String(params.orderId||''),entries:[{productId:String(params.productId||''),unitIndex:Number(params.unitIndex||1),rating:Number(params.rating||0),review:String(params.review||'').trim()}]},true);
+          done(remoteOne); return;
           var rating=Number(params.rating||0), review=String(params.review||'').trim();
           if(!Number.isFinite(rating)||rating<1||rating>5) throw new Error('Please select a rating from 1 to 5 stars.');
           if(review.length>1000) throw new Error('Review is too long. Please keep it under 1000 characters.');
@@ -9180,6 +9198,7 @@ function showThankYouThenSurvey_(orderId){
           done({success:true}); return;
         }
         if(api==='respondCustomerReceipt'){
+          mckSecureFunction_('customerReceiptAction',{userId:String(params.userId||''),orderId:String(params.orderId||''),action:'received',notificationId:String(params.notificationId||'')},true).then(done).catch(function(e){done({success:false,error:e.message||String(e)});}); return;
           var orderId=String(params.orderId||'');
           var received=String(params.received||'').toLowerCase()==='true';
           var ref=f.doc(f.db,'orders',orderId),snap=await f.getDoc(ref);
@@ -9196,6 +9215,7 @@ function showThankYouThenSurvey_(orderId){
           done({success:true,received:received}); return;
         }
         if(api==='dismissReceiptPrompt'){
+          mckSecureFunction_('customerReceiptAction',{userId:String(params.userId||''),orderId:String(params.orderId||''),action:'dismiss',notificationId:String(params.notificationId||'')},true).then(done).catch(function(e){done({success:false,error:e.message||String(e)});}); return;
           var dismissOrderId=String(params.orderId||'');
           if(!dismissOrderId) throw new Error('Order ID is required.');
           var dref=f.doc(f.db,'orders',dismissOrderId),dsnap=await f.getDoc(dref);
