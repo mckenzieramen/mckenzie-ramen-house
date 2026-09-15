@@ -583,11 +583,28 @@
     const o=snap.data();
     if(String(o.orderStatus)!=="Delivered") throw makeError("The order has not been marked as delivered yet.");
     const now=isoNow();
-    await f.updateDoc(ref,{customerConfirmed:!!received,confirmedAt:received?now:"",closed:!!received});
+    await f.updateDoc(ref,{customerConfirmed:!!received,confirmedAt:received?now:"",closed:!!received,receiptPromptDismissed:true,receiptPromptDismissedAt:now});
     if(notificationId) {
       try { await markNotificationRead(u.uid,notificationId); } catch(e) {}
     }
     return {success:true,received:!!received,closed:!!received,contact:{phone:"09123456789",email:"Mckenzieramenhouse@gmail.com",facebook:"Mckenzie Ramen House"}};
+  }
+
+  async function dismissReceiptPrompt(userId, orderId, notificationId) {
+    const f = await READY;
+    const u = await currentUser(true);
+    if (u.uid !== String(userId)) throw makeError("Invalid customer account.");
+    const ref=f.doc(f.db,"orders",String(orderId));
+    const snap=await f.getDoc(ref);
+    if(!snap.exists() || String(snap.data().userId)!==u.uid) throw makeError("Order not found.");
+    const o=snap.data();
+    if(String(o.orderStatus)!=="Delivered") throw makeError("The order has not been marked as delivered yet.");
+    const now=isoNow();
+    await f.updateDoc(ref,{receiptPromptDismissed:true,receiptPromptDismissedAt:now});
+    if(notificationId) {
+      try { await markNotificationRead(u.uid,notificationId); } catch(e) {}
+    }
+    return {success:true,dismissed:true};
   }
 
   async function getAdminProducts() {
@@ -767,6 +784,7 @@
       case "getCustomerPaymentHistory": return (await getOrdersForUser(args[0])).map(o=>({orderId:o.orderId,total:o.total,paymentMethod:o.paymentMethod,paymentStatus:o.paymentStatus,orderStatus:o.orderStatus,orderedAt:o.orderedAt}));
       case "confirmCustomerOrderReceived": return respondReceipt(args[0],args[1],true,"");
       case "respondCustomerReceipt": return respondReceipt(args[0],args[1],String(args[2]).toLowerCase()==="true",args[3]);
+      case "dismissReceiptPrompt": return dismissReceiptPrompt(args[0],args[1],args[2]);
       case "getCustomerReviewForm": return getReviewForm(args[0],args[1]);
       case "submitCustomerReview": return submitReview(args[0],args[1],args[2],args[3],args[4]);
       case "getPublishedReviews": return getPublishedReviews();
