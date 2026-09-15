@@ -7927,15 +7927,42 @@ async function loadPublishedMenuRatings_(){
       }
       return Promise.reject(new Error('Review service unavailable'));
     };
-    const reviews=await loadReviews();
+    let reviews=[];
+    try {
+      reviews=await loadReviews();
+    } catch(primaryError) {
+      /* Keep the customer page compatible with the existing deployed bridge.
+         Firebase remains the primary source; the legacy bridge is only a
+         read-only fallback when the published-review query is temporarily
+         unavailable. This does not change review submission or order flow. */
+      reviews=await new Promise(function(resolve,reject){
+        try {
+          if(!(window.google && window.google.script && window.google.script.run && typeof window.google.script.run.getPublishedReviews==='function')) return reject(primaryError);
+          window.google.script.run
+            .withSuccessHandler(function(v){
+              if(Array.isArray(v)) return resolve(v);
+              if(v && Array.isArray(v.reviews)) return resolve(v.reviews);
+              resolve([]);
+            })
+            .withFailureHandler(reject)
+            .getPublishedReviews();
+        } catch(e){ reject(primaryError); }
+      });
+    }
     const stats={};
     const grouped={};
     function reviewNameKey_(value){
       return String(value||'').trim().toLowerCase()
+        .normalize('NFKD').replace(/[\u0300-\u036f]/g,'')
         .replace(/&/g,' and ')
         .replace(/[^a-z0-9]+/g,' ')
-        .replace(/\b(ramen|menu item|best ramen|best seller)\b/g,' ')
+        .replace(/\b(ramen|menu item|best ramen|best seller|best|ramen house)\b/g,' ')
         .replace(/\s+/g,' ').trim();
+    }
+    function addGroupedReview_(key,r){
+      if(!key)return;
+      if(!grouped[key])grouped[key]=[];
+      grouped[key].push(r);
     }
     (Array.isArray(reviews)?reviews:[]).forEach(function(r){
       if(String(r.status||'Published').toLowerCase()!=='published') return;
@@ -7951,9 +7978,13 @@ async function loadPublishedMenuRatings_(){
       keys.forEach(function(key){
         if(!stats[key])stats[key]={sum:0,count:0};
         stats[key].sum+=rating; stats[key].count++;
-        if(!grouped[key])grouped[key]=[];
-        grouped[key].push(r);
+        addGroupedReview_(key,r);
       });
+      /* Also index a compact token key so historical reviews whose productId
+         changed over time still attach to the same menu. */
+      if(name){
+        addGroupedReview_('menu:'+name,r);
+      }
     });
     document.querySelectorAll('.product-card[data-product-id]').forEach(function(card){
       const pid=String(card.getAttribute('data-product-id')||'').trim();
@@ -7964,7 +7995,18 @@ async function loadPublishedMenuRatings_(){
          productId. Both records still belong to the same menu when their
          normalized product name matches. Deduplicate by reviewId so a review
          that matches both identifiers is counted only once. */
-      const candidates=(grouped['pid:'+pid]||[]).concat(grouped['name:'+name]||[]);
+      let candidates=(grouped['pid:'+pid]||[]).concat(grouped['name:'+name]||[],grouped['menu:'+name]||[]);
+      /* Last-resort name containment for old records such as
+         'Tonkutsu - BEST RAMEN' vs 'Tonkutsu'. */
+      if(!candidates.length && name){
+        Object.keys(grouped).forEach(function(key){
+          if(key.indexOf('name:')!==0 && key.indexOf('menu:')!==0)return;
+          const k=key.slice(key.indexOf(':')+1);
+          if(k===name || k.indexOf(name+' ')===0 || name.indexOf(k+' ')===0){
+            candidates=candidates.concat(grouped[key]||[]);
+          }
+        });
+      }
       const seen={};
       const list=candidates.filter(function(r){
         const rid=String(r.reviewId||r.id||'');
@@ -7990,16 +8032,11 @@ async function loadPublishedMenuRatings_(){
         el.classList.remove('has-rating');
         el.innerHTML='☆ <span>Not yet rated</span>';
       }
+      /* Keep written comments in the main Customer Reviews section only.
+         Product cards show the accumulated rating/count, not individual comments. */
       if(reviewBox){
-        if(list.length){
-          reviewBox.style.display='block';
-          reviewBox.innerHTML='<div class="product-card-reviews-title">Customer Reviews ('+list.length+')</div>'+list.map(function(r){
-            const rating=Math.max(1,Math.min(5,Number(r.rating||0)));
-            const stars=Array.from({length:5},function(_,i){return i<Math.round(rating)?'★':'☆';}).join('');
-            const text=String(r.review||'').trim();
-            return '<div class="product-card-review"><div class="product-card-review-stars">'+stars+'</div>'+(text?'<div class="product-card-review-text">“'+escapeHtml(text)+'”</div>':'')+'<div class="product-card-review-name">— '+escapeHtml(String(r.customerName||'Customer'))+'</div></div>';
-          }).join('');
-        }else{ reviewBox.style.display='none'; reviewBox.innerHTML=''; }
+        reviewBox.style.display='none';
+        reviewBox.innerHTML='';
       }
     });
 
@@ -8316,6 +8353,10 @@ function loadProducts() {
         saveCart_();
         renderAllCartControls_();
         loadPublishedMenuRatings_();
+        /* Re-apply after the product DOM has settled. Some existing baseline
+           flows can finish a menu render asynchronously; this makes review
+           totals persist without changing the renderer or review source. */
+        setTimeout(function(){ loadPublishedMenuRatings_(); }, 900);
 
         if (productImagesPending === 0) {
           markPageAssetReady_('products');
