@@ -10045,3 +10045,34 @@ document.addEventListener('click',function(e){
 .login-close,.create-account-close,.cart-close,.account-subclose,.address-close,.password-close,.verification-close,#mckSurveyClose,#mckCustomerChatClose{position:absolute !important;top:12px !important;right:14px !important;z-index:2147483646 !important;pointer-events:auto !important;touch-action:manipulation !important;}
 #mckCustomerChatHead,#mckSurveyHead{padding-right:62px !important;}
 </style>
+
+<style id="mck-v22-remove-duplicate-account-hamburger">
+/* V22: There must be ONE functional mobile hamburger only.
+   The working navigation control is #mobileSiteNavButton.
+   Hide the separate account/profile 3-line control so it cannot appear underneath. */
+@media (max-width:700px){
+  .account-menu-wrap,
+  .account-menu-button{
+    display:none !important;
+    visibility:hidden !important;
+    opacity:0 !important;
+    pointer-events:none !important;
+  }
+  #mobileSiteNavButton{
+    display:flex !important;
+    visibility:visible !important;
+    opacity:1 !important;
+    pointer-events:auto !important;
+    position:fixed !important;
+    right:6px !important;
+    top:12px !important;
+    z-index:10000040 !important;
+  }
+}
+@media (max-width:430px){
+  #mobileSiteNavButton{right:4px !important;top:13px !important;}
+}
+@media (max-width:360px){
+  #mobileSiteNavButton{right:4px !important;top:14px !important;}
+}
+</style>
