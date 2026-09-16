@@ -3764,7 +3764,7 @@ body.quick-loading {
     <h2 id="mckCustomerNotificationsTitle">Notifications</h2>
     <div class="mck-notification-headrow">
       <span id="mckCustomerNotificationSummary">You're all caught up.</span>
-      <button type="button" class="mck-notification-clear" onclick="clearCustomerNotifications_()">Clear read</button>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end"><button type="button" class="mck-notification-clear" id="mckNotificationMarkAllRead" onclick="markAllCustomerNotificationsRead_()">Mark all as read</button><button type="button" class="mck-notification-clear" onclick="clearCustomerNotifications_()">Clear read</button></div>
     </div>
     <div id="mckCustomerNotificationList" class="mck-notification-list">
       <div class="order-feature-loading">Loading notifications…</div>
@@ -6723,17 +6723,18 @@ function openOrderHistory_() {
 }
 
 function orderStatusIndex_(status) {
-  const s = String(status || "Pending").toLowerCase();
+  const s = String(status || "Preparing").trim().toLowerCase();
   if (s === "pending") return 0;
-  if (s === "processing" || s === "preparing") return 1;
-  if (s === "on the way") return 2;
+  if (s === "processing" || s === "preparing") return 0;
+  if (s === "ready") return 1;
+  if (s === "on the way" || s === "ontheway") return 2;
   if (s === "delivered") return 3;
   return 0;
 }
 
 function renderStatusTrack_(status) {
   const current = orderStatusIndex_(status);
-  const labels = ["Pending", "Processing", "On the Way", "Delivered"];
+  const labels = ["Preparing", "Ready", "On the Way", "Delivered"];
   return '<div class="order-status-track">' + labels.map(function(label, i) {
     const cls = i < current ? "done" : (i === current ? "active" : "");
     return '<div class="order-status-step ' + cls + '"><div class="order-status-dot"></div>' + label + '</div>';
@@ -9764,6 +9765,7 @@ document.addEventListener('click',function(e){
   window.renderCustomerNotifications_=render;
   window.openCustomerNotifications_=function(){if(typeof isLoggedIn_==='function'&&!isLoggedIn_()){if(typeof accountMenuLogin_==='function')accountMenuLogin_();return;}if(typeof closeAccountMenu_==='function')closeAccountMenu_();var m=document.getElementById('mckCustomerNotificationsModal');if(m){m.classList.add('show');document.body.style.overflow='hidden';}render();};
   window.closeCustomerNotifications_=function(){var m=document.getElementById('mckCustomerNotificationsModal');if(m)m.classList.remove('show');if(typeof closeAccountSubmodal_==='function')closeAccountSubmodal_('mckCustomerNotificationsModal');document.body.style.overflow='';};
+  window.markAllCustomerNotificationsRead_=function(){var a=load();var changed=false;a.forEach(function(n){if(n.unread){n.unread=false;changed=true;}});if(changed)save(a);render();};
   window.clearCustomerNotifications_=function(){var a=load().filter(function(n){return n.unread;});save(a);render();};
   function startOrders(f,u){if(orderUnsub)try{orderUnsub();}catch(e){};orderSnapshot={};firstOrders=true;var q=f.query(f.collection(f.db,'orders'),f.where('userId','==',String(u.uid)));orderUnsub=f.onSnapshot(q,function(snap){snap.docChanges().forEach(function(ch){var d=ch.doc.data()||{},id=String(d.orderId||ch.doc.id),status=String(d.orderStatus||'Preparing'),sig=status+'|'+String(d.updatedAt||d.deliveredAt||'');if(ch.type==='added'){orderSnapshot[id]=sig;return;}if(ch.type!=='modified'){orderSnapshot[id]=sig;return;}if(orderSnapshot[id]===sig){return;}var prev=(orderSnapshot[id]||'').split('|')[0];orderSnapshot[id]=sig;if(firstOrders)return;if(status&&status!==prev){var text='Order #'+id+' is now '+status+'.';add('order','Order status updated',text,id,status==='Delivered'?'🎉':'🍜','order|'+id+'|'+status+'|'+sig);}});firstOrders=false;},function(e){console.warn('Customer order notification listener:',e);});}
   function startSupport(f,u){if(supportUnsub)try{supportUnsub();}catch(e){};firstSupport=true;var q=f.query(f.collection(f.db,'supportChats'),f.where('userId','==',String(u.uid)));supportUnsub=f.onSnapshot(q,function(snap){snap.docChanges().forEach(function(ch){if(ch.type==='added'){return;}var d=ch.doc.data()||{},msgs=Array.isArray(d.messages)?d.messages:[],last=msgs[msgs.length-1]||{};if(firstSupport)return;if(ch.type==='modified'&&(last.senderType==='admin'||last.senderType==='ai'||last.senderType==='system')){add('support','New customer service reply',String(last.text||'You have a new message from customer service.'),String(ch.doc.id),'💬','support|'+String(ch.doc.id)+'|'+String(last.createdAt||'')+'|'+String(last.text||''));}});firstSupport=false;},function(e){console.warn('Customer support notification listener:',e);});}
@@ -10160,3 +10162,52 @@ document.addEventListener('click',function(e){
   .account-dropdown{top:38px !important;}
 }
 </style>
+
+<style id="mck-v25-close-back-final">
+@media(max-width:700px){
+  .login-close,.create-account-close,.cart-close,.account-subclose,.address-close,.password-close,.verification-close,#mckSurveyClose,#mckReceiptClose,#mckCustomerChatClose{width:40px !important;height:40px !important;min-width:40px !important;min-height:40px !important;display:flex !important;align-items:center !important;justify-content:center !important;padding:0 !important;line-height:1 !important;font-size:24px !important;touch-action:manipulation !important;pointer-events:auto !important;}
+  #mckCustomerChatHead{display:flex !important;align-items:center !important;min-height:62px !important;padding:10px 58px 10px 14px !important;position:relative !important;}
+  #mckCustomerChatBack{display:flex !important;align-items:center !important;justify-content:center !important;width:40px !important;height:40px !important;min-width:40px !important;border-radius:50% !important;line-height:1 !important;padding:0 !important;font-size:24px !important;margin:0 !important;transform:none !important;}
+  #mckCustomerChatClose{position:absolute !important;top:11px !important;right:12px !important;}
+  #mckReceiptTopbar{display:flex !important;align-items:center !important;}
+  #mckReceiptBack{display:flex !important;align-items:center !important;justify-content:center !important;padding:0 !important;line-height:1 !important;}
+}
+</style>
+<script id="mck-v25-close-handlers">
+(function(){
+  function bind(){
+    var map={
+      'loginModal':function(){if(typeof closeLoginModal==='function')closeLoginModal();},
+      'createAccountModal':function(){if(typeof closeCreateAccountModal==='function')closeCreateAccountModal();},
+      'cartModal':function(){if(typeof closeCartModal_==='function')closeCartModal_();},
+      'editProfileModal':function(){closeAccountSubmodal_('editProfileModal');},
+      'checkoutModal':function(){closeAccountSubmodal_('checkoutModal');},
+      'orderHistoryModal':function(){closeAccountSubmodal_('orderHistoryModal');},
+      'mckCustomerNotificationsModal':function(){if(typeof closeCustomerNotifications_==='function')closeCustomerNotifications_();},
+      'paymentHistoryModal':function(){closeAccountSubmodal_('paymentHistoryModal');},
+      'couponsModal':function(){closeAccountSubmodal_('couponsModal');},
+      'forgotPasswordModal':function(){if(typeof closeForgotPassword_==='function')closeForgotPassword_();},
+      'passwordOtpModal':function(){if(typeof closePasswordOtp_==='function')closePasswordOtp_();},
+      'changePasswordModal':function(){if(typeof closeChangePassword_==='function')closeChangePassword_();},
+      'emailVerificationModal':function(){if(typeof closeEmailVerificationModal==='function')closeEmailVerificationModal();},
+      'mckSurveyModal':function(){if(typeof closeSurveyModal_==='function')closeSurveyModal_();},
+      'mckReceiptModal':function(){if(typeof closeReceipt_==='function')closeReceipt_();}
+    };
+    document.querySelectorAll('.login-close,.create-account-close,.cart-close,.account-subclose,.address-close,.password-close,.verification-close,#mckSurveyClose,#mckReceiptClose,#mckCustomerChatClose').forEach(function(btn){
+      if(btn.id==='mckCustomerChatClose'){btn.onclick=function(e){e.preventDefault();e.stopPropagation();if(typeof window.closeCustomerSupportChat_==='function')window.closeCustomerSupportChat_();};return;}
+      if(btn.id==='mckReceiptClose'){btn.onclick=function(e){e.preventDefault();e.stopPropagation();if(typeof closeReceipt_==='function')closeReceipt_();};return;}
+      if(btn.id==='mckSurveyClose'){btn.onclick=function(e){e.preventDefault();e.stopPropagation();if(typeof closeSurveyModal_==='function')closeSurveyModal_();};return;}
+      if(btn.classList.contains('address-close')){btn.onclick=function(e){e.preventDefault();e.stopPropagation();if(typeof closeAddAddressModal_==='function')closeAddAddressModal_();};return;}
+      if(btn.classList.contains('login-close')){btn.onclick=function(e){e.preventDefault();e.stopPropagation();if(typeof closeLoginModal==='function')closeLoginModal();};return;}
+      if(btn.classList.contains('create-account-close')){btn.onclick=function(e){e.preventDefault();e.stopPropagation();if(typeof closeCreateAccountModal==='function')closeCreateAccountModal();};return;}
+      if(btn.classList.contains('cart-close')){btn.onclick=function(e){e.preventDefault();e.stopPropagation();if(typeof closeCartModal_==='function')closeCartModal_();};return;}
+      if(btn.classList.contains('password-close')){btn.onclick=function(e){e.preventDefault();e.stopPropagation();var m=btn.closest('.account-submodal,.modal');if(m&&map[m.id])map[m.id]();else if(btn.getAttribute('onclick')){};};return;}
+      if(btn.classList.contains('verification-close')){btn.onclick=function(e){e.preventDefault();e.stopPropagation();if(typeof closeEmailVerificationModal==='function')closeEmailVerificationModal();};return;}
+      if(btn.classList.contains('account-subclose')){btn.onclick=function(e){e.preventDefault();e.stopPropagation();var m=btn.closest('.account-submodal');if(m&&m.id&&map[m.id])map[m.id]();else if(m&&m.id)closeAccountSubmodal_(m.id);};}
+    });
+    var back=document.getElementById('mckCustomerChatBack');if(back)back.onclick=function(e){e.preventDefault();e.stopPropagation();if(typeof backToCustomerSupportTickets_==='function')backToCustomerSupportTickets_();};
+    var receiptBack=document.getElementById('mckReceiptBack');if(receiptBack)receiptBack.onclick=function(e){e.preventDefault();e.stopPropagation();if(typeof handleReceiptBack_==='function')handleReceiptBack_();};
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind);else bind();
+})();
+</script>
