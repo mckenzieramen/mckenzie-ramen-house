@@ -11270,3 +11270,98 @@ body:not(.mck-customer-chat-open) .account-menu-wrap,body:not(.mck-customer-chat
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind);else bind();
 })();
 </script>
+
+<style id="mck-v51-search-top-final">
+/* V51: move the real menu search to the sticky top header.
+   Keep the menu-page search functional as a visually hidden mirror. */
+.mck-menu-tools{
+  position:absolute !important;
+  width:1px !important;
+  height:1px !important;
+  min-width:0 !important;
+  padding:0 !important;
+  margin:0 !important;
+  overflow:hidden !important;
+  clip:rect(0 0 0 0) !important;
+  clip-path:inset(50%) !important;
+  white-space:nowrap !important;
+  border:0 !important;
+}
+.site-sticky-nav{padding-right:150px !important;}
+#stickySearchButton.sticky-search-bar{
+  position:fixed !important;
+  z-index:1000005 !important;
+  top:10px !important;
+  right:156px !important;
+  left:auto !important;
+  width:min(390px,calc(100vw - 440px)) !important;
+  min-width:260px !important;
+  height:44px !important;
+  min-height:44px !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:flex-start !important;
+  box-sizing:border-box !important;
+  padding:0 16px !important;
+  gap:10px !important;
+  border:1.5px solid #e9ad35 !important;
+  border-radius:999px !important;
+  background:#fffaf2 !important;
+  color:#4f1718 !important;
+  box-shadow:0 7px 20px rgba(0,0,0,.24),inset 0 0 0 1px rgba(255,255,255,.6) !important;
+}
+#stickySearchButton .sticky-search-icon-wrap{flex:0 0 22px !important;width:22px !important;height:22px !important;display:flex !important;align-items:center !important;justify-content:center !important;color:#6f0c12 !important;}
+#stickySearchButton .sticky-search-icon-wrap .mck-svg-icon{width:21px !important;height:21px !important;display:block !important;}
+#stickySearchButton #stickyMenuSearchInput{display:block !important;flex:1 1 auto !important;width:100% !important;min-width:0 !important;height:100% !important;border:0 !important;outline:0 !important;background:transparent !important;color:#4f1718 !important;font-size:14px !important;font-weight:650 !important;padding:0 !important;box-shadow:none !important;}
+#stickySearchButton #stickyMenuSearchInput::placeholder{color:#8a726d !important;opacity:1 !important;}
+@media(max-width:1100px){
+  #stickySearchButton.sticky-search-bar{right:150px !important;width:min(300px,calc(100vw - 400px)) !important;min-width:210px !important;}
+  .site-sticky-nav{padding-right:144px !important;}
+}
+@media(max-width:760px){
+  .site-sticky-nav{padding-left:54px !important;padding-right:122px !important;}
+  .site-sticky-nav-inner{justify-content:flex-start !important;gap:8px !important;}
+  .site-sticky-nav a{font-size:8px !important;letter-spacing:.35px !important;}
+  #stickySearchButton.sticky-search-bar{right:112px !important;top:11px !important;width:125px !important;min-width:125px !important;height:36px !important;min-height:36px !important;padding:0 10px !important;gap:6px !important;}
+  #stickySearchButton .sticky-search-icon-wrap{flex-basis:17px !important;width:17px !important;height:17px !important;}
+  #stickySearchButton .sticky-search-icon-wrap .mck-svg-icon{width:17px !important;height:17px !important;}
+  #stickySearchButton #stickyMenuSearchInput{font-size:11px !important;}
+  #stickySearchButton #stickyMenuSearchInput::placeholder{font-size:10px !important;}
+}
+@media(max-width:500px){
+  #stickySearchButton.sticky-search-bar{right:104px !important;width:112px !important;min-width:112px !important;height:34px !important;min-height:34px !important;top:12px !important;}
+  .site-sticky-nav{padding-right:114px !important;}
+  #stickySearchButton #stickyMenuSearchInput{font-size:10.5px !important;}
+  #stickySearchButton #stickyMenuSearchInput::placeholder{font-size:9.5px !important;}
+}
+</style>
+
+<script id="mck-v51-search-top-sync">
+(function(){
+  function sync(){
+    var sticky=document.getElementById('stickyMenuSearchInput');
+    var menu=document.getElementById('mckMenuSearch');
+    if(!sticky||!menu||sticky.dataset.v51==='1')return;
+    sticky.dataset.v51='1';
+    sticky.placeholder='Search for ramen, dishes, or more…';
+    sticky.addEventListener('input',function(){
+      menu.value=sticky.value;
+      menu.dispatchEvent(new Event('input',{bubbles:true}));
+    });
+    sticky.addEventListener('keydown',function(e){
+      if(e.key==='Enter'){
+        e.preventDefault();
+        try{if(typeof openMenuSearch_==='function')openMenuSearch_();}catch(_e){}
+      }
+      if(e.key==='Escape'){
+        sticky.value='';
+        menu.value='';
+        menu.dispatchEvent(new Event('input',{bubbles:true}));
+        sticky.blur();
+      }
+    });
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',sync);else sync();
+  setTimeout(sync,500);
+})();
+</script>
