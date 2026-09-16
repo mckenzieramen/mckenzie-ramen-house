@@ -3426,6 +3426,73 @@ body:not(.mck-customer-chat-open) .sticky-cart-button{visibility:visible!importa
 }
 </style>
 </style>
+
+<style id="mck-v39-close-and-header-final">
+/* V39: keep account/header controls available after Customer Support closes. */
+body.mck-customer-chat-open .account-menu-wrap,
+body.mck-customer-chat-open .account-menu-button,
+body.mck-customer-chat-open .sticky-search-button,
+body.mck-customer-chat-open .sticky-cart-button,
+body.mck-customer-chat-open #mobileSiteNavButton,
+body.mck-customer-chat-open #siteStickyNav {
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+/* Payment History: keep its close control pinned while the card scrolls. */
+#paymentHistoryModal .account-subcard { position: relative !important; }
+#paymentHistoryModal .account-subclose {
+  position: sticky !important;
+  top: 0 !important;
+  float: right !important;
+  margin: -8px -8px 0 0 !important;
+  z-index: 10000040 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 40px !important;
+  height: 40px !important;
+  min-width: 40px !important;
+  padding: 0 !important;
+  line-height: 1 !important;
+  pointer-events: auto !important;
+}
+
+/* Customer Support: Back and X share the exact same vertical center. */
+#mckCustomerChatHead {
+  position: relative !important;
+  min-height: 64px !important;
+  padding: 10px 64px 10px 64px !important;
+  box-sizing: border-box !important;
+}
+#mckCustomerChatBack,
+#mckCustomerChatClose {
+  position: absolute !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  width: 40px !important;
+  height: 40px !important;
+  min-width: 40px !important;
+  min-height: 40px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-sizing: border-box !important;
+  line-height: 1 !important;
+  z-index: 10000060 !important;
+  pointer-events: auto !important;
+}
+#mckCustomerChatBack { left: 14px !important; font-size: 24px !important; }
+#mckCustomerChatClose { right: 14px !important; font-size: 25px !important; }
+@media(max-width:600px){
+  #mckCustomerChatHead { min-height: 62px !important; padding-left: 60px !important; padding-right: 60px !important; }
+  #mckCustomerChatBack { left: 10px !important; }
+  #mckCustomerChatClose { right: 10px !important; }
+}
+</style>
 </head>
 
 
@@ -10366,27 +10433,12 @@ body.mck-customer-chat-open #mckCustomerChatBox{
     var modal=document.getElementById('mckCustomerChatModal');
     var open=!!(modal && modal.classList.contains('show'));
     document.body.classList.toggle('mck-customer-chat-open',open);
-    if(open){
-      ['mobileSiteNavButton','mobileSiteNavBackdrop','siteStickyNav'].forEach(function(id){
-        var el=document.getElementById(id);
-        if(el){el.style.setProperty('visibility','hidden','important');el.style.setProperty('pointer-events','none','important');el.style.setProperty('opacity','0','important');}
-      });
-      document.querySelectorAll('.sticky-search-button,.sticky-cart-button,.account-menu-wrap,.account-menu-button').forEach(function(el){
-        el.style.setProperty('visibility','hidden','important');
-        el.style.setProperty('pointer-events','none','important');
-        el.style.setProperty('opacity','0','important');
-      });
-      var x=document.getElementById('mckCustomerChatClose');
-      if(x){x.style.setProperty('visibility','visible','important');x.style.setProperty('opacity','1','important');x.style.setProperty('pointer-events','auto','important');}
-    }
   }
   document.addEventListener('DOMContentLoaded',function(){
     syncChatChrome_();
     var modal=document.getElementById('mckCustomerChatModal');
     if(!modal)return;
     new MutationObserver(syncChatChrome_).observe(modal,{attributes:true,attributeFilter:['class']});
-    var x=document.getElementById('mckCustomerChatClose');
-    if(x)x.addEventListener('click',function(){setTimeout(syncChatChrome_,0);},true);
   });
   window.mckSyncCustomerChatChrome_=syncChatChrome_;
 })();
