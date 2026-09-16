@@ -3306,13 +3306,7 @@ body.quick-loading .sticky-cart-button{visibility:hidden!important;opacity:0!imp
 /* Never allow chat inputs to trigger iOS focus zoom. */
 #mckCustomerChatInput,#mckCustomerChatComposer input,#mckCustomerChatComposer textarea{font-size:16px!important;line-height:1.4!important}
 
-/* Restore global chrome immediately after chat closes. */
-body.mck-customer-chat-open .account-menu-wrap,
-body.mck-customer-chat-open .sticky-search-button,
-body.mck-customer-chat-open .sticky-cart-button{visibility:hidden!important;opacity:0!important;pointer-events:none!important}
-body:not(.mck-customer-chat-open) .account-menu-wrap,
-body:not(.mck-customer-chat-open) .sticky-search-button,
-body:not(.mck-customer-chat-open) .sticky-cart-button{visibility:visible!important;opacity:1!important;pointer-events:auto!important}
+/* Global Search/Cart/Account controls stay visible while chat is open. */
 </style>
 <script id="mck-v32-final-chrome-fix-js">
 (function(){
@@ -3425,73 +3419,6 @@ body:not(.mck-customer-chat-open) .sticky-cart-button{visibility:visible!importa
   .hero#home > .hero-content > #japaneseGreeting{width:min(320px,86vw) !important;}
 }
 </style>
-</style>
-
-<style id="mck-v39-close-and-header-final">
-/* V39: keep account/header controls available after Customer Support closes. */
-body.mck-customer-chat-open .account-menu-wrap,
-body.mck-customer-chat-open .account-menu-button,
-body.mck-customer-chat-open .sticky-search-button,
-body.mck-customer-chat-open .sticky-cart-button,
-body.mck-customer-chat-open #mobileSiteNavButton,
-body.mck-customer-chat-open #siteStickyNav {
-  visibility: visible !important;
-  opacity: 1 !important;
-  pointer-events: auto !important;
-}
-
-/* Payment History: keep its close control pinned while the card scrolls. */
-#paymentHistoryModal .account-subcard { position: relative !important; }
-#paymentHistoryModal .account-subclose {
-  position: sticky !important;
-  top: 0 !important;
-  float: right !important;
-  margin: -8px -8px 0 0 !important;
-  z-index: 10000040 !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  width: 40px !important;
-  height: 40px !important;
-  min-width: 40px !important;
-  padding: 0 !important;
-  line-height: 1 !important;
-  pointer-events: auto !important;
-}
-
-/* Customer Support: Back and X share the exact same vertical center. */
-#mckCustomerChatHead {
-  position: relative !important;
-  min-height: 64px !important;
-  padding: 10px 64px 10px 64px !important;
-  box-sizing: border-box !important;
-}
-#mckCustomerChatBack,
-#mckCustomerChatClose {
-  position: absolute !important;
-  top: 50% !important;
-  transform: translateY(-50%) !important;
-  width: 40px !important;
-  height: 40px !important;
-  min-width: 40px !important;
-  min-height: 40px !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  box-sizing: border-box !important;
-  line-height: 1 !important;
-  z-index: 10000060 !important;
-  pointer-events: auto !important;
-}
-#mckCustomerChatBack { left: 14px !important; font-size: 24px !important; }
-#mckCustomerChatClose { right: 14px !important; font-size: 25px !important; }
-@media(max-width:600px){
-  #mckCustomerChatHead { min-height: 62px !important; padding-left: 60px !important; padding-right: 60px !important; }
-  #mckCustomerChatBack { left: 10px !important; }
-  #mckCustomerChatClose { right: 10px !important; }
-}
 </style>
 </head>
 
@@ -3767,42 +3694,42 @@ body.mck-customer-chat-open #siteStickyNav {
           <input id="profileUsername" type="text" readonly>
         </div>
 
-        <div class="profile-field">
+        <div class="profile-field profile-address-edit-field">
           <label for="profilePostalCode">Postal Code</label>
           <input id="profilePostalCode" type="text" inputmode="numeric">
         </div>
 
-        <div class="profile-field">
+        <div class="profile-field profile-address-edit-field">
           <label for="profileRegion">Region</label>
           <select id="profileRegion"></select>
         </div>
 
-        <div class="profile-field">
+        <div class="profile-field profile-address-edit-field">
           <label for="profileProvince">Province</label>
           <select id="profileProvince" disabled></select>
         </div>
 
-        <div class="profile-field">
+        <div class="profile-field profile-address-edit-field">
           <label for="profileCity">City / Municipality</label>
           <select id="profileCity" disabled></select>
         </div>
 
-        <div class="profile-field">
+        <div class="profile-field profile-address-edit-field">
           <label for="profileBarangay">Barangay</label>
           <select id="profileBarangay" disabled></select>
         </div>
 
-        <div class="profile-field">
+        <div class="profile-field profile-address-edit-field">
           <label for="profileHouseUnit">Lot / House / Unit No.</label>
           <input id="profileHouseUnit" type="text">
         </div>
 
-        <div class="profile-field">
+        <div class="profile-field profile-address-edit-field">
           <label for="profileStreet">Street</label>
           <input id="profileStreet" type="text">
         </div>
 
-        <div class="profile-field full">
+        <div class="profile-field full profile-address-edit-field">
           <label for="profileAdditionalInstruction">Additional Delivery Instruction</label>
           <textarea id="profileAdditionalInstruction" rows="3" placeholder="Landmark, gate instructions, etc."></textarea>
         </div>
@@ -3811,7 +3738,7 @@ body.mck-customer-chat-open #siteStickyNav {
       <section class="jp-profile-addresses" aria-labelledby="profileSavedAddressesTitle">
         <div class="jp-section-kicker">DELIVERY</div>
         <h3 id="profileSavedAddressesTitle">Saved Delivery Addresses</h3>
-        <p>Addresses used during checkout are kept here for faster ordering next time.</p>
+        <p>Your saved delivery addresses are managed here and used automatically during checkout.</p>
         <div id="profileSavedAddressesList" class="jp-address-list"><div class="jp-address-empty">Loading saved addresses…</div></div>
       </section>
 
@@ -4041,7 +3968,7 @@ body.mck-customer-chat-open #siteStickyNav {
     <button type="button" class="password-close" onclick="closePasswordOtp_()">×</button>
     <div class="account-subkicker">MCKENZIE RAMEN HOUSE</div>
     <h2 id="passwordOtpTitle">Verify OTP</h2>
-    <p>Enter the 6-digit code sent to <strong id="passwordOtpEmail"></strong>. The code expires in 10 minutes.</p>
+    <p>Enter the 6-digit code sent to <strong id="passwordOtpEmail"></strong>. You can tap the email address to open your email app. The code expires in 10 minutes.</p>
     <div class="password-field">
       <label for="passwordOtpCode">OTP Code</label>
       <input id="passwordOtpCode" class="password-otp" type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="000000">
@@ -4064,7 +3991,7 @@ body.mck-customer-chat-open #siteStickyNav {
     <button type="button" class="password-close" onclick="closeChangePassword_()">×</button>
     <div class="account-subkicker">MCKENZIE RAMEN HOUSE</div>
     <h2 id="changePasswordTitle">Change Password</h2>
-    <p>Enter your current password. If you forgot it, use the email OTP option below.</p>
+    <p>Enter your current password. If you forgot it, we’ll send a verification code to your registered email.</p>
     <div class="password-field">
       <label for="oldPassword">Old Password</label>
       <input id="oldPassword" type="password" autocomplete="current-password" placeholder="Enter your old password">
@@ -4092,7 +4019,7 @@ body.mck-customer-chat-open #siteStickyNav {
     <button type="button" class="verification-close" aria-label="Close email verification" onclick="closeEmailVerificationModal()">×</button>
     <div class="verification-kicker">MCKENZIE RAMEN HOUSE</div>
     <h2 id="emailVerificationTitle">Verify Your Account</h2>
-    <p>We sent a verification email to <span id="verificationEmail" class="verification-email"></span>. Please open the email and click the verification link.</p>
+    <p>We sent a verification email to <a id="verificationEmail" class="verification-email" href="#"></a>. Open the email and click the verification link.</p>
     <p id="verificationMessage" class="verification-message" aria-live="polite">Please check your inbox or spam folder.</p>
     <button type="button" id="verificationSubmit" class="verification-submit" onclick="checkEmailVerificationNow_()">I’ll Verify My Email</button>
     <button type="button" id="verificationResend" class="verification-resend" onclick="resendVerificationEmail_()">Resend Verification Email</button>
@@ -4913,7 +4840,13 @@ function openEmailVerificationModal_(email) {
   const change = document.getElementById("verificationChangeEmail");
   const proceed = document.getElementById("verificationProceedLogin");
   if (!modal) return;
-  if (emailEl) emailEl.textContent = email || "your email";
+  if (emailEl) {
+    const safeEmail = String(email || "").trim();
+    emailEl.textContent = safeEmail || "your email";
+    emailEl.href = safeEmail ? "mailto:" + encodeURIComponent(safeEmail) : "#";
+    emailEl.target = "_self";
+    emailEl.rel = "nofollow";
+  }
   if (message) { message.style.color = "#a51620"; message.textContent = "Please check your inbox or spam folder, then click the verification link."; }
   if (submit) { submit.disabled=false; submit.style.display=""; submit.textContent="I’ll Verify My Email"; }
   if (resend) { resend.disabled=false; resend.style.display=""; resend.textContent="Resend Verification Email"; }
@@ -6488,7 +6421,6 @@ function populateProfileForm_(user) {
     }
   });
 
-  loadAddressChain_("profile", user);
 }
 
 function saveProfile_() {
@@ -6498,7 +6430,7 @@ function saveProfile_() {
   const mobile=document.getElementById("profileMobile")?.value.trim()||"";
   if(!fullName||!email||!mobile){showProfileMessage_("Full Name, Email Address, and Phone Number are required.",true);return;}
   const button=document.getElementById("profileSaveButton");if(button){button.disabled=true;button.textContent="Saving...";}
-  const payload={userId:user.userId||"",username:document.getElementById("profileUsername")?.value.trim()||user.username||"",fullName,email,mobile,houseUnit:document.getElementById("profileHouseUnit")?.value.trim()||"",street:document.getElementById("profileStreet")?.value.trim()||"",barangay:getSelectedText_("profileBarangay"),city:getSelectedText_("profileCity"),province:getSelectedText_("profileProvince"),postalCode:document.getElementById("profilePostalCode")?.value.trim()||"",region:getSelectedText_("profileRegion"),additionalInstruction:document.getElementById("profileAdditionalInstruction")?.value.trim()||""};
+  const payload={userId:user.userId||"",username:document.getElementById("profileUsername")?.value.trim()||user.username||"",fullName,email,mobile};
   customerSaveProfileDirect_(payload).then(function(updated){if(button){button.disabled=false;button.textContent="Save Changes";}try{localStorage.setItem("mckenzieUser",JSON.stringify(updated));}catch(e){}updateAccountMenu_();showProfileMessage_("Profile saved successfully.",false);setTimeout(function(){closeAccountSubmodal_("editProfileModal");},500);}).catch(function(error){if(button){button.disabled=false;button.textContent="Save Changes";}showProfileMessage_(error&&error.message?error.message:"Unable to save your profile.",true);});
 }
 
@@ -7365,6 +7297,8 @@ function closeForgotPassword_() {
 }
 function openChangePassword_() {
   const modal=document.getElementById("changePasswordModal"); if(!modal)return;
+  const profile=document.getElementById("editProfileModal");
+  if(profile) profile.classList.remove("show");
   modal.classList.add("show"); document.body.style.overflow="hidden";
   ["oldPassword","newPassword","confirmNewPassword"].forEach(function(id){const e=document.getElementById(id);if(e)e.value="";});
   const msg=document.getElementById("changePasswordMessage"); if(msg)msg.textContent="";
@@ -7407,7 +7341,7 @@ function sendPasswordOtpForUser_(userId) {
 function openPasswordOtp_(email) {
   const modal=document.getElementById("passwordOtpModal"); if(!modal)return;
   modal.classList.add("show"); document.body.style.overflow="hidden";
-  const emailEl=document.getElementById("passwordOtpEmail"); if(emailEl)emailEl.textContent=email||"your registered email";
+  const emailEl=document.getElementById("passwordOtpEmail"); if(emailEl){var safeEmail=String(email||"").trim();emailEl.textContent=safeEmail||"your registered email";emailEl.dataset.email=safeEmail;if(safeEmail){emailEl.style.cursor="pointer";emailEl.title="Open your email app";emailEl.onclick=function(){window.location.href="mailto:"+encodeURIComponent(safeEmail);};}}
   ["passwordOtpCode","passwordOtpNewPassword","passwordOtpConfirmPassword"].forEach(function(id){const e=document.getElementById(id);if(e)e.value="";});
   const msg=document.getElementById("passwordOtpMessage"); if(msg)msg.textContent="";
   setTimeout(function(){const e=document.getElementById("passwordOtpCode");if(e)e.focus();},50);
@@ -10355,20 +10289,7 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;opac
 #mckCustomerChatModal.show{
   z-index:2147483000 !important;
 }
-#mckCustomerChatModal.show ~ #mobileSiteNavButton,
-#mckCustomerChatModal.show ~ #mobileSiteNavBackdrop,
-#mckCustomerChatModal.show ~ #siteStickyNav,
-body.mck-customer-chat-open #mobileSiteNavButton,
-body.mck-customer-chat-open #mobileSiteNavBackdrop,
-body.mck-customer-chat-open #siteStickyNav,
-body.mck-customer-chat-open .sticky-search-button,
-body.mck-customer-chat-open .sticky-cart-button,
-body.mck-customer-chat-open .account-menu-wrap,
-body.mck-customer-chat-open .account-menu-button{
-  visibility:hidden !important;
-  opacity:0 !important;
-  pointer-events:none !important;
-}
+/* Chat no longer hides global Search/Cart/Account controls. */
 body.mck-customer-chat-open #mckCustomerChatModal,
 body.mck-customer-chat-open #mckCustomerChatBox{
   visibility:visible !important;
@@ -10433,12 +10354,21 @@ body.mck-customer-chat-open #mckCustomerChatBox{
     var modal=document.getElementById('mckCustomerChatModal');
     var open=!!(modal && modal.classList.contains('show'));
     document.body.classList.toggle('mck-customer-chat-open',open);
+    /* Global Search/Cart/Account controls remain visible. Chat is its own modal layer. */
+    document.querySelectorAll('.sticky-search-button,.sticky-cart-button,.account-menu-wrap,.account-menu-button').forEach(function(el){
+      el.style.removeProperty('visibility');
+      el.style.removeProperty('opacity');
+      el.style.removeProperty('pointer-events');
+    });
+    var x=document.getElementById('mckCustomerChatClose');
+    if(x){x.style.setProperty('visibility','visible','important');x.style.setProperty('opacity','1','important');x.style.setProperty('pointer-events','auto','important');}
   }
   document.addEventListener('DOMContentLoaded',function(){
     syncChatChrome_();
     var modal=document.getElementById('mckCustomerChatModal');
-    if(!modal)return;
-    new MutationObserver(syncChatChrome_).observe(modal,{attributes:true,attributeFilter:['class']});
+    if(modal)new MutationObserver(syncChatChrome_).observe(modal,{attributes:true,attributeFilter:['class']});
+    var x=document.getElementById('mckCustomerChatClose');
+    if(x)x.addEventListener('click',function(){setTimeout(syncChatChrome_,0);},true);
   });
   window.mckSyncCustomerChatChrome_=syncChatChrome_;
 })();
@@ -10464,17 +10394,19 @@ body.quick-loading #mobileSiteNavButton,body.quick-loading .account-menu-wrap,bo
 #mckCustomerChatMessages{min-height:0!important;overflow-y:auto!important;overscroll-behavior:contain!important;-webkit-overflow-scrolling:touch!important}
 #mckCustomerChatTyping{width:100%!important;box-sizing:border-box!important;text-align:left!important;padding:5px 14px!important;margin:0!important;background:#fffaf3!important;border-top:1px solid rgba(222,201,189,.5)!important;color:#806c65!important}
 #mckCustomerChatInput,#mckCustomerChatComposer input,#mckCustomerChatComposer textarea{font-size:16px!important;line-height:1.4!important}
-body.mck-customer-chat-open .account-menu-wrap,body.mck-customer-chat-open .sticky-search-button,body.mck-customer-chat-open .sticky-cart-button{visibility:hidden!important;opacity:0!important;pointer-events:none!important}
-body:not(.mck-customer-chat-open) .account-menu-wrap,body:not(.mck-customer-chat-open) .sticky-search-button,body:not(.mck-customer-chat-open) .sticky-cart-button{visibility:visible!important;opacity:1!important;pointer-events:auto!important}
 </style>
 <script id="mck-v32-polish-final-js">
 (function(){
-  function vis(el,on){if(!el)return;el.style.setProperty('visibility',on?'visible':'hidden','important');el.style.setProperty('opacity',on?'1':'0','important');el.style.setProperty('pointer-events',on?'auto':'none','important');}
   function sync(){
-    var modal=document.getElementById('mckCustomerChatModal'),open=!!(modal&&modal.classList.contains('show'));
+    var modal=document.getElementById('mckCustomerChatModal');
+    var open=!!(modal&&modal.classList.contains('show'));
     document.body.classList.toggle('mck-customer-chat-open',open);
-    document.querySelectorAll('.account-menu-wrap,.sticky-search-button,.sticky-cart-button').forEach(function(el){vis(el,!open);});
-    if(open)vis(document.getElementById('mckCustomerChatClose'),true);
+    document.querySelectorAll('.account-menu-wrap,.sticky-search-button,.sticky-cart-button').forEach(function(el){
+      el.style.removeProperty('visibility');
+      el.style.removeProperty('opacity');
+      el.style.removeProperty('pointer-events');
+    });
+    if(open){var x=document.getElementById('mckCustomerChatClose');if(x){x.style.setProperty('visibility','visible','important');x.style.setProperty('opacity','1','important');x.style.setProperty('pointer-events','auto','important');}}
   }
   function bind(){
     sync();
@@ -10488,9 +10420,7 @@ body:not(.mck-customer-chat-open) .account-menu-wrap,body:not(.mck-customer-chat
 })();
 </script>
 
-</html>
-
-<style id="mck-v21-organized-header-icons">
+\n<style id="mck-v21-organized-header-icons">
 /* V21 HEADER BASELINE: search + cart + hamburger stay together in one clean row. */
 @media (min-width: 701px) {
   .account-menu-wrap {
@@ -10750,3 +10680,62 @@ body:not(.mck-customer-chat-open) .account-menu-wrap,body:not(.mck-customer-chat
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind);else bind();
 })();
 </script>
+
+<style id="mck-v40-profile-password-header-fix">
+/* V40: profile addresses are managed only through Saved Delivery Addresses. */
+.profile-address-edit-field{display:none !important;}
+
+/* Sticky close controls for scrollable Profile and Payment History cards. */
+#editProfileModal .account-subcard,#paymentHistoryModal .account-subcard{position:relative !important;overflow-y:auto !important;}
+#editProfileModal .account-subcard > .account-subclose,#paymentHistoryModal .account-subcard > .account-subclose{position:sticky !important;top:0 !important;right:auto !important;z-index:10000070 !important;display:flex !important;align-items:center !important;justify-content:center !important;width:40px !important;height:40px !important;min-width:40px !important;min-height:40px !important;margin:0 0 -40px auto !important;padding:0 !important;line-height:1 !important;font-size:24px !important;box-sizing:border-box !important;cursor:pointer !important;pointer-events:auto !important;}
+
+/* Keep Search → Cart → Account in one clean row on mobile. */
+@media (max-width:700px){
+  .sticky-search-button,.sticky-cart-button,.account-menu-wrap{position:fixed !important;top:10px !important;z-index:10000080 !important;}
+  .account-menu-wrap{right:8px !important;left:auto !important;}
+  .account-menu-button{width:40px !important;height:40px !important;min-width:40px !important;min-height:40px !important;}
+  .sticky-cart-button{right:56px !important;left:auto !important;width:40px !important;height:40px !important;}
+  .sticky-search-button{right:104px !important;left:auto !important;width:40px !important;height:40px !important;}
+}
+@media (max-width:430px){
+  .sticky-search-button,.sticky-cart-button,.account-menu-button{width:36px !important;height:36px !important;min-width:36px !important;min-height:36px !important;top:11px !important;}
+  .account-menu-wrap{right:7px !important;}
+  .sticky-cart-button{right:49px !important;}
+  .sticky-search-button{right:91px !important;}
+  .account-icon-lines{gap:3px !important;}
+  .account-icon-lines i{width:16px !important;height:2px !important;}
+}
+
+/* Chat opening/closing must never hide the global controls. */
+body.mck-customer-chat-open .sticky-search-button,body.mck-customer-chat-open .sticky-cart-button,body.mck-customer-chat-open .account-menu-wrap,body.mck-customer-chat-open .account-menu-button,body.mck-customer-chat-open #mobileSiteNavButton{visibility:visible !important;opacity:1 !important;pointer-events:auto !important;}
+
+#passwordOtpEmail{color:#9f1118;text-decoration:underline;text-underline-offset:2px;cursor:pointer;}
+#verificationEmail{color:#9f1118;text-decoration:underline;text-underline-offset:2px;font-weight:800;}
+</style>
+<script id="mck-v40-profile-password-header-fix-js">
+(function(){
+  function bindProfileAndPaymentClose(){
+    document.querySelectorAll('#editProfileModal .account-subclose,#paymentHistoryModal .account-subclose').forEach(function(btn){
+      if(btn.dataset.mckV40Bound==='1')return;
+      btn.dataset.mckV40Bound='1';
+      btn.addEventListener('click',function(e){
+        e.preventDefault();e.stopImmediatePropagation();
+        var modal=btn.closest('.account-submodal');
+        if(modal&&typeof window.closeAccountSubmodal_==='function')window.closeAccountSubmodal_(modal.id);
+      },true);
+    });
+  }
+  function restoreGlobalControls(){
+    document.querySelectorAll('.sticky-search-button,.sticky-cart-button,.account-menu-wrap,.account-menu-button').forEach(function(el){
+      el.style.removeProperty('visibility');el.style.removeProperty('opacity');el.style.removeProperty('pointer-events');
+    });
+  }
+  function init(){
+    bindProfileAndPaymentClose();restoreGlobalControls();
+    setInterval(function(){bindProfileAndPaymentClose();restoreGlobalControls();},700);
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
+})();
+</script>
+
+</html>
