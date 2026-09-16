@@ -3276,23 +3276,6 @@ body.quick-loading {
 @media(min-width:601px){.sticky-search-button{right:116px;top:14px;width:40px;height:40px;font-size:22px}}
 </style>
 
-
-<style id="mck-v33-safe-chat-loader-fix">
-/* V33: loader owns the first paint; chat never hides the normal site chrome. */
-html.quick-loading #mobileSiteNavButton,
-html.quick-loading .account-menu-wrap,
-html.quick-loading .sticky-search-button,
-html.quick-loading .sticky-cart-button{visibility:hidden!important;opacity:0!important;pointer-events:none!important}
-
-/* Customer Support is a true top-level modal. Do not hide the site's normal controls;
-   the modal backdrop naturally covers them, and they return unchanged after close. */
-#mckCustomerChatModal.show{display:flex!important;z-index:2147483000!important}
-#mckCustomerChatBox{position:relative!important;z-index:2147483001!important}
-#mckCustomerChatHead{position:relative!important;padding:10px 58px 10px 14px!important;box-sizing:border-box!important}
-#mckCustomerChatClose{position:absolute!important;top:50%!important;right:10px!important;transform:translateY(-50%)!important;width:40px!important;height:40px!important;display:flex!important;align-items:center!important;justify-content:center!important;z-index:2147483002!important;pointer-events:auto!important;touch-action:manipulation!important}
-#mckCustomerChatBack{display:flex!important;align-items:center!important;justify-content:center!important;width:40px!important;height:40px!important;padding:0!important;line-height:1!important}
-#mckCustomerChatInput,#mckCustomerChatComposer input,#mckCustomerChatComposer textarea{font-size:16px!important;line-height:1.4!important}
-</style>
 </head>
 
 
@@ -10152,7 +10135,114 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;opac
 
 <script src="js/mckenzie-app-enhancements.js" defer></script>
 
-
+<style id="mck-v30-chat-modal-visibility-fix">
+/* V30: Customer chat must sit above the global sticky navigation/search/cart controls. */
+#mckCustomerChatModal.show{
+  z-index:2147483000 !important;
+}
+#mckCustomerChatModal.show ~ #mobileSiteNavButton,
+#mckCustomerChatModal.show ~ #mobileSiteNavBackdrop,
+#mckCustomerChatModal.show ~ #siteStickyNav,
+body.mck-customer-chat-open #mobileSiteNavButton,
+body.mck-customer-chat-open #mobileSiteNavBackdrop,
+body.mck-customer-chat-open #siteStickyNav,
+body.mck-customer-chat-open .sticky-search-button,
+body.mck-customer-chat-open .sticky-cart-button,
+body.mck-customer-chat-open .account-menu-wrap,
+body.mck-customer-chat-open .account-menu-button{
+  visibility:hidden !important;
+  opacity:0 !important;
+  pointer-events:none !important;
+}
+body.mck-customer-chat-open #mckCustomerChatModal,
+body.mck-customer-chat-open #mckCustomerChatBox{
+  visibility:visible !important;
+  opacity:1 !important;
+  pointer-events:auto !important;
+}
+@media(max-width:700px){
+  #mckCustomerChatModal.show{padding:0 !important;}
+  #mckCustomerChatBox{z-index:2147483001 !important;}
+  #mckCustomerChatHead{
+    position:relative !important;
+    min-height:64px !important;
+    padding:10px 60px 10px 14px !important;
+    box-sizing:border-box !important;
+  }
+  #mckCustomerChatClose{
+    position:absolute !important;
+    top:50% !important;
+    right:10px !important;
+    transform:translateY(-50%) !important;
+    width:40px !important;
+    height:40px !important;
+    min-width:40px !important;
+    min-height:40px !important;
+    display:flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+    border:1px solid rgba(233,173,53,.9) !important;
+    background:#3a0709 !important;
+    color:#f6c34c !important;
+    border-radius:50% !important;
+    font-size:25px !important;
+    line-height:1 !important;
+    padding:0 !important;
+    margin:0 !important;
+    z-index:2147483005 !important;
+    visibility:visible !important;
+    opacity:1 !important;
+    pointer-events:auto !important;
+    touch-action:manipulation !important;
+  }
+  #mckCustomerChatBack{
+    width:40px !important;
+    height:40px !important;
+    min-width:40px !important;
+    min-height:40px !important;
+    display:flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+    box-sizing:border-box !important;
+    padding:0 !important;
+    margin:0 !important;
+    line-height:1 !important;
+    text-align:center !important;
+    transform:none !important;
+  }
+}
+</style>
+<script id="mck-v30-chat-modal-visibility-js">
+(function(){
+  function syncChatChrome_(){
+    var modal=document.getElementById('mckCustomerChatModal');
+    var open=!!(modal && modal.classList.contains('show'));
+    document.body.classList.toggle('mck-customer-chat-open',open);
+    if(open){
+      ['mobileSiteNavButton','mobileSiteNavBackdrop','siteStickyNav'].forEach(function(id){
+        var el=document.getElementById(id);
+        if(el){el.style.setProperty('visibility','hidden','important');el.style.setProperty('pointer-events','none','important');el.style.setProperty('opacity','0','important');}
+      });
+      document.querySelectorAll('.sticky-search-button,.sticky-cart-button,.account-menu-wrap,.account-menu-button').forEach(function(el){
+        el.style.setProperty('visibility','hidden','important');
+        el.style.setProperty('pointer-events','none','important');
+        el.style.setProperty('opacity','0','important');
+      });
+      var x=document.getElementById('mckCustomerChatClose');
+      if(x){x.style.setProperty('visibility','visible','important');x.style.setProperty('opacity','1','important');x.style.setProperty('pointer-events','auto','important');}
+    }
+  }
+  document.addEventListener('DOMContentLoaded',function(){
+    syncChatChrome_();
+    var modal=document.getElementById('mckCustomerChatModal');
+    if(!modal)return;
+    new MutationObserver(syncChatChrome_).observe(modal,{attributes:true,attributeFilter:['class']});
+    var x=document.getElementById('mckCustomerChatClose');
+    if(x)x.addEventListener('click',function(){setTimeout(syncChatChrome_,0);},true);
+  });
+  window.mckSyncCustomerChatChrome_=syncChatChrome_;
+})();
+</script>
 
 </body>
 </html>
