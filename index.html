@@ -10857,6 +10857,124 @@ body.mck-customer-chat-open .sticky-search-button,body.mck-customer-chat-open .s
   .site-sticky-nav .account-menu-button{width:32px !important;height:32px !important;min-width:32px !important;min-height:32px !important;}
 }
 </style>
+
+<style id="mck-v53-menu-search-final">
+/* V53: Search belongs in the Menu section under “Best Seller & New Menu”.
+   Remove the floating/sticky top search control completely while preserving
+   the real #mckMenuSearch field and its existing functionality. */
+#stickySearchButton,
+.sticky-search-button,
+.site-sticky-nav .sticky-search-bar#stickySearchButton {
+  display:none !important;
+  visibility:hidden !important;
+  opacity:0 !important;
+  pointer-events:none !important;
+  width:0 !important;
+  min-width:0 !important;
+  max-width:0 !important;
+  overflow:hidden !important;
+}
+#stickyMenuSearchInput {
+  display:none !important;
+}
+/* Restore the real menu search directly below the menu heading. */
+#mckMenuTools {
+  position:relative !important;
+  width:min(760px,92vw) !important;
+  max-width:760px !important;
+  height:auto !important;
+  min-height:48px !important;
+  margin:24px auto 18px !important;
+  padding:0 !important;
+  overflow:visible !important;
+  clip:auto !important;
+  clip-path:none !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  visibility:visible !important;
+  opacity:1 !important;
+  z-index:30 !important;
+}
+#mckMenuSearch {
+  display:block !important;
+  width:100% !important;
+  min-width:0 !important;
+  min-height:48px !important;
+  height:48px !important;
+  box-sizing:border-box !important;
+  font-size:16px !important;
+  padding:0 18px !important;
+}
+/* The top row now only needs navigation + cart + the functional hamburger. */
+.site-sticky-nav {
+  padding-right:78px !important;
+}
+@media (max-width:700px) {
+  .site-sticky-nav {
+    padding:7px 104px 7px 60px !important;
+  }
+  /* Cart and hamburger keep the same visual size, with a deliberate 10px gap. */
+  .site-sticky-nav .sticky-cart-button,
+  .sticky-cart-button {
+    right:62px !important;
+    left:auto !important;
+    width:44px !important;
+    height:44px !important;
+    min-width:44px !important;
+    min-height:44px !important;
+    top:10px !important;
+  }
+  .site-sticky-nav .account-menu-wrap,
+  .account-menu-wrap {
+    right:8px !important;
+    top:10px !important;
+  }
+  .account-menu-button {
+    width:44px !important;
+    height:44px !important;
+    min-width:44px !important;
+    min-height:44px !important;
+  }
+  #mckMenuTools {
+    width:calc(100% - 24px) !important;
+    max-width:760px !important;
+    margin-top:22px !important;
+    margin-bottom:16px !important;
+  }
+}
+@media (max-width:430px) {
+  .site-sticky-nav {
+    padding-left:52px !important;
+    padding-right:104px !important;
+  }
+  .site-sticky-nav .sticky-cart-button,
+  .sticky-cart-button {
+    right:60px !important;
+    width:42px !important;
+    height:42px !important;
+    min-width:42px !important;
+    min-height:42px !important;
+    top:10px !important;
+  }
+  .site-sticky-nav .account-menu-wrap,
+  .account-menu-wrap {
+    right:7px !important;
+    top:10px !important;
+  }
+  .account-menu-button {
+    width:42px !important;
+    height:42px !important;
+    min-width:42px !important;
+    min-height:42px !important;
+  }
+  #mckMenuSearch {
+    min-height:46px !important;
+    height:46px !important;
+    font-size:15px !important;
+  }
+}
+</style>
 </body>
 
 <style id="mck-v32-polish-final">
