@@ -105,8 +105,6 @@ button,input,select,textarea{font:inherit}
   .products{grid-template-columns:repeat(3,1fr)!important}
 }
 
-
-.payment-settings-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:15px;margin-top:18px}.payment-settings-card{border:1px solid var(--line);border-radius:15px;background:#fffaf5;padding:16px}.payment-settings-card h4{margin:0 0 5px;color:#60151f;font-family:'Cormorant Garamond',serif;font-size:24px}.payment-settings-card p{margin:0 0 12px;color:var(--muted);font-size:11px;line-height:1.45}.payment-field{margin:9px 0}.payment-field label{display:block;font-size:10px;font-weight:900;color:#60151f;margin-bottom:5px}.payment-field input,.payment-field select{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:9px;background:#fff;outline:none;font-size:12px}.payment-upload{border:2px dashed #d8c4b7;border-radius:11px;padding:11px;text-align:center;cursor:pointer;background:#fff;margin-top:8px}.payment-upload strong{display:block;font-size:11px}.payment-upload small{font-size:9px;color:var(--muted)}.payment-qr-preview{display:none;margin-top:9px;width:100%;height:150px;object-fit:contain;border:1px solid var(--line);border-radius:10px;background:#fff;padding:5px}.payment-settings-note{margin-top:12px;padding:10px 12px;border:1px solid #ead4c9;border-radius:10px;background:#fff7ed;color:var(--muted);font-size:10px;line-height:1.5}.payment-status-ok{color:#18733a}.payment-status-off{color:#9c182c}@media(max-width:950px){.payment-settings-grid{grid-template-columns:1fr}} 
 </style>
 
 <style id="review-notify-style">
@@ -285,11 +283,10 @@ button,input,select,textarea{font:inherit}
 .category-filter{padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:#fff;min-width:170px;font-weight:700;color:#60151f}
 </style>
 
-<style id="mckenzie-admin-chat-mobile-input-fix">
-@media(max-width:600px){
+<style id="mckenzie-admin-chat-mobile-input-fix-clean">
+@media(max-width:700px){
   html{-webkit-text-size-adjust:100%;}
   input,textarea,select{font-size:16px !important;}
-  .customer-chat-compose textarea{font-size:16px !important;}
 }
 </style>
 </head>
@@ -439,35 +436,8 @@ button,input,select,textarea{font:inherit}
         <div id="brandBackgroundCurrent" class="settings-current"></div>
       </div>
     </div>
-    <div class="payment-settings-grid">
-      <div class="payment-settings-card">
-        <h4>GCash</h4><p>Configure the GCash payment option shown during checkout.</p>
-        <div class="payment-field"><label>Display / Account Name</label><input id="paymentGcashName" type="text" placeholder="e.g. McKenzie Ramen House"></div>
-        <div class="payment-field"><label>Account / Reference Details</label><input id="paymentGcashDetails" type="text" placeholder="e.g. 09XXXXXXXXX"></div>
-        <div class="payment-field"><label>Availability</label><select id="paymentGcashAvailable"><option value="true">Available</option><option value="false">Not Available</option></select></div>
-        <label class="payment-upload" for="paymentGcashFile"><strong>📷 Upload GCash QR</strong><small>PNG, JPG, or WEBP</small><input id="paymentGcashFile" type="file" accept="image/png,image/jpeg,image/webp" hidden></label>
-        <img id="paymentGcashPreview" class="payment-qr-preview" alt="GCash QR preview">
-      </div>
-      <div class="payment-settings-card">
-        <h4>Maya</h4><p>Configure the Maya payment option shown during checkout.</p>
-        <div class="payment-field"><label>Display / Account Name</label><input id="paymentMayaName" type="text" placeholder="e.g. McKenzie Ramen House"></div>
-        <div class="payment-field"><label>Account / Reference Details</label><input id="paymentMayaDetails" type="text" placeholder="e.g. 09XXXXXXXXX"></div>
-        <div class="payment-field"><label>Availability</label><select id="paymentMayaAvailable"><option value="true">Available</option><option value="false">Not Available</option></select></div>
-        <label class="payment-upload" for="paymentMayaFile"><strong>📷 Upload Maya QR</strong><small>PNG, JPG, or WEBP</small><input id="paymentMayaFile" type="file" accept="image/png,image/jpeg,image/webp" hidden></label>
-        <img id="paymentMayaPreview" class="payment-qr-preview" alt="Maya QR preview">
-      </div>
-      <div class="payment-settings-card">
-        <h4>Bank / QR BANK</h4><p>Configure the bank/QR payment option shown during checkout.</p>
-        <div class="payment-field"><label>Display / Bank Name</label><input id="paymentBankName" type="text" placeholder="e.g. BPI · McKenzie Ramen House"></div>
-        <div class="payment-field"><label>Account / Reference Details</label><input id="paymentBankDetails" type="text" placeholder="Account name / number"></div>
-        <div class="payment-field"><label>Availability</label><select id="paymentBankAvailable"><option value="true">Available</option><option value="false">Not Available</option></select></div>
-        <label class="payment-upload" for="paymentBankFile"><strong>📷 Upload Bank QR</strong><small>PNG, JPG, or WEBP</small><input id="paymentBankFile" type="file" accept="image/png,image/jpeg,image/webp" hidden></label>
-        <img id="paymentBankPreview" class="payment-qr-preview" alt="Bank QR preview">
-      </div>
-    </div>
-    <div class="payment-settings-note">Cash on Delivery remains available independently. If GCash, Maya, or QR BANK is set to <b>Not Available</b>, customers will see that method as unavailable and cannot select it.</div>
     <div class="settings-note">Images are compressed in your browser before being saved to Firebase Firestore, so Firebase Storage is not required.</div>
-    <div class="settings-actions"><button id="saveBrandAssetsBtn" class="settings-save" type="button" onclick="saveBrandAssets()">Save Website Branding</button><button class="settings-save" type="button" onclick="savePaymentSettings_()">Save Payment Settings</button></div>
+    <div class="settings-actions"><button id="saveBrandAssetsBtn" class="settings-save" type="button" onclick="saveBrandAssets()">Save Website Branding</button></div>
     <div id="brandAssetsMsg" class="settings-msg"></div>
   </section>
 
@@ -824,19 +794,8 @@ button,input,select,textarea{font:inherit}
   }
 
   async function getBrandAssets() {
-    const [p,g,m,b] = await Promise.all([
-      getDocById("brandAssets", "main"),
-      getDocById("brandAssets", "payment_gcash"),
-      getDocById("brandAssets", "payment_maya"),
-      getDocById("brandAssets", "payment_bank")
-    ]);
-    return Object.assign({}, p || {}, {
-      paymentMethods:{
-        GCash:g || {name:"GCash",available:true,displayName:"",details:"",qr:""},
-        Maya:m || {name:"Maya",available:true,displayName:"",details:"",qr:""},
-        "QR BANK":b || {name:"QR BANK",available:true,displayName:"",details:"",qr:""}
-      }
-    });
+    const p = await getDocById("brandAssets", "main");
+    return p || {};
   }
 
   async function getRamenLoadingImage() {
@@ -1768,35 +1727,7 @@ function renderCustomerChats(){
   const statusFilter=String(sf&&sf.value||'');
   const list=(customerChatsData||[]).filter(function(chat){return (!q||[chat.customerName,chat.customerEmail,chat.orderId,chat.chatId].join(' ').toLowerCase().includes(q)) && (!statusFilter||String(chat.status||'Open')===statusFilter);});
   if(!list.length){c.innerHTML='<div class="customer-chat-empty">'+(q?'No matching customer conversations.':'No customer conversations yet. When a customer chats with McKenzie Customer Service, the conversation will appear here.')+'</div>';return;}
-  /* Preserve the admin page/chat scroll position across Firestore realtime rerenders.
-     This prevents a reply from jumping the conversation or the page back to the top. */
-  var pageY=window.scrollY||window.pageYOffset||0;
-  var oldBoxes={};
-  c.querySelectorAll('.customer-chat-card').forEach(function(card){
-    var id=card.getAttribute('data-chat-id');
-    var box=card.querySelector('.customer-chat-messages');
-    if(id&&box){
-      oldBoxes[id]={top:box.scrollTop,height:box.scrollHeight,client:box.clientHeight,nearBottom:(box.scrollHeight-box.scrollTop-box.clientHeight)<80};
-    }
-  });
   c.innerHTML=list.map(renderAdminChat_).join('');
-  requestAnimationFrame(function(){
-    c.querySelectorAll('.customer-chat-card').forEach(function(card){
-      var id=card.getAttribute('data-chat-id');
-      var box=card.querySelector('.customer-chat-messages');
-      var old=oldBoxes[id];
-      if(!box) return;
-      if(old && old.nearBottom){
-        box.scrollTop=box.scrollHeight;
-      }else if(old){
-        var delta=box.scrollHeight-old.height;
-        box.scrollTop=Math.max(0,old.top+delta);
-      }else{
-        box.scrollTop=box.scrollHeight;
-      }
-    });
-    window.scrollTo(0,pageY);
-  });
 }
 function renderAdminChat_(chat){
   const msgs=Array.isArray(chat.messages)?chat.messages:[];
@@ -1812,7 +1743,7 @@ function renderAdminChat_(chat){
   const solvedAge=solvedAt&&!isNaN(solvedAt.getTime())?Math.max(0,Date.now()-solvedAt.getTime()):0;
   if(status==='Solved' && solvedAge>=24*60*60*1000){ setTimeout(function(){autoCloseSolvedChat_(chat.chatId,chat);},0); }
   const replyDisabled=status!=='Open'?'disabled':'';
-  return '<article class="customer-chat-card" data-chat-id="'+safeId+'" data-status="'+escAttr(status)+'"><div class="customer-chat-head"><div><div class="customer-chat-name">'+esc(chat.customerName||'Customer')+'</div><div class="customer-chat-meta">'+esc(chat.customerEmail||'')+(chat.orderId?' · Order #'+esc(chat.orderId):'')+'</div></div><div class="customer-chat-status-actions"><span class="customer-chat-status '+(chat.unreadForAdmin?'new':'')+'">'+esc(status.toUpperCase())+'</span><button type="button" '+(status==='Open'?'class="active"':'')+' onclick="setCustomerChatStatus_(\''+safeId+'\',\'Open\')">Open</button><button type="button" '+(status==='Solved'?'class="active"':'')+' onclick="setCustomerChatStatus_(\''+safeId+'\',\'Solved\')">Solve</button></div></div><div class="customer-chat-messages">'+(messages||'<div style="color:#806c65;font-size:12px;padding:20px">No messages yet.</div>')+'</div><div class="customer-chat-compose"><textarea id="adminChatInput_'+safeId+'" placeholder="'+(status==='Solved'?'This conversation is solved.':'Reply to customer…')+'" '+replyDisabled+'></textarea><button type="button" data-chat-id="'+safeId+'" '+replyDisabled+' onclick="adminSendChat(this.dataset.chatId)">Send</button></div></article>';
+  return '<article class="customer-chat-card" data-status="'+escAttr(status)+'"><div class="customer-chat-head"><div><div class="customer-chat-name">'+esc(chat.customerName||'Customer')+'</div><div class="customer-chat-meta">'+esc(chat.customerEmail||'')+(chat.orderId?' · Order #'+esc(chat.orderId):'')+'</div></div><div class="customer-chat-status-actions"><span class="customer-chat-status '+(chat.unreadForAdmin?'new':'')+'">'+esc(status.toUpperCase())+'</span><button type="button" '+(status==='Open'?'class="active"':'')+' onclick="setCustomerChatStatus_(\''+safeId+'\',\'Open\')">Open</button><button type="button" '+(status==='Solved'?'class="active"':'')+' onclick="setCustomerChatStatus_(\''+safeId+'\',\'Solved\')">Solve</button></div></div><div class="customer-chat-messages">'+(messages||'<div style="color:#806c65;font-size:12px;padding:20px">No messages yet.</div>')+'</div><div class="customer-chat-compose"><textarea id="adminChatInput_'+safeId+'" placeholder="'+(status==='Solved'?'This conversation is solved.':'Reply to customer…')+'" '+replyDisabled+'></textarea><button type="button" data-chat-id="'+safeId+'" '+replyDisabled+' onclick="adminSendChat(this.dataset.chatId)">Send</button></div></article>';
 }
 
 async function adminSendChat(chatId){
@@ -1867,7 +1798,6 @@ function loadBrandAssets(){
   run('getBrandAssets',[],function(v,e){
     if(e){if(msg)msg.textContent='Unable to load current branding: '+e;return;}
     currentBrandAssets=v||{};
-    populatePaymentSettings_(currentBrandAssets.paymentMethods||{});
     removeBrandLogoFlag=false;removeBrandBackgroundFlag=false;selectedBrandLogo=null;selectedBrandBackground=null;
     const logo=currentBrandAssets.logo||currentBrandAssets.logoUrl||'';
     const bg=currentBrandAssets.background||currentBrandAssets.backgroundUrl||'';
@@ -1888,11 +1818,7 @@ function removeBrandAsset(kind){
   if(kind==='background'){selectedBrandBackground=null;removeBrandBackgroundFlag=true;const f=document.getElementById('brandBackgroundFile');if(f)f.value='';const p=document.getElementById('brandBackgroundPreview');if(p){p.src='';p.style.display='none';}const b=document.getElementById('removeBrandBackgroundBtn');if(b)b.hidden=true;}
   const msg=document.getElementById('brandAssetsMsg');if(msg)msg.textContent=(kind==='logo'?'Logo':'Background')+' marked for removal. Click Save Website Branding to apply.';
 }
-function compressBrandImage(file,maxSide,quality,isLogo){return new Promise(function(resolve,reject){if(!file)return resolve('');const r=new FileReader();r.onload=function(){const img=new Image();img.onload=function(){try{const logoMode=isLogo===true;const scale=Math.min(1,maxSide/Math.max(img.width||1,img.height||1));const c=document.createElement('canvas');c.width=Math.max(1,Math.round((img.width||1)*scale));c.height=Math.max(1,Math.round((img.height||1)*scale));const ctx=c.getContext('2d',{alpha:true});if(!ctx)throw new Error('Your browser cannot process this image.');ctx.clearRect(0,0,c.width,c.height);if(!logoMode){ctx.fillStyle='#fff';ctx.fillRect(0,0,c.width,c.height);}ctx.drawImage(img,0,0,c.width,c.height);
-if(logoMode){
-  const data=ctx.getImageData(0,0,c.width,c.height);const px=data.data,w=c.width,h=c.height;const visited=new Uint8Array(w*h);const queue=new Int32Array(w*h);let head=0,tail=0;const white=function(i){return px[i+3]>0&&px[i]>=245&&px[i+1]>=245&&px[i+2]>=245&&Math.max(px[i],px[i+1],px[i+2])-Math.min(px[i],px[i+1],px[i+2])<=18;};const push=function(x,y){if(x<0||y<0||x>=w||y>=h)return;const p=y*w+x;if(visited[p])return;visited[p]=1;const i=p*4;if(white(i))queue[tail++]=p;};for(let x=0;x<w;x++){push(x,0);push(x,h-1);}for(let y=1;y<h-1;y++){push(0,y);push(w-1,y);}while(head<tail){const p=queue[head++],x=p%w,y=(p-x)/w,i=p*4;px[i+3]=0;if(x>0)push(x-1,y);if(x<w-1)push(x+1,y);if(y>0)push(x,y-1);if(y<h-1)push(x,y+1);}ctx.putImageData(data,0,0);
-}
-let out=logoMode?c.toDataURL('image/png'):c.toDataURL('image/jpeg',quality||.72);if(out.length>700000){const c2=document.createElement('canvas');c2.width=Math.max(1,Math.round(c.width*.72));c2.height=Math.max(1,Math.round(c.height*.72));const x=c2.getContext('2d',{alpha:true});if(logoMode){x.clearRect(0,0,c2.width,c2.height);x.drawImage(c,0,0,c2.width,c2.height);out=c2.toDataURL('image/png');}else{x.fillStyle='#fff';x.fillRect(0,0,c2.width,c2.height);x.drawImage(c,0,0,c2.width,c2.height);out=c2.toDataURL('image/jpeg',.58);}}if(out.length>820000)throw new Error('Image is still too large after compression. Please choose a smaller image.');resolve(out)}catch(e){reject(e)}};img.onerror=function(){reject(new Error('Unable to read the selected image.'))};img.src=r.result};r.onerror=reject;r.readAsDataURL(file)})}
+function compressBrandImage(file,maxSide,quality){return new Promise(function(resolve,reject){if(!file)return resolve('');const r=new FileReader();r.onload=function(){const img=new Image();img.onload=function(){try{const scale=Math.min(1,maxSide/Math.max(img.width||1,img.height||1));const c=document.createElement('canvas');c.width=Math.max(1,Math.round((img.width||1)*scale));c.height=Math.max(1,Math.round((img.height||1)*scale));const ctx=c.getContext('2d',{alpha:false});ctx.fillStyle='#fff';ctx.fillRect(0,0,c.width,c.height);ctx.drawImage(img,0,0,c.width,c.height);let q=quality||.72;let out=c.toDataURL('image/jpeg',q);while(out.length>700000&&q>.35){q-=.06;out=c.toDataURL('image/jpeg',q)}if(out.length>360000)reject(new Error('Image is still too large after compression. Please choose a smaller image.'));else resolve(out)}catch(e){reject(e)}};img.onerror=function(){reject(new Error('Unable to read the selected image.'))};img.src=r.result};r.onerror=reject;r.readAsDataURL(file)})}
 async function brandPatch(fields){
   const idToken=token||sessionStorage.getItem('mck_admin_token')||'';if(!idToken)throw new Error('Admin session expired. Please log in again.');
   const r=await fetch('https://firestore.googleapis.com/v1/projects/mckenzie-ramen-house/databases/(default)/documents/brandAssets/main',{method:'PATCH',headers:{'Authorization':'Bearer '+idToken,'Content-Type':'application/json'},body:JSON.stringify({fields})});
@@ -1903,27 +1829,10 @@ async function deleteBrandDoc(key){
   const r=await fetch('https://firestore.googleapis.com/v1/projects/mckenzie-ramen-house/databases/(default)/documents/brandAssets/'+key,{method:'DELETE',headers:{'Authorization':'Bearer '+idToken}});
   if(!r.ok&&r.status!==404){let t=await r.text(),d={};try{d=JSON.parse(t)}catch(e){};throw new Error(d.error&&d.error.message?d.error.message:'Unable to update website branding.')}
 }
-const selectedPaymentQr_={GCash:null,Maya:null,"QR BANK":null};
-function paymentFilePreview_(file,id){const img=document.getElementById(id);if(!img)return;if(!file){img.src='';img.style.display='none';return}const r=new FileReader();r.onload=function(){img.src=r.result;img.style.display='block'};r.readAsDataURL(file)}
-function populatePaymentSettings_(methods){
-  const m=methods||{};const defs={GCash:{name:'GCash',available:true,displayName:'',details:'',qr:''},Maya:{name:'Maya',available:true,displayName:'',details:'',qr:''},'QR BANK':{name:'QR BANK',available:true,displayName:'',details:'',qr:''}};
-  ['GCash','Maya','QR BANK'].forEach(function(key){const d=Object.assign({},defs[key],m[key]||{});const prefix=key==='GCash'?'Gcash':(key==='Maya'?'Maya':'Bank');const n=document.getElementById('payment'+prefix+'Name'),dt=document.getElementById('payment'+prefix+'Details'),av=document.getElementById('payment'+prefix+'Available'),pr=document.getElementById('payment'+prefix+'Preview');if(n)n.value=d.displayName||d.name||'';if(dt)dt.value=d.details||'';if(av)av.value=d.available===false?'false':'true';if(pr){pr.src=d.qr||'';pr.style.display=d.qr?'block':'none';}});
-}
-function compressPaymentQr_(file){return new Promise(function(resolve,reject){if(!file)return resolve('');const r=new FileReader();r.onload=function(){const img=new Image();img.onload=function(){try{const max=900,scale=Math.min(1,max/Math.max(img.width||1,img.height||1));const c=document.createElement('canvas');c.width=Math.max(1,Math.round((img.width||1)*scale));c.height=Math.max(1,Math.round((img.height||1)*scale));const ctx=c.getContext('2d',{alpha:false});ctx.fillStyle='#fff';ctx.fillRect(0,0,c.width,c.height);ctx.drawImage(img,0,0,c.width,c.height);let out=c.toDataURL('image/png');if(out.length>650000){const c2=document.createElement('canvas');c2.width=Math.max(1,Math.round(c.width*.72));c2.height=Math.max(1,Math.round(c.height*.72));const x=c2.getContext('2d',{alpha:false});x.fillStyle='#fff';x.fillRect(0,0,c2.width,c2.height);x.drawImage(img,0,0,c2.width,c2.height);out=c2.toDataURL('image/png');}if(out.length>800000)throw new Error('QR image is too large. Please choose a smaller image.');resolve(out)}catch(e){reject(e)}};img.onerror=function(){reject(new Error('Unable to read the QR image.'))};img.src=r.result};r.onerror=reject;r.readAsDataURL(file)})}
-async function savePaymentSettings_(){
-  const msg=document.getElementById('brandAssetsMsg');if(msg)msg.textContent='Saving payment settings…';
-  const defs=[['GCash','Gcash'],['Maya','Maya'],['QR BANK','Bank']];
-  for(const pair of defs){const key=pair[0],prefix=pair[1],file=document.getElementById('payment'+prefix+'File')?.files?.[0]||null;let qr=file?await compressPaymentQr_(file):String(currentBrandAssets.paymentMethods?.[key]?.qr||'');const fields={name:{stringValue:key},displayName:{stringValue:String(document.getElementById('payment'+prefix+'Name')?.value||'').trim()},details:{stringValue:String(document.getElementById('payment'+prefix+'Details')?.value||'').trim()},available:{booleanValue:document.getElementById('payment'+prefix+'Available')?.value!=='false'},qr:{stringValue:qr},updatedAt:{stringValue:new Date().toISOString()}};await paymentPatch_('payment_'+(key==='QR BANK'?'bank':key.toLowerCase()),fields);currentBrandAssets.paymentMethods=currentBrandAssets.paymentMethods||{};currentBrandAssets.paymentMethods[key]=Object.assign({},currentBrandAssets.paymentMethods[key]||{}, {name:key,displayName:fields.displayName.stringValue,details:fields.details.stringValue,available:fields.available.booleanValue,qr:qr});if(file){const el=document.getElementById('payment'+prefix+'File');if(el)el.value='';}}
-  if(msg)msg.textContent='✓ Payment methods saved successfully.';showCenteredUpdate('Payment Settings Updated','GCash, Maya, and QR BANK availability/details are now updated for checkout.');loadBrandAssets_WithoutPaymentConflict_();
-}
-async function paymentPatch_(key,fields){const idToken=token||sessionStorage.getItem('mck_admin_token')||'';if(!idToken)throw new Error('Admin session expired. Please log in again.');const r=await fetch('https://firestore.googleapis.com/v1/projects/mckenzie-ramen-house/databases/(default)/documents/brandAssets/'+encodeURIComponent(key),{method:'PATCH',headers:{'Authorization':'Bearer '+idToken,'Content-Type':'application/json'},body:JSON.stringify({fields})});if(!r.ok){let t=await r.text(),d={};try{d=JSON.parse(t)}catch(e){}throw new Error(d.error&&d.error.message?d.error.message:'Unable to save payment settings.');}}
-function loadBrandAssets_WithoutPaymentConflict_(){setTimeout(function(){loadBrandAssets();},50)}
-(function(){[['paymentGcashFile','paymentGcashPreview'],['paymentMayaFile','paymentMayaPreview'],['paymentBankFile','paymentBankPreview']].forEach(function(pair){const f=document.getElementById(pair[0]);if(f)f.addEventListener('change',function(){paymentFilePreview_(this.files&&this.files[0]?this.files[0]:null,pair[1]);});});})();
-
 async function saveBrandAssets(){
   const btn=document.getElementById('saveBrandAssetsBtn'),msg=document.getElementById('brandAssetsMsg');if(btn){btn.disabled=true;btn.textContent='Saving Branding…'}if(msg)msg.textContent='Preparing images…';
   try{
-    const vals=await Promise.all([compressBrandImage(selectedBrandLogo,1400,.76,true),compressBrandImage(selectedBrandBackground,1600,.68,false)]);
+    const vals=await Promise.all([compressBrandImage(selectedBrandLogo,1400,.76),compressBrandImage(selectedBrandBackground,1600,.68)]);
     const oldLogo=currentBrandAssets.logo||currentBrandAssets.logoUrl||'',oldBg=currentBrandAssets.background||currentBrandAssets.backgroundUrl||'';
     const logo=vals[0] || (removeBrandLogoFlag?'':oldLogo);
     const background=vals[1] || (removeBrandBackgroundFlag?'':oldBg);
