@@ -3307,9 +3307,7 @@ body.quick-loading .sticky-cart-button{visibility:hidden!important;opacity:0!imp
 #mckCustomerChatInput,#mckCustomerChatComposer input,#mckCustomerChatComposer textarea{font-size:16px!important;line-height:1.4!important}
 
 /* Restore global chrome immediately after chat closes. */
-body.mck-customer-chat-open .account-menu-wrap,
-body.mck-customer-chat-open .sticky-search-button,
-body.mck-customer-chat-open .sticky-cart-button{visibility:hidden!important;opacity:0!important;pointer-events:none!important}
+body.mck-customer-chat-open .account-menu-wrap,body.mck-customer-chat-open .sticky-search-button,body.mck-customer-chat-open .sticky-cart-button{visibility:visible!important;opacity:1!important;pointer-events:auto!important}
 body:not(.mck-customer-chat-open) .account-menu-wrap,
 body:not(.mck-customer-chat-open) .sticky-search-button,
 body:not(.mck-customer-chat-open) .sticky-cart-button{visibility:visible!important;opacity:1!important;pointer-events:auto!important}
@@ -3322,7 +3320,7 @@ body:not(.mck-customer-chat-open) .sticky-cart-button{visibility:visible!importa
     var open=!!(modal&&modal.classList.contains('show'));
     document.body.classList.toggle('mck-customer-chat-open',open);
     var controls=document.querySelectorAll('.account-menu-wrap,.sticky-search-button,.sticky-cart-button');
-    controls.forEach(function(el){setVisible_(el,!open);});
+    controls.forEach(function(el){setVisible_(el,true);});
     var x=document.getElementById('mckCustomerChatClose');
     if(x&&open)setVisible_(x,true);
   }
@@ -4846,7 +4844,7 @@ function openEmailVerificationModal_(email) {
   const change = document.getElementById("verificationChangeEmail");
   const proceed = document.getElementById("verificationProceedLogin");
   if (!modal) return;
-  if (emailEl) emailEl.textContent = email || "your email";
+  if (emailEl) { const safeEmail=String(email||"your email"); emailEl.innerHTML = safeEmail.indexOf("@")>0 ? '<a class="mck-email-link" href="mailto:'+safeEmail.replace(/"/g,"&quot;")+'">'+safeEmail.replace(/</g,"&lt;")+'</a>' : safeEmail; }
   if (message) { message.style.color = "#a51620"; message.textContent = "Please check your inbox or spam folder, then click the verification link."; }
   if (submit) { submit.disabled=false; submit.style.display=""; submit.textContent="I’ll Verify My Email"; }
   if (resend) { resend.disabled=false; resend.style.display=""; resend.textContent="Resend Verification Email"; }
@@ -6431,7 +6429,7 @@ function saveProfile_() {
   const mobile=document.getElementById("profileMobile")?.value.trim()||"";
   if(!fullName||!email||!mobile){showProfileMessage_("Full Name, Email Address, and Phone Number are required.",true);return;}
   const button=document.getElementById("profileSaveButton");if(button){button.disabled=true;button.textContent="Saving...";}
-  const payload={userId:user.userId||"",username:document.getElementById("profileUsername")?.value.trim()||user.username||"",fullName,email,mobile,houseUnit:document.getElementById("profileHouseUnit")?.value.trim()||"",street:document.getElementById("profileStreet")?.value.trim()||"",barangay:getSelectedText_("profileBarangay"),city:getSelectedText_("profileCity"),province:getSelectedText_("profileProvince"),postalCode:document.getElementById("profilePostalCode")?.value.trim()||"",region:getSelectedText_("profileRegion"),additionalInstruction:document.getElementById("profileAdditionalInstruction")?.value.trim()||""};
+  const payload={userId:user.userId||"",username:document.getElementById("profileUsername")?.value.trim()||user.username||"",fullName,email,mobile};
   customerSaveProfileDirect_(payload).then(function(updated){if(button){button.disabled=false;button.textContent="Save Changes";}try{localStorage.setItem("mckenzieUser",JSON.stringify(updated));}catch(e){}updateAccountMenu_();showProfileMessage_("Profile saved successfully.",false);setTimeout(function(){closeAccountSubmodal_("editProfileModal");},500);}).catch(function(error){if(button){button.disabled=false;button.textContent="Save Changes";}showProfileMessage_(error&&error.message?error.message:"Unable to save your profile.",true);});
 }
 
@@ -6892,8 +6890,16 @@ var customerOrderHistoryUnsub_=null;
 function renderCurrentOrderTracker_(orders){
   var active=(orders||[]).filter(function(o){return !o.closed;}).sort(function(a,b){return String(b.orderedAt).localeCompare(String(a.orderedAt));})[0] || (orders||[]).sort(function(a,b){return String(b.orderedAt).localeCompare(String(a.orderedAt));})[0];
   if(!active)return "";
-  return '<div class="mck-current-order-tracker"><div class="mck-current-order-title">Current Order <span>#'+escapeHtml(active.orderId||"")+'</span></div><div class="mck-current-order-sub">Your latest order status updates here automatically.</div>'+renderStatusTrack_(active.orderStatus)+'<div class="mck-current-order-status">Status: <strong>'+escapeHtml(active.orderStatus||"Preparing")+'</strong></div></div>';
+  var id=escapeHtml(active.orderId||"");
+  return '<section class="mck-current-order-wrap" data-current-order-id="'+id+'"><button type="button" class="mck-current-order-toggle" aria-expanded="false" onclick="toggleCurrentOrderTracker_(this)"><span><b>Current Order #'+id+'</b><small>Your latest order status updates here automatically.</small></span><span class="mck-current-order-chevron">⌄</span></button><div class="mck-current-order-tracker" aria-hidden="true"><div class="mck-current-order-statusline">Status: <strong>'+escapeHtml(active.orderStatus||"Preparing")+'</strong></div>'+renderStatusTrack_(active.orderStatus)+'</div></section>';
 }
+function toggleCurrentOrderTracker_(button){
+  var wrap=button&&button.closest?button.closest('.mck-current-order-wrap'):null;if(!wrap)return;
+  var open=wrap.classList.toggle('is-open');button.setAttribute('aria-expanded',open?'true':'false');
+  var panel=wrap.querySelector('.mck-current-order-tracker');if(panel)panel.setAttribute('aria-hidden',open?'false':'true');
+}
+window.toggleCurrentOrderTracker_=toggleCurrentOrderTracker_;
+
 function startCustomerOrderHistoryRealtime_(){
   if(customerOrderHistoryUnsub_)try{customerOrderHistoryUnsub_();}catch(e){} customerOrderHistoryUnsub_=null;
   if(!window.MckenzieFirebaseReady)return;
@@ -6907,7 +6913,7 @@ function startCustomerOrderHistoryRealtime_(){
       customerGetOrdersDirect_().then(function(orders){
         var tracker=renderCurrentOrderTracker_(orders);
         var existing=content.querySelector(".mck-current-order-tracker");
-        if(existing) existing.outerHTML=tracker; else if(tracker) content.insertAdjacentHTML("afterbegin",tracker);
+        if(existing) existing.outerHTML=tracker; else if(tracker) content.insertAdjacentHTML("beforeend",tracker);
         if(!content.querySelector(".mck-current-order-tracker")){}
         content.querySelectorAll(".order-history-card[data-order-key]").forEach(function(card){var id=decodeURIComponent(card.getAttribute("data-order-key")||"");var o=(orders||[]).find(function(x){return String(x.orderId)===String(id);});if(o){var temp=document.createElement("div");temp.innerHTML=renderCustomerOrderCard_(o);var fresh=temp.firstElementChild;if(fresh)card.replaceWith(fresh);}});
       }).catch(function(e){console.warn("Realtime order tracker refresh:",e);});
@@ -6922,7 +6928,7 @@ function openOrderHistory_() {
   if(content)content.innerHTML='<div class="order-feature-loading">Loading your orders…</div>';
   customerGetOrdersDirect_().then(function(orders){
     if(!Array.isArray(orders)||!orders.length){content.innerHTML='<div class="order-feature-empty"><strong>No orders yet.</strong><br>Your orders will appear here after checkout. 🍜</div>';startCustomerOrderHistoryRealtime_();return;}
-    content.innerHTML=renderCurrentOrderTracker_(orders)+orders.map(renderCustomerOrderCard_).join("");
+    content.innerHTML=orders.map(renderCustomerOrderCard_).join("")+renderCurrentOrderTracker_(orders);
     startCustomerOrderHistoryRealtime_();
   }).catch(function(error){content.innerHTML='<div class="order-feature-error">'+escapeHtml(error&&error.message?error.message:"Unable to load order history. Please try again.")+'</div>';});
 }
@@ -7297,6 +7303,7 @@ function closeForgotPassword_() {
   if (!document.querySelector(".password-modal.show") && !document.getElementById("loginModal")?.classList.contains("show")) document.body.style.overflow="";
 }
 function openChangePassword_() {
+  if(typeof closeAccountSubmodal_==='function') closeAccountSubmodal_('editProfileModal');
   const modal=document.getElementById("changePasswordModal"); if(!modal)return;
   modal.classList.add("show"); document.body.style.overflow="hidden";
   ["oldPassword","newPassword","confirmNewPassword"].forEach(function(id){const e=document.getElementById(id);if(e)e.value="";});
@@ -7340,7 +7347,7 @@ function sendPasswordOtpForUser_(userId) {
 function openPasswordOtp_(email) {
   const modal=document.getElementById("passwordOtpModal"); if(!modal)return;
   modal.classList.add("show"); document.body.style.overflow="hidden";
-  const emailEl=document.getElementById("passwordOtpEmail"); if(emailEl)emailEl.textContent=email||"your registered email";
+  const emailEl=document.getElementById("passwordOtpEmail"); if(emailEl){const safeEmail=String(email||"your registered email");emailEl.innerHTML=safeEmail.indexOf("@")>0?'<a class="mck-email-link" href="mailto:'+safeEmail.replace(/"/g,"&quot;")+'">'+safeEmail.replace(/</g,"&lt;")+'</a>':safeEmail;}
   ["passwordOtpCode","passwordOtpNewPassword","passwordOtpConfirmPassword"].forEach(function(id){const e=document.getElementById(id);if(e)e.value="";});
   const msg=document.getElementById("passwordOtpMessage"); if(msg)msg.textContent="";
   setTimeout(function(){const e=document.getElementById("passwordOtpCode");if(e)e.focus();},50);
@@ -10369,12 +10376,12 @@ body.mck-customer-chat-open #mckCustomerChatBox{
     if(open){
       ['mobileSiteNavButton','mobileSiteNavBackdrop','siteStickyNav'].forEach(function(id){
         var el=document.getElementById(id);
-        if(el){el.style.setProperty('visibility','hidden','important');el.style.setProperty('pointer-events','none','important');el.style.setProperty('opacity','0','important');}
+        if(el){el.style.removeProperty('visibility');el.style.removeProperty('pointer-events');el.style.removeProperty('opacity');}
       });
       document.querySelectorAll('.sticky-search-button,.sticky-cart-button,.account-menu-wrap,.account-menu-button').forEach(function(el){
-        el.style.setProperty('visibility','hidden','important');
-        el.style.setProperty('pointer-events','none','important');
-        el.style.setProperty('opacity','0','important');
+        el.style.removeProperty('visibility');
+        el.style.removeProperty('pointer-events');
+        el.style.removeProperty('opacity');
       });
       var x=document.getElementById('mckCustomerChatClose');
       if(x){x.style.setProperty('visibility','visible','important');x.style.setProperty('opacity','1','important');x.style.setProperty('pointer-events','auto','important');}
@@ -10522,6 +10529,57 @@ body.mck-customer-chat-open #mckCustomerChatBox{
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
 })();
 </script>
+
+<style id="mck-v43-final-polish">
+/* V43: preserve the polished V42 visual while fixing mobile chrome and modal navigation. */
+@media(max-width:700px){
+  .sticky-search-button,.sticky-cart-button,.account-menu-wrap{width:42px!important;height:42px!important;min-width:42px!important;min-height:42px!important;}
+  .sticky-search-button{left:auto!important;right:106px!important;top:10px!important;}
+  .sticky-cart-button{left:auto!important;right:57px!important;top:10px!important;}
+  .account-menu-wrap{right:7px!important;top:10px!important;}
+  .account-menu-button{width:42px!important;height:42px!important;}
+  .sticky-search-button .mck-svg-icon,.sticky-cart-icon .mck-svg-icon{width:21px!important;height:21px!important;}
+}
+@media(max-width:380px){.sticky-search-button,.sticky-cart-button,.account-menu-wrap{width:38px!important;height:38px!important;min-width:38px!important;min-height:38px!important}.sticky-search-button{right:98px!important}.sticky-cart-button{right:53px!important}.account-menu-wrap{right:5px!important;top:11px!important}.account-menu-button{width:38px!important;height:38px!important}}
+/* Never hide the global header controls because Customer Support is open. */
+body.mck-customer-chat-open .sticky-search-button,body.mck-customer-chat-open .sticky-cart-button,body.mck-customer-chat-open .account-menu-wrap,body.mck-customer-chat-open .account-menu-button{visibility:visible!important;opacity:1!important;pointer-events:auto!important;}
+#mckCustomerChatHead #mckCustomerChatBack,#mckCustomerChatHead #mckCustomerChatClose{width:40px!important;height:40px!important;min-width:40px!important;min-height:40px!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;margin:0!important;}
+#mckCustomerChatHead{display:flex!important;align-items:center!important;justify-content:space-between!important;}
+#mckCustomerChatHead>div:first-child{display:flex!important;align-items:center!important;gap:8px!important;min-width:0!important;}
+#mckCustomerChatClose{position:static!important;transform:none!important;flex:0 0 40px!important;}
+.mck-email-link{color:#0b63ce!important;text-decoration:underline!important;font-weight:800!important;word-break:break-word;}
+/* Profile: addresses are managed only through Saved Delivery Addresses. */
+.mck-profile-address-edit-hidden{display:none!important;}
+/* Sticky close buttons for profile/order/payment/notifications/coupons. */
+.account-subcard{position:relative!important;}
+.account-subcard>.account-subclose{position:sticky!important;top:0!important;float:right!important;margin-left:auto!important;margin-bottom:-40px!important;width:40px!important;height:40px!important;z-index:100!important;display:flex!important;align-items:center!important;justify-content:center!important;border-radius:50%!important;}
+/* Current order accordion lives below the order cards. */
+.mck-current-order-wrap{margin:18px 0 4px;border:1px solid #e5c78e;border-radius:18px;background:linear-gradient(145deg,#fffaf0,#fff3df);box-shadow:0 10px 26px rgba(89,50,15,.08);overflow:hidden;}
+.mck-current-order-toggle{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:15px 16px;border:0;background:linear-gradient(135deg,#5f080c,#8d111b);color:#fff7ed;text-align:left;cursor:pointer;}
+.mck-current-order-toggle span:first-child{min-width:0}.mck-current-order-toggle b{display:block;font-family:Georgia,serif;font-size:17px}.mck-current-order-toggle small{display:block;margin-top:4px;font-size:10px;opacity:.82;line-height:1.35}.mck-current-order-chevron{font-size:23px;transition:transform .25s ease;}.mck-current-order-wrap.is-open .mck-current-order-chevron{transform:rotate(180deg)}
+.mck-current-order-wrap .mck-current-order-tracker{max-height:0;overflow:hidden;margin:0!important;padding:0 16px!important;border:0!important;box-shadow:none!important;opacity:0;transition:max-height .35s ease,padding .25s ease,opacity .2s ease;}
+.mck-current-order-wrap.is-open .mck-current-order-tracker{max-height:260px;padding:15px 16px!important;opacity:1;}
+.mck-current-order-statusline{color:#6b4037;font-size:13px;margin-bottom:8px}.mck-current-order-statusline strong{color:#a51620}
+@media(max-width:600px){.account-subcard>.account-subclose{top:0!important;width:38px!important;height:38px!important}.mck-current-order-toggle{padding:13px 14px}.mck-current-order-toggle b{font-size:15px}.mck-current-order-wrap.is-open .mck-current-order-tracker{padding:13px 13px!important}}
+</style>
+<script id="mck-v43-final-js">
+(function(){
+  function restoreChrome(){
+    document.querySelectorAll('.sticky-search-button,.sticky-cart-button,.account-menu-wrap,.account-menu-button').forEach(function(el){
+      el.style.removeProperty('visibility');el.style.removeProperty('opacity');el.style.removeProperty('pointer-events');
+    });
+  }
+  function hideProfileAddressEditors(){
+    ['profilePostalCode','profileRegion','profileProvince','profileCity','profileBarangay','profileHouseUnit','profileStreet','profileAdditionalInstruction'].forEach(function(id){
+      var el=document.getElementById(id);if(!el)return;var p=el.closest('.profile-field');if(p)p.classList.add('mck-profile-address-edit-hidden');
+    });
+  }
+  function sync(){restoreChrome();hideProfileAddressEditors();}
+  document.addEventListener('DOMContentLoaded',sync);
+  setTimeout(sync,300);setTimeout(sync,1000);
+  window.mckV43Sync_=sync;
+})();
+</script>
 </body>
 
 <style id="mck-v32-polish-final">
@@ -10542,7 +10600,7 @@ body.quick-loading #mobileSiteNavButton,body.quick-loading .account-menu-wrap,bo
 #mckCustomerChatMessages{min-height:0!important;overflow-y:auto!important;overscroll-behavior:contain!important;-webkit-overflow-scrolling:touch!important}
 #mckCustomerChatTyping{width:100%!important;box-sizing:border-box!important;text-align:left!important;padding:5px 14px!important;margin:0!important;background:#fffaf3!important;border-top:1px solid rgba(222,201,189,.5)!important;color:#806c65!important}
 #mckCustomerChatInput,#mckCustomerChatComposer input,#mckCustomerChatComposer textarea{font-size:16px!important;line-height:1.4!important}
-body.mck-customer-chat-open .account-menu-wrap,body.mck-customer-chat-open .sticky-search-button,body.mck-customer-chat-open .sticky-cart-button{visibility:hidden!important;opacity:0!important;pointer-events:none!important}
+
 body:not(.mck-customer-chat-open) .account-menu-wrap,body:not(.mck-customer-chat-open) .sticky-search-button,body:not(.mck-customer-chat-open) .sticky-cart-button{visibility:visible!important;opacity:1!important;pointer-events:auto!important}
 </style>
 <script id="mck-v32-polish-final-js">
@@ -10551,7 +10609,7 @@ body:not(.mck-customer-chat-open) .account-menu-wrap,body:not(.mck-customer-chat
   function sync(){
     var modal=document.getElementById('mckCustomerChatModal'),open=!!(modal&&modal.classList.contains('show'));
     document.body.classList.toggle('mck-customer-chat-open',open);
-    document.querySelectorAll('.account-menu-wrap,.sticky-search-button,.sticky-cart-button').forEach(function(el){vis(el,!open);});
+    document.querySelectorAll('.account-menu-wrap,.sticky-search-button,.sticky-cart-button').forEach(function(el){vis(el,true);});
     if(open)vis(document.getElementById('mckCustomerChatClose'),true);
   }
   function bind(){
