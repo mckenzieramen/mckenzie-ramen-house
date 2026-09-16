@@ -2,8 +2,6 @@
 <html class="quick-loading">
 
 <head>
-  <link id="mckenzie-favicon" rel="icon" type="image/webp" href="favicon.webp">
-  <link rel="apple-touch-icon" href="favicon.webp">
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <base target="_top">
@@ -3308,7 +3306,13 @@ body.quick-loading .sticky-cart-button{visibility:hidden!important;opacity:0!imp
 /* Never allow chat inputs to trigger iOS focus zoom. */
 #mckCustomerChatInput,#mckCustomerChatComposer input,#mckCustomerChatComposer textarea{font-size:16px!important;line-height:1.4!important}
 
-/* Global Search/Cart/Account controls stay visible while chat is open. */
+/* Restore global chrome immediately after chat closes. */
+body.mck-customer-chat-open .account-menu-wrap,
+body.mck-customer-chat-open .sticky-search-button,
+body.mck-customer-chat-open .sticky-cart-button{visibility:hidden!important;opacity:0!important;pointer-events:none!important}
+body:not(.mck-customer-chat-open) .account-menu-wrap,
+body:not(.mck-customer-chat-open) .sticky-search-button,
+body:not(.mck-customer-chat-open) .sticky-cart-button{visibility:visible!important;opacity:1!important;pointer-events:auto!important}
 </style>
 <script id="mck-v32-final-chrome-fix-js">
 (function(){
@@ -3696,42 +3700,42 @@ body.quick-loading .sticky-cart-button{visibility:hidden!important;opacity:0!imp
           <input id="profileUsername" type="text" readonly>
         </div>
 
-        <div class="profile-field profile-address-edit-field">
+        <div class="profile-field">
           <label for="profilePostalCode">Postal Code</label>
           <input id="profilePostalCode" type="text" inputmode="numeric">
         </div>
 
-        <div class="profile-field profile-address-edit-field">
+        <div class="profile-field">
           <label for="profileRegion">Region</label>
           <select id="profileRegion"></select>
         </div>
 
-        <div class="profile-field profile-address-edit-field">
+        <div class="profile-field">
           <label for="profileProvince">Province</label>
           <select id="profileProvince" disabled></select>
         </div>
 
-        <div class="profile-field profile-address-edit-field">
+        <div class="profile-field">
           <label for="profileCity">City / Municipality</label>
           <select id="profileCity" disabled></select>
         </div>
 
-        <div class="profile-field profile-address-edit-field">
+        <div class="profile-field">
           <label for="profileBarangay">Barangay</label>
           <select id="profileBarangay" disabled></select>
         </div>
 
-        <div class="profile-field profile-address-edit-field">
+        <div class="profile-field">
           <label for="profileHouseUnit">Lot / House / Unit No.</label>
           <input id="profileHouseUnit" type="text">
         </div>
 
-        <div class="profile-field profile-address-edit-field">
+        <div class="profile-field">
           <label for="profileStreet">Street</label>
           <input id="profileStreet" type="text">
         </div>
 
-        <div class="profile-field full profile-address-edit-field">
+        <div class="profile-field full">
           <label for="profileAdditionalInstruction">Additional Delivery Instruction</label>
           <textarea id="profileAdditionalInstruction" rows="3" placeholder="Landmark, gate instructions, etc."></textarea>
         </div>
@@ -3740,7 +3744,7 @@ body.quick-loading .sticky-cart-button{visibility:hidden!important;opacity:0!imp
       <section class="jp-profile-addresses" aria-labelledby="profileSavedAddressesTitle">
         <div class="jp-section-kicker">DELIVERY</div>
         <h3 id="profileSavedAddressesTitle">Saved Delivery Addresses</h3>
-        <p>Your saved delivery addresses are managed here and used automatically during checkout.</p>
+        <p>Addresses used during checkout are kept here for faster ordering next time.</p>
         <div id="profileSavedAddressesList" class="jp-address-list"><div class="jp-address-empty">Loading saved addresses…</div></div>
       </section>
 
@@ -3970,7 +3974,7 @@ body.quick-loading .sticky-cart-button{visibility:hidden!important;opacity:0!imp
     <button type="button" class="password-close" onclick="closePasswordOtp_()">×</button>
     <div class="account-subkicker">MCKENZIE RAMEN HOUSE</div>
     <h2 id="passwordOtpTitle">Verify OTP</h2>
-    <p>Enter the 6-digit code sent to <strong id="passwordOtpEmail"></strong>. You can tap the email address to open your email app. The code expires in 10 minutes.</p>
+    <p>Enter the 6-digit code sent to <strong id="passwordOtpEmail"></strong>. The code expires in 10 minutes.</p>
     <div class="password-field">
       <label for="passwordOtpCode">OTP Code</label>
       <input id="passwordOtpCode" class="password-otp" type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="000000">
@@ -3993,7 +3997,7 @@ body.quick-loading .sticky-cart-button{visibility:hidden!important;opacity:0!imp
     <button type="button" class="password-close" onclick="closeChangePassword_()">×</button>
     <div class="account-subkicker">MCKENZIE RAMEN HOUSE</div>
     <h2 id="changePasswordTitle">Change Password</h2>
-    <p>Enter your current password. If you forgot it, we’ll send a verification code to your registered email.</p>
+    <p>Enter your current password. If you forgot it, use the email OTP option below.</p>
     <div class="password-field">
       <label for="oldPassword">Old Password</label>
       <input id="oldPassword" type="password" autocomplete="current-password" placeholder="Enter your old password">
@@ -4021,7 +4025,7 @@ body.quick-loading .sticky-cart-button{visibility:hidden!important;opacity:0!imp
     <button type="button" class="verification-close" aria-label="Close email verification" onclick="closeEmailVerificationModal()">×</button>
     <div class="verification-kicker">MCKENZIE RAMEN HOUSE</div>
     <h2 id="emailVerificationTitle">Verify Your Account</h2>
-    <p>We sent a verification email to <a id="verificationEmail" class="verification-email" href="#"></a>. Open the email and click the verification link.</p>
+    <p>We sent a verification email to <span id="verificationEmail" class="verification-email"></span>. Please open the email and click the verification link.</p>
     <p id="verificationMessage" class="verification-message" aria-live="polite">Please check your inbox or spam folder.</p>
     <button type="button" id="verificationSubmit" class="verification-submit" onclick="checkEmailVerificationNow_()">I’ll Verify My Email</button>
     <button type="button" id="verificationResend" class="verification-resend" onclick="resendVerificationEmail_()">Resend Verification Email</button>
@@ -4842,13 +4846,7 @@ function openEmailVerificationModal_(email) {
   const change = document.getElementById("verificationChangeEmail");
   const proceed = document.getElementById("verificationProceedLogin");
   if (!modal) return;
-  if (emailEl) {
-    const safeEmail = String(email || "").trim();
-    emailEl.textContent = safeEmail || "your email";
-    emailEl.href = safeEmail ? "mailto:" + encodeURIComponent(safeEmail) : "#";
-    emailEl.target = "_self";
-    emailEl.rel = "nofollow";
-  }
+  if (emailEl) emailEl.textContent = email || "your email";
   if (message) { message.style.color = "#a51620"; message.textContent = "Please check your inbox or spam folder, then click the verification link."; }
   if (submit) { submit.disabled=false; submit.style.display=""; submit.textContent="I’ll Verify My Email"; }
   if (resend) { resend.disabled=false; resend.style.display=""; resend.textContent="Resend Verification Email"; }
@@ -6423,6 +6421,7 @@ function populateProfileForm_(user) {
     }
   });
 
+  loadAddressChain_("profile", user);
 }
 
 function saveProfile_() {
@@ -6432,7 +6431,7 @@ function saveProfile_() {
   const mobile=document.getElementById("profileMobile")?.value.trim()||"";
   if(!fullName||!email||!mobile){showProfileMessage_("Full Name, Email Address, and Phone Number are required.",true);return;}
   const button=document.getElementById("profileSaveButton");if(button){button.disabled=true;button.textContent="Saving...";}
-  const payload={userId:user.userId||"",username:document.getElementById("profileUsername")?.value.trim()||user.username||"",fullName,email,mobile};
+  const payload={userId:user.userId||"",username:document.getElementById("profileUsername")?.value.trim()||user.username||"",fullName,email,mobile,houseUnit:document.getElementById("profileHouseUnit")?.value.trim()||"",street:document.getElementById("profileStreet")?.value.trim()||"",barangay:getSelectedText_("profileBarangay"),city:getSelectedText_("profileCity"),province:getSelectedText_("profileProvince"),postalCode:document.getElementById("profilePostalCode")?.value.trim()||"",region:getSelectedText_("profileRegion"),additionalInstruction:document.getElementById("profileAdditionalInstruction")?.value.trim()||""};
   customerSaveProfileDirect_(payload).then(function(updated){if(button){button.disabled=false;button.textContent="Save Changes";}try{localStorage.setItem("mckenzieUser",JSON.stringify(updated));}catch(e){}updateAccountMenu_();showProfileMessage_("Profile saved successfully.",false);setTimeout(function(){closeAccountSubmodal_("editProfileModal");},500);}).catch(function(error){if(button){button.disabled=false;button.textContent="Save Changes";}showProfileMessage_(error&&error.message?error.message:"Unable to save your profile.",true);});
 }
 
@@ -7299,8 +7298,6 @@ function closeForgotPassword_() {
 }
 function openChangePassword_() {
   const modal=document.getElementById("changePasswordModal"); if(!modal)return;
-  const profile=document.getElementById("editProfileModal");
-  if(profile) profile.classList.remove("show");
   modal.classList.add("show"); document.body.style.overflow="hidden";
   ["oldPassword","newPassword","confirmNewPassword"].forEach(function(id){const e=document.getElementById(id);if(e)e.value="";});
   const msg=document.getElementById("changePasswordMessage"); if(msg)msg.textContent="";
@@ -7343,7 +7340,7 @@ function sendPasswordOtpForUser_(userId) {
 function openPasswordOtp_(email) {
   const modal=document.getElementById("passwordOtpModal"); if(!modal)return;
   modal.classList.add("show"); document.body.style.overflow="hidden";
-  const emailEl=document.getElementById("passwordOtpEmail"); if(emailEl){var safeEmail=String(email||"").trim();emailEl.textContent=safeEmail||"your registered email";emailEl.dataset.email=safeEmail;if(safeEmail){emailEl.style.cursor="pointer";emailEl.title="Open your email app";emailEl.onclick=function(){window.location.href="mailto:"+encodeURIComponent(safeEmail);};}}
+  const emailEl=document.getElementById("passwordOtpEmail"); if(emailEl)emailEl.textContent=email||"your registered email";
   ["passwordOtpCode","passwordOtpNewPassword","passwordOtpConfirmPassword"].forEach(function(id){const e=document.getElementById(id);if(e)e.value="";});
   const msg=document.getElementById("passwordOtpMessage"); if(msg)msg.textContent="";
   setTimeout(function(){const e=document.getElementById("passwordOtpCode");if(e)e.focus();},50);
@@ -10291,7 +10288,20 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;opac
 #mckCustomerChatModal.show{
   z-index:2147483000 !important;
 }
-/* Chat no longer hides global Search/Cart/Account controls. */
+#mckCustomerChatModal.show ~ #mobileSiteNavButton,
+#mckCustomerChatModal.show ~ #mobileSiteNavBackdrop,
+#mckCustomerChatModal.show ~ #siteStickyNav,
+body.mck-customer-chat-open #mobileSiteNavButton,
+body.mck-customer-chat-open #mobileSiteNavBackdrop,
+body.mck-customer-chat-open #siteStickyNav,
+body.mck-customer-chat-open .sticky-search-button,
+body.mck-customer-chat-open .sticky-cart-button,
+body.mck-customer-chat-open .account-menu-wrap,
+body.mck-customer-chat-open .account-menu-button{
+  visibility:hidden !important;
+  opacity:0 !important;
+  pointer-events:none !important;
+}
 body.mck-customer-chat-open #mckCustomerChatModal,
 body.mck-customer-chat-open #mckCustomerChatBox{
   visibility:visible !important;
@@ -10356,19 +10366,25 @@ body.mck-customer-chat-open #mckCustomerChatBox{
     var modal=document.getElementById('mckCustomerChatModal');
     var open=!!(modal && modal.classList.contains('show'));
     document.body.classList.toggle('mck-customer-chat-open',open);
-    /* Global Search/Cart/Account controls remain visible. Chat is its own modal layer. */
-    document.querySelectorAll('.sticky-search-button,.sticky-cart-button,.account-menu-wrap,.account-menu-button').forEach(function(el){
-      el.style.removeProperty('visibility');
-      el.style.removeProperty('opacity');
-      el.style.removeProperty('pointer-events');
-    });
-    var x=document.getElementById('mckCustomerChatClose');
-    if(x){x.style.setProperty('visibility','visible','important');x.style.setProperty('opacity','1','important');x.style.setProperty('pointer-events','auto','important');}
+    if(open){
+      ['mobileSiteNavButton','mobileSiteNavBackdrop','siteStickyNav'].forEach(function(id){
+        var el=document.getElementById(id);
+        if(el){el.style.setProperty('visibility','hidden','important');el.style.setProperty('pointer-events','none','important');el.style.setProperty('opacity','0','important');}
+      });
+      document.querySelectorAll('.sticky-search-button,.sticky-cart-button,.account-menu-wrap,.account-menu-button').forEach(function(el){
+        el.style.setProperty('visibility','hidden','important');
+        el.style.setProperty('pointer-events','none','important');
+        el.style.setProperty('opacity','0','important');
+      });
+      var x=document.getElementById('mckCustomerChatClose');
+      if(x){x.style.setProperty('visibility','visible','important');x.style.setProperty('opacity','1','important');x.style.setProperty('pointer-events','auto','important');}
+    }
   }
   document.addEventListener('DOMContentLoaded',function(){
     syncChatChrome_();
     var modal=document.getElementById('mckCustomerChatModal');
-    if(modal)new MutationObserver(syncChatChrome_).observe(modal,{attributes:true,attributeFilter:['class']});
+    if(!modal)return;
+    new MutationObserver(syncChatChrome_).observe(modal,{attributes:true,attributeFilter:['class']});
     var x=document.getElementById('mckCustomerChatClose');
     if(x)x.addEventListener('click',function(){setTimeout(syncChatChrome_,0);},true);
   });
@@ -10376,6 +10392,136 @@ body.mck-customer-chat-open #mckCustomerChatBox{
 })();
 </script>
 
+
+<style id="mckenzie-premium-icon-system">
+:root{--mck-icon-gold:#e8ad35;--mck-icon-gold2:#ffd66a;--mck-icon-red:#7e1018;--mck-icon-cream:#fff7ed;}
+.mck-svg-icon{width:21px;height:21px;display:inline-block;vertical-align:middle;flex:none;color:currentColor;overflow:visible}
+.sticky-cart-icon .mck-svg-icon,.sticky-search-button .mck-svg-icon{width:20px;height:20px}
+.sticky-cart-icon{display:inline-flex!important;align-items:center!important;justify-content:center!important;font-size:0!important;color:var(--mck-icon-gold2)!important}
+.sticky-search-button{display:flex!important;align-items:center!important;justify-content:center!important;color:var(--mck-icon-gold2)!important}
+.mobile-site-nav-button{align-items:center!important;justify-content:center!important;border:1px solid var(--mck-icon-gold)!important;box-shadow:0 7px 20px rgba(0,0,0,.24),inset 0 0 0 1px rgba(255,214,106,.08)!important}
+.mobile-site-nav-button span{background:var(--mck-icon-gold2)!important;border-radius:99px!important}
+.account-menu-item{display:flex!important;align-items:center!important;gap:10px!important}
+.account-menu-item .menu-symbol{width:28px!important;height:28px!important;border-radius:9px!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;background:linear-gradient(145deg,#fff5e8,#f6dfd2)!important;border:1px solid #e7b64a!important;color:#7e1018!important;flex:0 0 28px!important}
+.account-menu-item .menu-symbol .mck-svg-icon{width:16px;height:16px}
+.account-menu-item.logout .menu-symbol{color:#a51620!important;background:#fff0ef!important}
+.login-close,.create-account-close,.cart-close,.account-subclose,.address-close,.password-close,.verification-close,#mckSurveyClose,#mckCustomerChatClose,#mckReceiptClose,.toast-close,#adminMobileMenuClose,.image-remove-btn{display:inline-flex!important;align-items:center!important;justify-content:center!important;font-size:0!important;line-height:0!important;color:#7e1018!important;background:linear-gradient(145deg,#fff7ed,#f2d8c9)!important;border:1px solid #d9a735!important;box-shadow:0 4px 12px rgba(69,19,10,.16)!important}
+#mckCustomerChatHead #mckCustomerChatBack,#mckCustomerChatHead #mckCustomerChatClose{width:40px!important;height:40px!important;min-width:40px!important;min-height:40px!important;border-radius:50%!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;box-sizing:border-box!important}
+#mckCustomerChatHead #mckCustomerChatBack{color:#fff!important;background:rgba(255,255,255,.09)!important;border:1px solid rgba(255,214,106,.65)!important}
+#mckCustomerChatHead #mckCustomerChatClose{color:#ffd66a!important;background:rgba(126,16,24,.82)!important;border:1px solid #e8ad35!important}
+#mckCustomerChatHead .mck-svg-icon{width:19px;height:19px}
+.order-detail-back{display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:7px!important}
+.order-detail-back .mck-svg-icon{width:18px;height:18px}
+.mck-notification-icon{width:40px!important;height:40px!important;border-radius:12px!important;display:flex!important;align-items:center!important;justify-content:center!important;background:linear-gradient(145deg,#fff7ed,#f2d8c9)!important;border:1px solid #e2ad38!important;color:#7e1018!important;font-size:0!important}
+.mck-notification-icon .mck-svg-icon{width:20px;height:20px}
+.mck-chat-start-icon{width:66px!important;height:66px!important;border-radius:20px!important;margin:0 auto 14px!important;display:flex!important;align-items:center!important;justify-content:center!important;background:linear-gradient(145deg,#7e1018,#a51620)!important;border:1px solid #e8ad35!important;color:#ffd66a!important;font-size:0!important;box-shadow:0 12px 30px rgba(76,7,12,.22)!important}
+.mck-chat-start-icon .mck-svg-icon{width:30px;height:30px}
+.nav button,.nav.logout{display:flex!important;align-items:center!important;gap:10px!important}
+.nav .mck-nav-icon{width:19px;height:19px;color:#f3c85b;flex:none}
+.nav button.active .mck-nav-icon{color:#fff7ed}
+.toast-icon,.custom-confirm-icon{display:flex!important;align-items:center!important;justify-content:center!important;font-size:0!important}
+@media(max-width:700px){
+  .sticky-cart-button,.sticky-search-button,.mobile-site-nav-button{width:42px!important;height:42px!important;min-width:42px!important;min-height:42px!important;box-sizing:border-box!important}
+  .sticky-cart-button .mck-svg-icon,.sticky-search-button .mck-svg-icon{width:18px!important;height:18px!important}
+  .mobile-site-nav-button span{width:17px!important;height:2px!important}
+}
+</style>
+
+<script id="mckenzie-premium-icon-system-js">(function(){
+  'use strict';
+  const NS='http://www.w3.org/2000/svg';
+  const paths={
+    search:'<circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.2 4.2"/>',
+    cart:'<circle cx="9" cy="19" r="1.4"/><circle cx="18" cy="19" r="1.4"/><path d="M2.5 3h3l2.2 11.2h10.8l2-8H6.2"/>',
+    user:'<circle cx="12" cy="8" r="3.5"/><path d="M5 21c.8-4 3.1-6 7-6s6.2 2 7 6"/>',
+    menu:'<path d="M4 7h16M4 12h16M4 17h16"/>',
+    close:'<path d="M6 6l12 12M18 6 6 18"/>',
+    back:'<path d="M19 12H5M11 6l-6 6 6 6"/>',
+    bell:'<path d="M6 9a6 6 0 0 1 12 0c0 6 2.5 6 2.5 8H3.5c0-2 2.5-2 2.5-8Z"/><path d="M10 21h4"/>',
+    profile:'<circle cx="12" cy="8" r="3.5"/><path d="M5 21c.8-4 3.1-6 7-6s6.2 2 7 6"/>',
+    orders:'<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/>',
+    payment:'<rect x="3.5" y="5" width="17" height="14" rx="2"/><path d="M4 9h16M7 14h4"/>',
+    coupon:'<path d="M5 5h14v4a2 2 0 0 0 0 6v4H5v-4a2 2 0 0 0 0-6V5Z"/><path d="M12 7v10" stroke-dasharray="2 2"/>',
+    chat:'<path d="M4 5.5A3.5 3.5 0 0 1 7.5 2h9A3.5 3.5 0 0 1 20 5.5v6A3.5 3.5 0 0 1 16.5 15H11l-5 4v-4.6A3.5 3.5 0 0 1 4 12V5.5Z"/><path d="M8 8h8M8 11h5"/>',
+    logout:'<path d="M10 5H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h4"/><path d="M13 8l4 4-4 4M9 12h8"/>',
+    settings:'<path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6 7 7M17 17l1.4 1.4M18.4 5.6 17 7M7 17l-1.4 1.4"/><circle cx="12" cy="12" r="4"/>',
+    box:'<path d="m4 7 8-4 8 4-8 4-8-4Z"/><path d="M4 7v10l8 4 8-4V7M12 11v10"/>',
+    users:'<circle cx="9" cy="9" r="3"/><path d="M3.5 20c.6-3.2 2.5-5 5.5-5s4.9 1.8 5.5 5"/><path d="M15 7.5a3 3 0 0 1 0 5.8M17 15c2.3.4 3.5 2 4 5"/>',
+    star:'<path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9L12 3Z"/>',
+    camera:'<path d="M4 7h3l1.5-2h7L17 7h3v12H4V7Z"/><circle cx="12" cy="13" r="3.5"/>',
+    check:'<path d="m5 12 4 4L19 6"/>',
+    location:'<path d="M12 21s7-6.1 7-12a7 7 0 1 0-14 0c0 5.9 7 12 7 12Z"/><circle cx="12" cy="9" r="2.2"/>',
+    info:'<circle cx="12" cy="12" r="9"/><path d="M12 10v6M12 7.2v.1"/>',
+    chevron:'<path d="m9 5 7 7-7 7"/>'
+  };
+  function icon(name, cls){
+    const svg=document.createElementNS(NS,'svg');
+    svg.setAttribute('viewBox','0 0 24 24'); svg.setAttribute('aria-hidden','true');
+    svg.setAttribute('class','mck-svg-icon '+(cls||''));
+    svg.setAttribute('focusable','false');
+    svg.innerHTML=paths[name]||paths.info;
+    svg.querySelectorAll('path,circle,rect').forEach(el=>{el.setAttribute('fill','none');el.setAttribute('stroke','currentColor');el.setAttribute('stroke-width','1.9');el.setAttribute('stroke-linecap','round');el.setAttribute('stroke-linejoin','round');});
+    return svg;
+  }
+  const emojiMap={'🛒':'cart','⌕':'search','🔔':'bell','💬':'chat','👤':'profile','📋':'orders','💳':'payment','🎟️':'coupon','↪':'logout','⚙️':'settings','📦':'box','🧾':'orders','👥':'users','⭐':'star','📷':'camera','📍':'location','✓':'check','🍜':'box'};
+  function putIcon(el,name){
+    if(!el||el.querySelector(':scope > .mck-svg-icon')) return;
+    el.textContent=''; el.appendChild(icon(name));
+  }
+  function replaceLeadingEmoji(root){
+    const walker=document.createTreeWalker(root||document.body,NodeFilter.SHOW_TEXT);
+    const nodes=[];
+    while(walker.nextNode()) nodes.push(walker.currentNode);
+    nodes.forEach(n=>{
+      const t=n.nodeValue||''; let name=null, match='';
+      for(const key of Object.keys(emojiMap)){ if(t.trimStart().startsWith(key)){name=emojiMap[key];match=key;break;} }
+      if(!name) return;
+      const parent=n.parentElement; if(!parent) return;
+      const trimmed=t.trimStart(); const leading=t.slice(0,t.length-trimmed.length);
+      const rest=trimmed.slice(match.length);
+      const frag=document.createDocumentFragment();
+      if(leading)frag.appendChild(document.createTextNode(leading));
+      frag.appendChild(icon(name));
+      if(rest)frag.appendChild(document.createTextNode(rest));
+      n.replaceWith(frag);
+    });
+  }
+  function polish(){
+    // Fixed header controls.
+    putIcon(document.querySelector('.sticky-cart-icon'),'cart');
+    const sb=document.getElementById('stickySearchButton'); if(sb){const old=sb.querySelector('.mck-svg-icon');if(!old){sb.textContent='';sb.appendChild(icon('search'));}}
+    // Customer account menu symbols.
+    const menuMap={
+      'Edit Profile':'profile','Order History':'orders','Payment History':'payment','Coupons':'coupon','Notifications':'bell','Customer Support':'chat','Log Out':'logout'
+    };
+    document.querySelectorAll('.account-menu-item').forEach(btn=>{
+      const symbol=btn.querySelector('.menu-symbol'); if(symbol){const txt=(btn.textContent||'').trim();let n=null;Object.keys(menuMap).some(k=>{if(txt.indexOf(k)!==-1){n=menuMap[k];return true;}return false;});if(n){symbol.textContent='';symbol.appendChild(icon(n));}}
+    });
+    // Close / back controls.
+    document.querySelectorAll('.account-subclose,.address-close,.password-close,.verification-close,.cart-close,.login-close,.create-account-close,#mckSurveyClose,#mckCustomerChatClose,#mckReceiptClose,.toast-close,.image-remove-btn,#adminMobileMenuClose').forEach(b=>{if(b)putIcon(b,'close');});
+    document.querySelectorAll('#mckCustomerChatBack,#mckReceiptBack,.order-detail-back').forEach(b=>{if(b){b.textContent='';b.appendChild(icon('back'));}});
+    // Admin sidebar and common buttons.
+    const adminMap={Products:'box',Orders:'orders',Customers:'users',Reviews:'star',Settings:'settings',Logout:'logout'};
+    document.querySelectorAll('.nav button,.nav.logout').forEach(btn=>{
+      const txt=(btn.textContent||'').trim();let n=null;Object.keys(adminMap).some(k=>{if(txt.indexOf(k)!==-1){n=adminMap[k];return true;}return false;});
+      if(n){
+        const span=btn.querySelector('.mck-svg-icon'); if(!span){const s=icon(n);s.classList.add('mck-nav-icon');btn.insertBefore(s,btn.firstChild);}
+        Array.from(btn.childNodes).filter(x=>x.nodeType===3 && /[📦🧾👥⭐⚙️↪]/.test(x.nodeValue||'')).forEach(x=>x.remove());
+      }
+    });
+    replaceLeadingEmoji(document.getElementById('mckCustomerNotificationList')||document.body);
+    replaceLeadingEmoji(document.querySelector('.mck-chat-start')||document.body);
+  }
+  function start(){
+    polish();
+    let timer=0;
+    const obs=new MutationObserver(function(){clearTimeout(timer);timer=setTimeout(polish,80);});
+    obs.observe(document.body,{childList:true,subtree:true});
+    window.MckenzieIconSystem={icon,polish};
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
+})();
+</script>
 </body>
 
 <style id="mck-v32-polish-final">
@@ -10396,19 +10542,17 @@ body.quick-loading #mobileSiteNavButton,body.quick-loading .account-menu-wrap,bo
 #mckCustomerChatMessages{min-height:0!important;overflow-y:auto!important;overscroll-behavior:contain!important;-webkit-overflow-scrolling:touch!important}
 #mckCustomerChatTyping{width:100%!important;box-sizing:border-box!important;text-align:left!important;padding:5px 14px!important;margin:0!important;background:#fffaf3!important;border-top:1px solid rgba(222,201,189,.5)!important;color:#806c65!important}
 #mckCustomerChatInput,#mckCustomerChatComposer input,#mckCustomerChatComposer textarea{font-size:16px!important;line-height:1.4!important}
+body.mck-customer-chat-open .account-menu-wrap,body.mck-customer-chat-open .sticky-search-button,body.mck-customer-chat-open .sticky-cart-button{visibility:hidden!important;opacity:0!important;pointer-events:none!important}
+body:not(.mck-customer-chat-open) .account-menu-wrap,body:not(.mck-customer-chat-open) .sticky-search-button,body:not(.mck-customer-chat-open) .sticky-cart-button{visibility:visible!important;opacity:1!important;pointer-events:auto!important}
 </style>
 <script id="mck-v32-polish-final-js">
 (function(){
+  function vis(el,on){if(!el)return;el.style.setProperty('visibility',on?'visible':'hidden','important');el.style.setProperty('opacity',on?'1':'0','important');el.style.setProperty('pointer-events',on?'auto':'none','important');}
   function sync(){
-    var modal=document.getElementById('mckCustomerChatModal');
-    var open=!!(modal&&modal.classList.contains('show'));
+    var modal=document.getElementById('mckCustomerChatModal'),open=!!(modal&&modal.classList.contains('show'));
     document.body.classList.toggle('mck-customer-chat-open',open);
-    document.querySelectorAll('.account-menu-wrap,.sticky-search-button,.sticky-cart-button').forEach(function(el){
-      el.style.removeProperty('visibility');
-      el.style.removeProperty('opacity');
-      el.style.removeProperty('pointer-events');
-    });
-    if(open){var x=document.getElementById('mckCustomerChatClose');if(x){x.style.setProperty('visibility','visible','important');x.style.setProperty('opacity','1','important');x.style.setProperty('pointer-events','auto','important');}}
+    document.querySelectorAll('.account-menu-wrap,.sticky-search-button,.sticky-cart-button').forEach(function(el){vis(el,!open);});
+    if(open)vis(document.getElementById('mckCustomerChatClose'),true);
   }
   function bind(){
     sync();
@@ -10422,7 +10566,9 @@ body.quick-loading #mobileSiteNavButton,body.quick-loading .account-menu-wrap,bo
 })();
 </script>
 
-\n<style id="mck-v21-organized-header-icons">
+</html>
+
+<style id="mck-v21-organized-header-icons">
 /* V21 HEADER BASELINE: search + cart + hamburger stay together in one clean row. */
 @media (min-width: 701px) {
   .account-menu-wrap {
@@ -10682,62 +10828,3 @@ body.quick-loading #mobileSiteNavButton,body.quick-loading .account-menu-wrap,bo
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind);else bind();
 })();
 </script>
-
-<style id="mck-v40-profile-password-header-fix">
-/* V40: profile addresses are managed only through Saved Delivery Addresses. */
-.profile-address-edit-field{display:none !important;}
-
-/* Sticky close controls for scrollable Profile and Payment History cards. */
-#editProfileModal .account-subcard,#paymentHistoryModal .account-subcard{position:relative !important;overflow-y:auto !important;}
-#editProfileModal .account-subcard > .account-subclose,#paymentHistoryModal .account-subcard > .account-subclose{position:sticky !important;top:0 !important;right:auto !important;z-index:10000070 !important;display:flex !important;align-items:center !important;justify-content:center !important;width:40px !important;height:40px !important;min-width:40px !important;min-height:40px !important;margin:0 0 -40px auto !important;padding:0 !important;line-height:1 !important;font-size:24px !important;box-sizing:border-box !important;cursor:pointer !important;pointer-events:auto !important;}
-
-/* Keep Search → Cart → Account in one clean row on mobile. */
-@media (max-width:700px){
-  .sticky-search-button,.sticky-cart-button,.account-menu-wrap{position:fixed !important;top:10px !important;z-index:10000080 !important;}
-  .account-menu-wrap{right:8px !important;left:auto !important;}
-  .account-menu-button{width:40px !important;height:40px !important;min-width:40px !important;min-height:40px !important;}
-  .sticky-cart-button{right:56px !important;left:auto !important;width:40px !important;height:40px !important;}
-  .sticky-search-button{right:104px !important;left:auto !important;width:40px !important;height:40px !important;}
-}
-@media (max-width:430px){
-  .sticky-search-button,.sticky-cart-button,.account-menu-button{width:36px !important;height:36px !important;min-width:36px !important;min-height:36px !important;top:11px !important;}
-  .account-menu-wrap{right:7px !important;}
-  .sticky-cart-button{right:49px !important;}
-  .sticky-search-button{right:91px !important;}
-  .account-icon-lines{gap:3px !important;}
-  .account-icon-lines i{width:16px !important;height:2px !important;}
-}
-
-/* Chat opening/closing must never hide the global controls. */
-body.mck-customer-chat-open .sticky-search-button,body.mck-customer-chat-open .sticky-cart-button,body.mck-customer-chat-open .account-menu-wrap,body.mck-customer-chat-open .account-menu-button,body.mck-customer-chat-open #mobileSiteNavButton{visibility:visible !important;opacity:1 !important;pointer-events:auto !important;}
-
-#passwordOtpEmail{color:#9f1118;text-decoration:underline;text-underline-offset:2px;cursor:pointer;}
-#verificationEmail{color:#9f1118;text-decoration:underline;text-underline-offset:2px;font-weight:800;}
-</style>
-<script id="mck-v40-profile-password-header-fix-js">
-(function(){
-  function bindProfileAndPaymentClose(){
-    document.querySelectorAll('#editProfileModal .account-subclose,#paymentHistoryModal .account-subclose').forEach(function(btn){
-      if(btn.dataset.mckV40Bound==='1')return;
-      btn.dataset.mckV40Bound='1';
-      btn.addEventListener('click',function(e){
-        e.preventDefault();e.stopImmediatePropagation();
-        var modal=btn.closest('.account-submodal');
-        if(modal&&typeof window.closeAccountSubmodal_==='function')window.closeAccountSubmodal_(modal.id);
-      },true);
-    });
-  }
-  function restoreGlobalControls(){
-    document.querySelectorAll('.sticky-search-button,.sticky-cart-button,.account-menu-wrap,.account-menu-button').forEach(function(el){
-      el.style.removeProperty('visibility');el.style.removeProperty('opacity');el.style.removeProperty('pointer-events');
-    });
-  }
-  function init(){
-    bindProfileAndPaymentClose();restoreGlobalControls();
-    setInterval(function(){bindProfileAndPaymentClose();restoreGlobalControls();},700);
-  }
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
-})();
-</script>
-
-</html>
