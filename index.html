@@ -10624,6 +10624,32 @@ body:not(.mck-customer-chat-open) .account-menu-wrap,body:not(.mck-customer-chat
 })();
 </script>
 
+
+<style id="mck-v44-header-spacing-final">
+/* V44: comfortable spacing for mobile Search / Cart / Menu controls. */
+@media (max-width:700px){
+  .sticky-search-button,.sticky-cart-button,.account-menu-wrap{
+    width:42px!important;height:42px!important;min-width:42px!important;min-height:42px!important;
+    top:10px!important;box-sizing:border-box!important;
+  }
+  .account-menu-wrap{right:8px!important;left:auto!important;}
+  .sticky-cart-button{right:62px!important;left:auto!important;}
+  .sticky-search-button{right:116px!important;left:auto!important;}
+  .account-menu-button{width:42px!important;height:42px!important;min-width:42px!important;min-height:42px!important;}
+  .sticky-search-button .mck-svg-icon,.sticky-cart-icon .mck-svg-icon{width:20px!important;height:20px!important;}
+}
+@media (max-width:380px){
+  .sticky-search-button,.sticky-cart-button,.account-menu-wrap{
+    width:38px!important;height:38px!important;min-width:38px!important;min-height:38px!important;
+    top:11px!important;
+  }
+  .account-menu-wrap{right:6px!important;}
+  .sticky-cart-button{right:56px!important;}
+  .sticky-search-button{right:106px!important;}
+  .account-menu-button{width:38px!important;height:38px!important;min-width:38px!important;min-height:38px!important;}
+  .sticky-search-button .mck-svg-icon,.sticky-cart-icon .mck-svg-icon{width:18px!important;height:18px!important;}
+}
+</style>
 </html>
 
 <style id="mck-v21-organized-header-icons">
