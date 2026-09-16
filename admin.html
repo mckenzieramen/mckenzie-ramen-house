@@ -306,7 +306,16 @@ button,input,select,textarea{font:inherit}
 @media(max-width:950px){.mck-admin-dashboard{grid-template-columns:repeat(2,1fr)}}
 </style>
 
-<style id="mck-admin-typing-css">.admin-typing-indicator{display:none;font-size:10px;color:#806c65;padding:0 0 5px;font-style:italic}.admin-typing-indicator.show{display:block}</style>
+<style id="mck-admin-typing-css">.admin-typing-indicator{display:none;font-size:10px;color:#806c65;padding:0 0 5px;font-style:italic}.admin-typing-indicator.show{display:block}</style><style id="mck-admin-chat-mobile-final">
+.admin-typing-indicator{justify-self:center;align-self:end;width:max-content;max-width:90%;padding:5px 10px !important;margin:2px 0 1px;border:1px solid #ead4c9;border-radius:999px;background:#fffaf5;color:#8a6d65;font-size:10px;font-style:italic;line-height:1.2;box-shadow:0 2px 7px rgba(95,8,12,.06);}
+@media(max-width:700px){
+  .customer-chat-messages{scroll-behavior:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;}
+  .customer-chat-compose{position:relative;z-index:5;}
+  .customer-chat-compose textarea{font-size:16px !important;line-height:1.4;min-height:48px;touch-action:manipulation;}
+  .customer-chat-compose button{font-size:16px !important;touch-action:manipulation;}
+  .customer-chat-card{scroll-margin-top:70px;}
+}
+</style>
 </head>
 <body>
 <button type="button" id="adminMobileMenuButton" class="admin-mobile-menu-button" aria-label="Open admin menu" aria-expanded="false" onclick="toggleAdminMobileMenu_()"><span></span><span></span><span></span></button>
@@ -1830,6 +1839,12 @@ function adminChatDataWithoutTyping_(chat){
 function playAdminBellNotification_(){try{if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();if(audioCtx.state==='suspended')audioCtx.resume();const now=audioCtx.currentTime;[0,.22].forEach(function(offset,i){const osc=audioCtx.createOscillator(),gain=audioCtx.createGain();osc.type='sine';osc.frequency.setValueAtTime(i?1046:880,now+offset);gain.gain.setValueAtTime(.0001,now+offset);gain.gain.exponentialRampToValueAtTime(.09,now+offset+.02);gain.gain.exponentialRampToValueAtTime(.0001,now+offset+.22);osc.connect(gain);gain.connect(audioCtx.destination);osc.start(now+offset);osc.stop(now+offset+.24);});}catch(e){}}
 function renderCustomerChats(){
   const c=document.getElementById('customerChats');if(!c)return;
+  const pageScrollY=window.scrollY||window.pageYOffset||0;
+  const activeEl=document.activeElement;
+  const activeId=activeEl&&activeEl.id&&/^adminChatInput_/.test(activeEl.id)?activeEl.id:'';
+  const activeValue=activeId?String(activeEl.value||''):'';
+  const activeStart=activeId?Number(activeEl.selectionStart||activeValue.length):0;
+  const activeEnd=activeId?Number(activeEl.selectionEnd||activeValue.length):0;
 
   // Preserve each open conversation's scroll position across Firestore realtime
   // updates. Re-rendering the card must never make an admin jump to the top
@@ -1867,21 +1882,21 @@ function renderCustomerChats(){
       const box=card.querySelector('.customer-chat-messages');
       if(!box)return;
       const old=previousScroll[id];
-
       if(old){
-        if(old.wasAtBottom){
-          // If the admin was already following the live conversation, keep
-          // the newest message visible at the bottom.
-          box.scrollTop=box.scrollHeight;
-        }else{
-          // Otherwise preserve the exact viewing position instead of jumping.
-          box.scrollTop=Math.min(old.top,Math.max(0,box.scrollHeight-box.clientHeight));
-        }
-      }else{
-        // New conversation: start at the latest messages.
-        box.scrollTop=box.scrollHeight;
-      }
+        if(old.wasAtBottom){box.scrollTop=box.scrollHeight;}
+        else{box.scrollTop=Math.min(old.top,Math.max(0,box.scrollHeight-box.clientHeight));}
+      }else{box.scrollTop=box.scrollHeight;}
     });
+    // Realtime snapshots must not move the whole admin page or steal the draft.
+    window.scrollTo(0,pageScrollY);
+    if(activeId){
+      const restored=document.getElementById(activeId);
+      if(restored){
+        restored.value=activeValue;
+        try{restored.focus({preventScroll:true});}catch(e){restored.focus();}
+        try{restored.setSelectionRange(activeStart,activeEnd);}catch(e){}
+      }
+    }
   });
 }
 function renderAdminChat_(chat){
@@ -1902,12 +1917,14 @@ function renderAdminChat_(chat){
   const closedClass=status==='Closed'?' customer-chat-closed':'';
   const statusLabel=status==='Closed'?'CLOSED':status.toUpperCase();
   const composerPlaceholder=status==='Closed'?'This conversation is closed.':(status==='Solved'?'This conversation is solved.':'Reply to customer…');
-  return '<article class="customer-chat-card'+closedClass+'" data-status="'+escAttr(status)+'"><div class="customer-chat-head"><div><div class="customer-chat-name">'+esc(chat.customerName||'Customer')+'</div><div class="customer-chat-meta">'+esc(chat.customerEmail||'')+(chat.orderId?' · Order #'+esc(chat.orderId):'')+'</div></div><div class="customer-chat-status-actions"><span class="customer-chat-status '+(chat.unreadForAdmin?'new ':'')+statusClass+'">'+esc(statusLabel)+'</span><button type="button" '+(status==='Open'?'class="active"':'')+' '+(status==='Closed'?'disabled':'')+' onclick="setCustomerChatStatus_(\''+safeId+'\',\'Open\')">Open</button><button type="button" '+(status==='Solved'?'class="active"':'')+' '+(status==='Closed'?'disabled':'')+' onclick="setCustomerChatStatus_(\''+safeId+'\',\'Solved\')">Solve</button></div></div><div class="customer-chat-messages">'+(messages||'<div style="color:#806c65;font-size:12px;padding:20px">No messages yet.</div>')+'</div><div class="customer-chat-compose"><div id="adminTyping_'+safeId+'" class="admin-typing-indicator" aria-live="polite">Customer is typing…</div><textarea id="adminChatInput_'+safeId+'" placeholder="'+composerPlaceholder+'" '+replyDisabled+'></textarea><button type="button" data-chat-id="'+safeId+'" '+replyDisabled+' onclick="adminSendChat(this.dataset.chatId)">Send</button></div></article>';
+  return '<article class="customer-chat-card'+closedClass+'" data-chat-id="'+safeId+'" data-status="'+escAttr(status)+'"><div class="customer-chat-head"><div><div class="customer-chat-name">'+esc(chat.customerName||'Customer')+'</div><div class="customer-chat-meta">'+esc(chat.customerEmail||'')+(chat.orderId?' · Order #'+esc(chat.orderId):'')+'</div></div><div class="customer-chat-status-actions"><span class="customer-chat-status '+(chat.unreadForAdmin?'new ':'')+statusClass+'">'+esc(statusLabel)+'</span><button type="button" '+(status==='Open'?'class="active"':'')+' '+(status==='Closed'?'disabled':'')+' onclick="setCustomerChatStatus_(\''+safeId+'\',\'Open\')">Open</button><button type="button" '+(status==='Solved'?'class="active"':'')+' '+(status==='Closed'?'disabled':'')+' onclick="setCustomerChatStatus_(\''+safeId+'\',\'Solved\')">Solve</button></div></div><div class="customer-chat-messages">'+(messages||'<div style="color:#806c65;font-size:12px;padding:20px">No messages yet.</div>')+'<div id="adminTyping_'+safeId+'" class="admin-typing-indicator" aria-live="polite">Customer is typing…</div></div><div class="customer-chat-compose"><textarea id="adminChatInput_'+safeId+'" placeholder="'+composerPlaceholder+'" '+replyDisabled+'></textarea><button type="button" data-chat-id="'+safeId+'" '+replyDisabled+' onclick="adminSendChat(this.dataset.chatId)">Send</button></div></article>';
 }
 
 let adminTypingTimers={};
 async function setAdminTyping_(chatId,isTyping){try{const f=await adminFirebase_();if(!f.auth.currentUser)return;const ref=f.doc(f.db,'supportChats',String(chatId));await f.updateDoc(ref,{'typingBy.admin':!!isTyping});}catch(e){}}
 function bindAdminTyping_(input){if(!input||input.dataset.typingBound==='1')return;input.dataset.typingBound='1';const chatId=String(input.id||'').replace(/^adminChatInput_/,'');input.addEventListener('input',function(){const active=!!String(input.value||'').trim();setAdminTyping_(chatId,active);clearTimeout(adminTypingTimers[chatId]);adminTypingTimers[chatId]=setTimeout(function(){setAdminTyping_(chatId,false);},1800);});}
+// Never let mobile focus/realtime updates jump the admin away from the chat composer.
+document.addEventListener('focusin',function(e){var el=e.target;if(!el||!/^adminChatInput_/.test(String(el.id||'')))return;var y=window.scrollY||window.pageYOffset||0;requestAnimationFrame(function(){window.scrollTo(0,y);});},{passive:true});
 async function adminSendChat(chatId){
   const input=document.getElementById('adminChatInput_'+String(chatId));if(!input)return;const text=String(input.value||'').trim();if(!text)return;input.disabled=true;
   var draft=text;
