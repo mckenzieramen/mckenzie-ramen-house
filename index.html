@@ -3276,74 +3276,6 @@ body.quick-loading {
 @media(min-width:601px){.sticky-search-button{right:116px;top:14px;width:40px;height:40px;font-size:22px}}
 </style>
 
-
-<!-- V32 FINAL MOBILE HEADER / LOADER / CHAT CHROME FIX -->
-<style id="mck-v32-final-chrome-fix">
-/* Prevent any navigation/account control from flashing over the full-screen loader. */
-html.quick-loading #mobileSiteNavButton,
-html.quick-loading .account-menu-wrap,
-html.quick-loading .sticky-search-button,
-html.quick-loading .sticky-cart-button,
-body.quick-loading #mobileSiteNavButton,
-body.quick-loading .account-menu-wrap,
-body.quick-loading .sticky-search-button,
-body.quick-loading .sticky-cart-button{visibility:hidden!important;opacity:0!important;pointer-events:none!important}
-
-/* Keep the single functional account hamburger clean and consistent on phones. */
-@media(max-width:700px){
-  #mobileSiteNavButton{display:none!important;visibility:hidden!important;pointer-events:none!important}
-  .account-menu-wrap{display:block!important;visibility:visible!important;opacity:1!important;pointer-events:auto!important;position:fixed!important;right:8px!important;top:9px!important;z-index:10000040!important}
-  .account-menu-button{display:flex!important;width:40px!important;height:40px!important;min-width:40px!important;min-height:40px!important;align-items:center!important;justify-content:center!important;padding:0!important;margin:0!important}
-  .account-icon-person{display:none!important}
-  .account-icon-lines{display:flex!important;flex-direction:column!important;gap:4px!important;align-items:center!important;justify-content:center!important}
-  .account-icon-lines i{display:block!important;width:18px!important;height:2px!important;margin:0!important}
-}
-
-/* Chat is a true modal layer. Its close control is never covered by global chrome. */
-#mckCustomerChatModal.show{z-index:2147483640!important}
-#mckCustomerChatBox{z-index:2147483641!important}
-#mckCustomerChatHead{position:relative!important;display:flex!important;align-items:center!important;min-height:64px!important;padding:10px 60px 10px 14px!important;box-sizing:border-box!important}
-#mckCustomerChatClose{position:absolute!important;top:50%!important;right:10px!important;transform:translateY(-50%)!important;width:40px!important;height:40px!important;min-width:40px!important;min-height:40px!important;display:flex!important;align-items:center!important;justify-content:center!important;padding:0!important;margin:0!important;box-sizing:border-box!important;border:1px solid #e8ad3b!important;border-radius:50%!important;background:#3a0709!important;color:#f6c34c!important;font-size:25px!important;line-height:1!important;z-index:2147483647!important;pointer-events:auto!important;touch-action:manipulation!important}
-#mckCustomerChatBack{width:40px!important;height:40px!important;min-width:40px!important;min-height:40px!important;display:flex!important;align-items:center!important;justify-content:center!important;padding:0!important;margin:0!important;box-sizing:border-box!important;line-height:1!important}
-#mckCustomerChatMessages{min-height:0!important;overflow-y:auto!important;overscroll-behavior:contain!important;-webkit-overflow-scrolling:touch!important}
-#mckCustomerChatComposer{flex:0 0 auto!important}
-#mckCustomerChatTyping{order:1!important;width:100%!important;box-sizing:border-box!important;padding:5px 14px!important;margin:0!important;text-align:left!important;background:#fffaf3!important;border-top:1px solid rgba(222,201,189,.5)!important;color:#806c65!important}
-#mckCustomerChatComposer{order:2!important}
-
-/* Never allow chat inputs to trigger iOS focus zoom. */
-#mckCustomerChatInput,#mckCustomerChatComposer input,#mckCustomerChatComposer textarea{font-size:16px!important;line-height:1.4!important}
-
-/* Restore global chrome immediately after chat closes. */
-body.mck-customer-chat-open .account-menu-wrap,
-body.mck-customer-chat-open .sticky-search-button,
-body.mck-customer-chat-open .sticky-cart-button{visibility:hidden!important;opacity:0!important;pointer-events:none!important}
-body:not(.mck-customer-chat-open) .account-menu-wrap,
-body:not(.mck-customer-chat-open) .sticky-search-button,
-body:not(.mck-customer-chat-open) .sticky-cart-button{visibility:visible!important;opacity:1!important;pointer-events:auto!important}
-</style>
-<script id="mck-v32-final-chrome-fix-js">
-(function(){
-  function setVisible_(el,on){if(!el)return;el.style.setProperty('visibility',on?'visible':'hidden','important');el.style.setProperty('opacity',on?'1':'0','important');el.style.setProperty('pointer-events',on?'auto':'none','important');}
-  function restoreChrome_(){
-    var modal=document.getElementById('mckCustomerChatModal');
-    var open=!!(modal&&modal.classList.contains('show'));
-    document.body.classList.toggle('mck-customer-chat-open',open);
-    var controls=document.querySelectorAll('.account-menu-wrap,.sticky-search-button,.sticky-cart-button');
-    controls.forEach(function(el){setVisible_(el,!open);});
-    var x=document.getElementById('mckCustomerChatClose');
-    if(x&&open)setVisible_(x,true);
-  }
-  function bind_(){
-    restoreChrome_();
-    var modal=document.getElementById('mckCustomerChatModal');
-    if(modal)new MutationObserver(restoreChrome_).observe(modal,{attributes:true,attributeFilter:['class']});
-    var x=document.getElementById('mckCustomerChatClose');
-    if(x)x.addEventListener('click',function(){setTimeout(restoreChrome_,40);},true);
-  }
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind_,{once:true});else bind_();
-  window.mckRestoreGlobalChrome_=restoreChrome_;
-})();
-</script>
 </head>
 
 
@@ -7859,8 +7791,8 @@ function preloadPageImage_(url, done) {
     finished = true;
     done();
   };
-  img.onload = function(){ finish(true); };
-  img.onerror = function(){ finished = true; done(false); };
+  img.onload = finish;
+  img.onerror = finish;
   img.src = String(url);
   if (img.complete && img.naturalWidth > 0) finish();
 }
@@ -7974,7 +7906,7 @@ function applyBrandAssets_(assets) {
     /* Never replace a working embedded background with a dead Firebase/cache URL.
        Preload first; only paint the custom background after the browser confirms it. */
     preloadPageImage_(backgroundSource, function(ok) {
-      if (ok !== true) return;
+      if (!ok) return;
       const bg = 'url("' + backgroundSource.replace(/"/g, '\\"') + '")';
       document.documentElement.style.setProperty('--hero-image', bg);
       if (hero) {
@@ -10313,49 +10245,6 @@ body.mck-customer-chat-open #mckCustomerChatBox{
 </script>
 
 </body>
-
-<style id="mck-v32-polish-final">
-/* V32: one clean mobile account control; no icon flash during loader. */
-html.quick-loading #mobileSiteNavButton,html.quick-loading .account-menu-wrap,html.quick-loading .sticky-search-button,html.quick-loading .sticky-cart-button,
-body.quick-loading #mobileSiteNavButton,body.quick-loading .account-menu-wrap,body.quick-loading .sticky-search-button,body.quick-loading .sticky-cart-button{visibility:hidden!important;opacity:0!important;pointer-events:none!important}
-@media(max-width:700px){
-  #mobileSiteNavButton{display:none!important;}
-  .account-menu-wrap{display:block!important;visibility:visible!important;opacity:1!important;pointer-events:auto!important;position:fixed!important;right:8px!important;top:9px!important;left:auto!important;z-index:10000040!important;margin:0!important;transform:none!important}
-  .account-menu-button{display:flex!important;visibility:visible!important;opacity:1!important;width:40px!important;height:40px!important;min-width:40px!important;min-height:40px!important;padding:0!important;margin:0!important;align-items:center!important;justify-content:center!important}
-  .account-icon-person{display:none!important}.account-icon-lines{display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:4px!important}.account-icon-lines i{display:block!important;width:18px!important;height:2px!important;margin:0!important}
-}
-/* Chat modal always owns the header while it is open. */
-#mckCustomerChatModal.show{z-index:2147483640!important}#mckCustomerChatBox{z-index:2147483641!important}
-#mckCustomerChatHead{position:relative!important;display:flex!important;align-items:center!important;min-height:64px!important;padding:10px 60px 10px 14px!important;box-sizing:border-box!important}
-#mckCustomerChatClose{position:absolute!important;top:50%!important;right:10px!important;transform:translateY(-50%)!important;width:40px!important;height:40px!important;min-width:40px!important;min-height:40px!important;display:flex!important;align-items:center!important;justify-content:center!important;padding:0!important;margin:0!important;box-sizing:border-box!important;border:1px solid #e8ad3b!important;border-radius:50%!important;background:#3a0709!important;color:#f6c34c!important;font-size:25px!important;line-height:1!important;z-index:2147483647!important;visibility:visible!important;opacity:1!important;pointer-events:auto!important;touch-action:manipulation!important}
-#mckCustomerChatBack{width:40px!important;height:40px!important;min-width:40px!important;min-height:40px!important;display:flex!important;align-items:center!important;justify-content:center!important;padding:0!important;margin:0!important;box-sizing:border-box!important;line-height:1!important}
-#mckCustomerChatMessages{min-height:0!important;overflow-y:auto!important;overscroll-behavior:contain!important;-webkit-overflow-scrolling:touch!important}
-#mckCustomerChatTyping{width:100%!important;box-sizing:border-box!important;text-align:left!important;padding:5px 14px!important;margin:0!important;background:#fffaf3!important;border-top:1px solid rgba(222,201,189,.5)!important;color:#806c65!important}
-#mckCustomerChatInput,#mckCustomerChatComposer input,#mckCustomerChatComposer textarea{font-size:16px!important;line-height:1.4!important}
-body.mck-customer-chat-open .account-menu-wrap,body.mck-customer-chat-open .sticky-search-button,body.mck-customer-chat-open .sticky-cart-button{visibility:hidden!important;opacity:0!important;pointer-events:none!important}
-body:not(.mck-customer-chat-open) .account-menu-wrap,body:not(.mck-customer-chat-open) .sticky-search-button,body:not(.mck-customer-chat-open) .sticky-cart-button{visibility:visible!important;opacity:1!important;pointer-events:auto!important}
-</style>
-<script id="mck-v32-polish-final-js">
-(function(){
-  function vis(el,on){if(!el)return;el.style.setProperty('visibility',on?'visible':'hidden','important');el.style.setProperty('opacity',on?'1':'0','important');el.style.setProperty('pointer-events',on?'auto':'none','important');}
-  function sync(){
-    var modal=document.getElementById('mckCustomerChatModal'),open=!!(modal&&modal.classList.contains('show'));
-    document.body.classList.toggle('mck-customer-chat-open',open);
-    document.querySelectorAll('.account-menu-wrap,.sticky-search-button,.sticky-cart-button').forEach(function(el){vis(el,!open);});
-    if(open)vis(document.getElementById('mckCustomerChatClose'),true);
-  }
-  function bind(){
-    sync();
-    var m=document.getElementById('mckCustomerChatModal');
-    if(m)new MutationObserver(sync).observe(m,{attributes:true,attributeFilter:['class']});
-    var x=document.getElementById('mckCustomerChatClose');
-    if(x)x.addEventListener('click',function(){setTimeout(sync,60);},true);
-  }
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind,{once:true});else bind();
-  window.mckRestoreGlobalChrome_=sync;
-})();
-</script>
-
 </html>
 
 <style id="mck-v21-organized-header-icons">
