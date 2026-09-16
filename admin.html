@@ -1730,6 +1730,13 @@ async function loadCustomerChatsBadge_(){try{const f=await adminFirebase_();if(!
 function updateChatBadge_(chats){const b=document.getElementById('chatBadge');if(!b)return;const n=(chats||[]).filter(c=>c.unreadForAdmin).length;b.textContent=n;b.style.display=n?'inline-block':'none';}
 function renderCustomerChats(){
   const c=document.getElementById('customerChats');if(!c)return;
+  const saved={};
+  c.querySelectorAll('.customer-chat-card').forEach(function(card){
+    const id=String(card.getAttribute('data-chat-id')||'');
+    const box=card.querySelector('.customer-chat-messages');
+    const input=card.querySelector('textarea[id^="adminChatInput_"]');
+    if(id){saved[id]={scrollTop:box?box.scrollTop:0,atBottom:box?((box.scrollHeight-box.clientHeight-box.scrollTop)<28):true,inputValue:input?input.value:'',focused:document.activeElement===input};}
+  });
   const q=chatSearchTerm_();
   const sf=document.getElementById('customerChatStatusFilter');
   const statusFilter=String(sf&&sf.value||'');
@@ -1737,7 +1744,18 @@ function renderCustomerChats(){
   if(!list.length){c.innerHTML='<div class="customer-chat-empty">'+(q?'No matching customer conversations.':'No customer conversations yet. When a customer chats with McKenzie Customer Service, the conversation will appear here.')+'</div>';return;}
   c.innerHTML=list.map(renderAdminChat_).join('');
   bindAdminChatTyping_();
-  (list||[]).forEach(function(chat){var el=document.getElementById('adminChatTyping_'+String(chat.chatId));if(el)el.classList.toggle('show',!!chat.typingCustomer);});
+  (list||[]).forEach(function(chat){
+    const id=String(chat.chatId||'');
+    const el=document.getElementById('adminChatTyping_'+id);if(el)el.classList.toggle('show',!!chat.typingCustomer);
+    const state=saved[id];
+    const input=document.getElementById('adminChatInput_'+id);
+    const box=input ? input.closest('.customer-chat-card')?.querySelector('.customer-chat-messages') : null;
+    if(state){
+      if(input && state.inputValue && input.value!==state.inputValue)input.value=state.inputValue;
+      if(box){if(state.atBottom)box.scrollTop=box.scrollHeight;else box.scrollTop=Math.min(state.scrollTop,Math.max(0,box.scrollHeight-box.clientHeight));}
+      if(input && state.focused){try{input.focus({preventScroll:true});}catch(e){input.focus();}}
+    }
+  });
 }
 function renderAdminChat_(chat){
   const msgs=Array.isArray(chat.messages)?chat.messages:[];
@@ -1753,7 +1771,7 @@ function renderAdminChat_(chat){
   const solvedAge=solvedAt&&!isNaN(solvedAt.getTime())?Math.max(0,Date.now()-solvedAt.getTime()):0;
   if(status==='Solved' && solvedAge>=24*60*60*1000){ setTimeout(function(){autoCloseSolvedChat_(chat.chatId,chat);},0); }
   const replyDisabled=status!=='Open'?'disabled':'';
-  return '<article class="customer-chat-card" data-status="'+escAttr(status)+'"><div class="customer-chat-head"><div><div class="customer-chat-name">'+esc(chat.customerName||'Customer')+'</div><div class="customer-chat-meta">'+esc(chat.customerEmail||'')+(chat.orderId?' · Order #'+esc(chat.orderId):'')+'</div></div><div class="customer-chat-status-actions"><span class="customer-chat-status '+(chat.unreadForAdmin?'new':'')+'">'+esc(status.toUpperCase())+'</span><button type="button" '+(status==='Open'?'class="active"':'')+' onclick="setCustomerChatStatus_(\''+safeId+'\',\'Open\')">Open</button><button type="button" '+(status==='Solved'?'class="active"':'')+' onclick="setCustomerChatStatus_(\''+safeId+'\',\'Solved\')">Solve</button></div></div><div class="customer-chat-messages">'+(messages||'<div style="color:#806c65;font-size:12px;padding:20px">No messages yet.</div>')+'</div><div class="customer-chat-typing" id="adminChatTyping_'+safeId+'">Customer is typing…</div><div class="customer-chat-compose"><textarea id="adminChatInput_'+safeId+'" placeholder="'+(status==='Solved'?'This conversation is solved.':'Reply to customer…')+'" '+replyDisabled+'></textarea><button type="button" data-chat-id="'+safeId+'" '+replyDisabled+' onclick="adminSendChat(this.dataset.chatId)">Send</button></div></article>';
+  return '<article class="customer-chat-card" data-chat-id="'+safeId+'" data-status="'+escAttr(status)+'"><div class="customer-chat-head"><div><div class="customer-chat-name">'+esc(chat.customerName||'Customer')+'</div><div class="customer-chat-meta">'+esc(chat.customerEmail||'')+(chat.orderId?' · Order #'+esc(chat.orderId):'')+'</div></div><div class="customer-chat-status-actions"><span class="customer-chat-status '+(chat.unreadForAdmin?'new':'')+'">'+esc(status.toUpperCase())+'</span><button type="button" '+(status==='Open'?'class="active"':'')+' onclick="setCustomerChatStatus_(\''+safeId+'\',\'Open\')">Open</button><button type="button" '+(status==='Solved'?'class="active"':'')+' onclick="setCustomerChatStatus_(\''+safeId+'\',\'Solved\')">Solve</button></div></div><div class="customer-chat-messages">'+(messages||'<div style="color:#806c65;font-size:12px;padding:20px">No messages yet.</div>')+'</div><div class="customer-chat-typing" id="adminChatTyping_'+safeId+'">Customer is typing…</div><div class="customer-chat-compose"><textarea id="adminChatInput_'+safeId+'" placeholder="'+(status==='Solved'?'This conversation is solved.':'Reply to customer…')+'" '+replyDisabled+'></textarea><button type="button" data-chat-id="'+safeId+'" '+replyDisabled+' onclick="adminSendChat(this.dataset.chatId)">Send</button></div></article>';
 }
 
 let adminTypingTimers={};
@@ -1762,7 +1780,11 @@ function bindAdminChatTyping_(){document.querySelectorAll('[id^="adminChatInput_
 
 async function adminSendChat(chatId){
   const input=document.getElementById('adminChatInput_'+String(chatId));if(!input)return;const text=String(input.value||'').trim();if(!text)return;input.disabled=true;
-  try{const f=await adminFirebase_();if(!f.auth.currentUser)throw new Error('Please log in again.');const ref=f.doc(f.db,'supportChats',String(chatId));const snap=await f.getDoc(ref);if(!snap.exists())throw new Error('Chat not found.');const d=snap.data()||{};if(String(d.status||'Open')!=='Open')throw new Error('This conversation is solved.');const messages=Array.isArray(d.messages)?d.messages.slice():[];const now=new Date().toISOString();messages.push({senderType:'admin',text:text,createdAt:now});await f.updateDoc(ref,{messages:messages,updatedAt:now,lastActivityAt:now,lastSenderType:'admin',status:'Open',unreadForAdmin:false,unreadForCustomer:true,autoClosePending:false,typingAdmin:false});input.value='';}catch(e){alert(e&&e.message?e.message:'Unable to send message.');}finally{input.disabled=false;}}
+  const box=input.closest('.customer-chat-card')?.querySelector('.customer-chat-messages');
+  const now=new Date().toISOString();
+  const optimisticKey='admin|'+now+'|'+text;
+  if(box){const bubble=document.createElement('div');bubble.className='customer-chat-msg admin';bubble.dataset.optimisticKey=optimisticKey;bubble.innerHTML='<b>McKenzie Customer Service</b><br>'+esc(text)+'<div style="font-size:9px;opacity:.65;margin-top:3px">'+esc(new Date(now).toLocaleString())+'</div>';box.appendChild(bubble);box.scrollTop=box.scrollHeight;}
+  try{const f=await adminFirebase_();if(!f.auth.currentUser)throw new Error('Please log in again.');const ref=f.doc(f.db,'supportChats',String(chatId));const snap=await f.getDoc(ref);if(!snap.exists())throw new Error('Chat not found.');const d=snap.data()||{};if(String(d.status||'Open')!=='Open')throw new Error('This conversation is solved.');const messages=Array.isArray(d.messages)?d.messages.slice():[];messages.push({senderType:'admin',text:text,createdAt:now});await f.updateDoc(ref,{messages:messages,updatedAt:now,lastActivityAt:now,lastSenderType:'admin',status:'Open',unreadForAdmin:false,unreadForCustomer:true,autoClosePending:false,typingAdmin:false});input.value='';}catch(e){if(box){const bubble=Array.from(box.querySelectorAll('[data-optimistic-key]')).find(function(el){return el.dataset.optimisticKey===optimisticKey;});if(bubble)bubble.remove();}alert(e&&e.message?e.message:'Unable to send message.');}finally{input.disabled=false;}}
 
 async function setCustomerChatStatus_(chatId,status){
   status=String(status||'Open');
@@ -1832,7 +1854,14 @@ function removeBrandAsset(kind){
   if(kind==='background'){selectedBrandBackground=null;removeBrandBackgroundFlag=true;const f=document.getElementById('brandBackgroundFile');if(f)f.value='';const p=document.getElementById('brandBackgroundPreview');if(p){p.src='';p.style.display='none';}const b=document.getElementById('removeBrandBackgroundBtn');if(b)b.hidden=true;}
   const msg=document.getElementById('brandAssetsMsg');if(msg)msg.textContent=(kind==='logo'?'Logo':'Background')+' marked for removal. Click Save Website Branding to apply.';
 }
-function compressBrandImage(file,maxSide,quality){return new Promise(function(resolve,reject){if(!file)return resolve('');const r=new FileReader();r.onload=function(){const img=new Image();img.onload=function(){try{const scale=Math.min(1,maxSide/Math.max(img.width||1,img.height||1));const c=document.createElement('canvas');c.width=Math.max(1,Math.round((img.width||1)*scale));c.height=Math.max(1,Math.round((img.height||1)*scale));const ctx=c.getContext('2d',{alpha:false});ctx.fillStyle='#fff';ctx.fillRect(0,0,c.width,c.height);ctx.drawImage(img,0,0,c.width,c.height);let q=quality||.72;let out=c.toDataURL('image/jpeg',q);while(out.length>700000&&q>.35){q-=.06;out=c.toDataURL('image/jpeg',q)}if(out.length>360000)reject(new Error('Image is still too large after compression. Please choose a smaller image.'));else resolve(out)}catch(e){reject(e)}};img.onerror=function(){reject(new Error('Unable to read the selected image.'))};img.src=r.result};r.onerror=reject;r.readAsDataURL(file)})}
+function compressBrandImage(file,maxSide,quality){return new Promise(function(resolve,reject){if(!file)return resolve('');const r=new FileReader();r.onload=function(){const img=new Image();img.onload=function(){try{const scale=Math.min(1,maxSide/Math.max(img.width||1,img.height||1));const c=document.createElement('canvas');c.width=Math.max(1,Math.round((img.width||1)*scale));c.height=Math.max(1,Math.round((img.height||1)*scale));const ctx=c.getContext('2d',{alpha:true});ctx.clearRect(0,0,c.width,c.height);ctx.drawImage(img,0,0,c.width,c.height);let out;if(file===selectedBrandLogo){
+          const data=ctx.getImageData(0,0,c.width,c.height);const px=data.data,w=c.width,h=c.height;const seen=new Uint8Array(w*h),queue=[];
+          function nearWhite(i){const a=px[i+3];return a>0&&px[i]>=245&&px[i+1]>=245&&px[i+2]>=245;}
+          for(let x=0;x<w;x++){queue.push(x);queue.push((h-1)*w+x);}for(let y=1;y<h-1;y++){queue.push(y*w);queue.push(y*w+w-1);}
+          let qi=0;while(qi<queue.length){const p=queue[qi++];if(p<0||p>=w*h||seen[p]||!nearWhite(p*4))continue;seen[p]=1;px[p*4+3]=0;const x=p%w,y=Math.floor(p/w);if(x>0)queue.push(p-1);if(x<w-1)queue.push(p+1);if(y>0)queue.push(p-w);if(y<h-1)queue.push(p+w);}
+          ctx.putImageData(data,0,0);out=c.toDataURL('image/png');
+        }else{ctx.globalCompositeOperation='destination-over';ctx.fillStyle='#fff';ctx.fillRect(0,0,c.width,c.height);ctx.globalCompositeOperation='source-over';let q=quality||.68;out=c.toDataURL('image/jpeg',q);while(out.length>700000&&q>.35){q-=.06;out=c.toDataURL('image/jpeg',q);}}if(out.length>700000)reject(new Error('Image is still too large after compression. Please choose a smaller image.'));else resolve(out)}catch(e){reject(e)}};img.onerror=function(){reject(new Error('Unable to read the selected image.'))};img.src=r.result};r.onerror=reject;r.readAsDataURL(file)})}
+
 async function brandPatch(fields){
   const idToken=token||sessionStorage.getItem('mck_admin_token')||'';if(!idToken)throw new Error('Admin session expired. Please log in again.');
   const r=await fetch('https://firestore.googleapis.com/v1/projects/mckenzie-ramen-house/databases/(default)/documents/brandAssets/main',{method:'PATCH',headers:{'Authorization':'Bearer '+idToken,'Content-Type':'application/json'},body:JSON.stringify({fields})});
