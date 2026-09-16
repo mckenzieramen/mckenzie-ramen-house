@@ -3276,6 +3276,35 @@ body.quick-loading {
 @media(min-width:601px){.sticky-search-button{right:116px;top:14px;width:40px;height:40px;font-size:22px}}
 </style>
 
+
+<style id="mckenzie-v34-centered-hero">
+/* V34: restore the original centered hero composition. Keep the uploaded
+   hero/background artwork intact; only correct the layout around it. */
+.hero{display:flex!important;justify-content:center!important;align-items:center!important;text-align:center!important;min-height:720px!important;overflow:hidden!important;background-size:cover!important;background-position:center center!important;background-repeat:no-repeat!important;}
+.hero-content{position:relative!important;z-index:15!important;width:min(900px,92%)!important;margin:0 auto!important;padding:34px 20px 46px!important;display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;box-sizing:border-box!important;transform:none!important;}
+.hero-logo{position:relative!important;inset:auto!important;display:block!important;width:min(360px,42vw)!important;height:auto!important;max-width:100%!important;max-height:250px!important;object-fit:contain!important;margin:0 auto 14px!important;transform:none!important;order:1!important;}
+.hero-title{position:relative!important;order:2!important;margin:0!important;text-align:center!important;line-height:.94!important;font-size:clamp(44px,5.2vw,72px)!important;letter-spacing:-1.5px!important;text-shadow:0 5px 18px rgba(0,0,0,.55)!important;}
+.hero-tagline{order:3!important;margin-top:14px!important;max-width:520px!important;text-align:center!important;}
+.hero-button{order:4!important;margin-top:22px!important;}
+.hero-navigation{order:5!important;justify-content:center!important;align-items:center!important;margin-top:12px!important;}
+@media(max-width:700px){
+ .hero{min-height:680px!important;height:auto!important;padding:28px 0 40px!important;}
+ .hero-content{width:94%!important;padding:24px 12px 38px!important;margin:0 auto!important;}
+ .hero-logo{width:min(250px,62vw)!important;max-height:190px!important;margin-bottom:12px!important;}
+ .hero-title{font-size:clamp(40px,12vw,54px)!important;line-height:.92!important;letter-spacing:-1px!important;}
+ .hero-tagline{font-size:9px!important;letter-spacing:1.6px!important;max-width:310px!important;line-height:1.65!important;margin-top:12px!important;}
+ .hero-button{margin-top:18px!important;padding:12px 22px!important;font-size:12px!important;}
+ .hero-navigation{gap:14px!important;max-width:340px!important;margin-top:10px!important;flex-wrap:wrap!important;}
+ .hero-navigation a{font-size:10px!important;letter-spacing:.5px!important;}
+}
+@media(max-width:420px){
+ .hero{min-height:650px!important;}
+ .hero-logo{width:220px!important;max-height:170px!important;}
+ .hero-content{padding-top:18px!important;}
+ .hero-title{font-size:42px!important;}
+}
+</style>
+
 </head>
 
 
