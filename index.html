@@ -4146,14 +4146,6 @@ body:not(.mck-customer-chat-open) .sticky-cart-button{visibility:visible!importa
 
     <div class="hero-navigation">
 
-      <a
-        href="#home"
-        class="active">
-
-        Home
-
-      </a>
-
       <a href="#menu">
 
         Menu
@@ -10775,6 +10767,109 @@ body:not(.mck-customer-chat-open) .account-menu-wrap,body:not(.mck-customer-chat
   .sticky-search-button .mck-svg-icon,.sticky-cart-icon .mck-svg-icon{width:18px!important;height:18px!important;}
 }
 </style>
+
+<style id="mck-v49-exact-header-layout">
+/* V49: exact requested header — Logo | Menu About Contact | Search | Cart | Hamburger. */
+.site-sticky-nav{
+  position:fixed !important; top:0 !important; left:0 !important; right:0 !important;
+  height:64px !important; min-height:64px !important; box-sizing:border-box !important;
+  padding:6px 148px 6px 104px !important;
+  display:flex !important; align-items:center !important; justify-content:flex-start !important;
+  z-index:10000030 !important; transform:none !important; opacity:1 !important; pointer-events:auto !important;
+  background:rgba(39,7,6,.96) !important; border-bottom:1px solid rgba(233,173,53,.85) !important;
+}
+.site-sticky-logo{
+  display:block !important; left:14px !important; top:50% !important; transform:translateY(-50%) !important;
+  width:70px !important; height:54px !important; object-fit:contain !important;
+}
+.site-sticky-nav-inner{
+  width:auto !important; max-width:none !important; flex:0 0 auto !important;
+  display:flex !important; align-items:center !important; justify-content:flex-start !important;
+  gap:22px !important; margin:0 !important; padding:0 !important;
+}
+.site-sticky-nav a{font-size:12px !important; letter-spacing:.9px !important; padding:8px 0 !important; white-space:nowrap !important;}
+.sticky-search-bar{
+  position:absolute !important; left:350px !important; right:154px !important; top:10px !important;
+  width:auto !important; min-width:0 !important; max-width:none !important; height:44px !important;
+  box-sizing:border-box !important;
+}
+.sticky-cart-button{
+  position:fixed !important; right:76px !important; top:10px !important;
+  width:44px !important; height:44px !important; min-width:44px !important; min-height:44px !important;
+  z-index:10000045 !important;
+}
+.account-menu-wrap{
+  display:block !important; visibility:visible !important; opacity:1 !important; pointer-events:auto !important;
+  position:fixed !important; right:14px !important; left:auto !important; top:10px !important;
+  width:44px !important; height:44px !important; z-index:10000046 !important; margin:0 !important;
+}
+.account-menu-button{
+  display:flex !important; width:44px !important; height:44px !important; min-width:44px !important; min-height:44px !important;
+  align-items:center !important; justify-content:center !important; margin:0 !important;
+}
+.account-icon-person{display:none !important;}.account-icon-lines{display:flex !important;}
+.account-icon-lines i{width:18px !important;height:2px !important;}
+#mobileSiteNavButton{display:none !important;}
+/* The hero navigation is a secondary content shortcut; keep only Menu/About/Contact. */
+.hero-navigation a[href="#home"]{display:none !important;}
+@media (max-width:900px){
+  .site-sticky-nav{padding-left:82px !important;padding-right:138px !important;}
+  .site-sticky-logo{left:10px !important;width:60px !important;height:50px !important;}
+  .site-sticky-nav-inner{gap:14px !important;}
+  .site-sticky-nav a{font-size:10px !important;letter-spacing:.5px !important;}
+  .sticky-search-bar{left:290px !important;right:142px !important;height:40px !important;top:12px !important;}
+  .sticky-cart-button{right:70px !important;top:11px !important;width:40px !important;height:40px !important;}
+  .account-menu-wrap{right:12px !important;top:11px !important;width:40px !important;height:40px !important;}
+  .account-menu-button{width:40px !important;height:40px !important;}
+}
+@media (max-width:700px){
+  .site-sticky-nav{height:58px !important;min-height:58px !important;padding:7px 116px 7px 56px !important;}
+  .site-sticky-logo{left:7px !important;width:42px !important;height:40px !important;}
+  .site-sticky-nav-inner{gap:9px !important;overflow:visible !important;}
+  .site-sticky-nav a{font-size:8px !important;letter-spacing:.25px !important;}
+  .sticky-search-bar{left:220px !important;right:104px !important;top:12px !important;height:34px !important;padding:0 8px !important;gap:5px !important;}
+  .sticky-search-icon-wrap{flex-basis:16px !important;}.sticky-search-icon-wrap .mck-svg-icon{width:16px !important;height:16px !important;}
+  #stickyMenuSearchInput{font-size:11px !important;}.sticky-search-bar input::placeholder{font-size:10px !important;}
+  .sticky-cart-button{right:58px !important;top:11px !important;width:36px !important;height:36px !important;}
+  .account-menu-wrap{right:8px !important;top:11px !important;width:36px !important;height:36px !important;}
+  .account-menu-button{width:36px !important;height:36px !important;}
+}
+@media (max-width:480px){
+  .site-sticky-nav{padding-left:48px !important;padding-right:102px !important;}
+  .site-sticky-logo{left:5px !important;width:36px !important;height:35px !important;}
+  .site-sticky-nav-inner{gap:7px !important;}
+  .site-sticky-nav a{font-size:7.2px !important;}
+  .sticky-search-bar{left:160px !important;right:94px !important;width:auto !important;min-width:0 !important;height:32px !important;top:13px !important;}
+  #stickyMenuSearchInput{font-size:10px !important;}.sticky-search-bar input::placeholder{font-size:9px !important;}
+  .sticky-cart-button{right:53px !important;width:34px !important;height:34px !important;top:12px !important;}
+  .account-menu-wrap{right:7px !important;top:12px !important;width:34px !important;height:34px !important;}
+  .account-menu-button{width:34px !important;height:34px !important;}
+}
+@media (max-width:390px){
+  .site-sticky-nav{padding-left:43px !important;padding-right:95px !important;}
+  .site-sticky-logo{left:4px !important;width:33px !important;height:32px !important;}
+  .site-sticky-nav-inner{gap:5px !important;}
+  .site-sticky-nav a{font-size:6.7px !important;}
+  .sticky-search-bar{left:145px !important;right:88px !important;}
+  .sticky-cart-button{right:49px !important;width:32px !important;height:32px !important;top:13px !important;}
+  .account-menu-wrap{right:6px !important;top:13px !important;width:32px !important;height:32px !important;}
+  .account-menu-button{width:32px !important;height:32px !important;}
+}
+</style>
+<script id="mck-v49-header-state-fix">
+(function(){
+  function forceHeader(){
+    var nav=document.getElementById('siteStickyNav');
+    if(nav){nav.classList.add('show');nav.style.transform='translateY(0)';nav.style.opacity='1';nav.style.pointerEvents='auto';}
+    var home=document.querySelector('.hero-navigation a[href="#home"]'); if(home) home.style.display='none';
+    var controls=document.querySelectorAll('.sticky-search-bar,.sticky-cart-button,.account-menu-wrap');
+    controls.forEach(function(el){el.style.removeProperty('visibility');el.style.removeProperty('opacity');el.style.removeProperty('pointer-events');});
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',forceHeader,{once:true});else forceHeader();
+  window.addEventListener('resize',forceHeader);
+})();
+</script>
+
 </html>
 
 <style id="mck-v21-organized-header-icons">
