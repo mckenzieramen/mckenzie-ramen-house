@@ -512,19 +512,16 @@
     if (order.orderStatus !== "Delivered" || !order.customerConfirmed) throw makeError("You can review this order only after it has been delivered and received.");
     const reviews = await getReviewsForOrder(orderId,u.uid);
     const byProduct = {};
-    reviews.forEach(r=>{const pid=String(r.productId);(byProduct[pid]||(byProduct[pid]=[])).push(r);});
-    const items=[];
-    order.items.forEach(item=>{
-      const pid=String(item.productId||"");
-      const qty=Math.max(1,Number(item.quantity||1));
-      const existing=(byProduct[pid]||[]).slice().sort((a,b)=>String(a.submittedAt||"").localeCompare(String(b.submittedAt||"")));
-      for(let unit=0;unit<qty;unit++){
-        const r=existing[unit]||null;
-        items.push({productId:pid,productName:item.productName,quantity:qty,unitIndex:unit+1,
-          reviewed:!!r,existingRating:r?.rating || 0,existingReview:r?.review || ""});
-      }
-    });
-    return {success:true,orderId:order.orderId,customerName:order.customerName || "Customer",items,completed:items.length>0 && items.every(i=>i.reviewed)};
+    reviews.forEach(r=>byProduct[String(r.productId)] = r);
+    return {
+      success:true, orderId:order.orderId, customerName:order.customerName || "Customer",
+      items:order.items.map(item=>({
+        productId:item.productId, productName:item.productName, quantity:item.quantity,
+        reviewed:!!byProduct[item.productId], existingRating:byProduct[item.productId]?.rating || 0,
+        existingReview:byProduct[item.productId]?.review || ""
+      })),
+      completed:order.items.every(item=>!!byProduct[item.productId])
+    };
   }
 
   async function submitReview(userId, orderId, productId, rating, review) {
@@ -535,12 +532,13 @@
     if (!Number.isFinite(rating) || rating<1 || rating>5) throw makeError("Please select a rating from 1 to 5 stars.");
     if (review.length>1000) throw makeError("Review is too long. Please keep it under 1000 characters.");
     const form = await getReviewForm(u.uid,orderId);
-    const item = form.items.find(i=>String(i.productId)===String(productId) && !i.reviewed);
-    if (!item) throw makeError("That menu item was not part of this order or all purchased units are already reviewed.");
+    const item = form.items.find(i=>String(i.productId)===String(productId));
+    if (!item) throw makeError("That menu item was not part of this order.");
+    if (item.reviewed) throw makeError("You already reviewed this menu item.");
     const id = "REV-" + Date.now() + "-" + Math.floor(Math.random()*10000);
     await f.setDoc(f.doc(f.db,"reviews",id), {
       reviewId:id, orderId:String(orderId), customerId:u.uid, productId:String(productId),
-      productName:item.productName, rating, review, unitIndex:Number(item.unitIndex||1), customerName:form.customerName || "Customer",
+      productName:item.productName, rating, review, customerName:form.customerName || "Customer",
       submittedAt:isoNow(), status:"Published"
     });
     return {success:true,message:"Your review has been submitted.",reviewId:id};
@@ -548,13 +546,9 @@
 
   async function getPublishedReviews() {
     const f = await READY;
-    // Query only Published reviews. This respects Firestore rules that may
-    // allow public reads for published documents while blocking collection-
-    // wide reads of private/draft reviews.
-    const published = await getCollection("reviews", f.where("status", "==", "Published"));
-    return published
-      .filter(r=>String(r.status||"Published").toLowerCase()==="published")
-      .sort((a,b)=>String(b.submittedAt||"").localeCompare(String(a.submittedAt||"")))
+    const list = await getCollection("reviews");
+    return list.filter(r=>String(r.status||"Published").toLowerCase()==="published")
+      .sort((a,b)=>String(b.submittedAt||"").localeCompare(String(a.submittedAt||""))).slice(0,12)
       .map(r=>({reviewId:r.reviewId||r.id,orderId:r.orderId,productId:r.productId,productName:r.productName,rating:r.rating,review:r.review,customerName:r.customerName,submittedAt:cleanTimestamp(r.submittedAt)}));
   }
 
@@ -589,28 +583,11 @@
     const o=snap.data();
     if(String(o.orderStatus)!=="Delivered") throw makeError("The order has not been marked as delivered yet.");
     const now=isoNow();
-    await f.updateDoc(ref,{customerConfirmed:!!received,confirmedAt:received?now:"",closed:!!received,receiptPromptDismissed:true,receiptPromptDismissedAt:now});
+    await f.updateDoc(ref,{customerConfirmed:!!received,confirmedAt:received?now:"",closed:!!received});
     if(notificationId) {
       try { await markNotificationRead(u.uid,notificationId); } catch(e) {}
     }
     return {success:true,received:!!received,closed:!!received,contact:{phone:"09123456789",email:"Mckenzieramenhouse@gmail.com",facebook:"Mckenzie Ramen House"}};
-  }
-
-  async function dismissReceiptPrompt(userId, orderId, notificationId) {
-    const f = await READY;
-    const u = await currentUser(true);
-    if (u.uid !== String(userId)) throw makeError("Invalid customer account.");
-    const ref=f.doc(f.db,"orders",String(orderId));
-    const snap=await f.getDoc(ref);
-    if(!snap.exists() || String(snap.data().userId)!==u.uid) throw makeError("Order not found.");
-    const o=snap.data();
-    if(String(o.orderStatus)!=="Delivered") throw makeError("The order has not been marked as delivered yet.");
-    const now=isoNow();
-    await f.updateDoc(ref,{receiptPromptDismissed:true,receiptPromptDismissedAt:now});
-    if(notificationId) {
-      try { await markNotificationRead(u.uid,notificationId); } catch(e) {}
-    }
-    return {success:true,dismissed:true};
   }
 
   async function getAdminProducts() {
@@ -658,10 +635,9 @@
     const notes=await getCollection("notifications");
     orders.forEach(o=>{
       const rs=reviews.filter(r=>String(r.orderId)===o.orderId);
-      const reviewCounts={};
-      rs.forEach(r=>{const pid=String(r.productId||"");reviewCounts[pid]=(reviewCounts[pid]||0)+1;});
-      o.reviewTotal=o.items.reduce((sum,i)=>sum+Math.max(1,Number(i.quantity||1)),0);
-      o.reviewedCount=o.items.reduce((sum,i)=>sum+Math.min(Math.max(1,Number(i.quantity||1)),Number(reviewCounts[String(i.productId||"")]||0)),0);
+      const productIds=new Set(rs.map(r=>String(r.productId)));
+      o.reviewTotal=o.items.length;
+      o.reviewedCount=o.items.filter(i=>productIds.has(String(i.productId))).length;
       o.reviewCompleted=o.reviewTotal>0 && o.reviewedCount>=o.reviewTotal;
       o.reviewRequested=notes.some(n=>String(n.orderId)===o.orderId && n.type==="REVIEW_REQUEST");
     });
@@ -748,11 +724,7 @@
     if(order.orderStatus!=="Delivered") throw makeError("The customer can only be notified after the order is Delivered.");
     if(!order.customerConfirmed) throw makeError("Wait for the customer to confirm that the order was received before sending the review request.");
     const reviews=await getCollection("reviews");
-    const complete=(Array.isArray(order.items)?order.items:[]).every(item=>{
-      const qty=Math.max(1,Number(item.quantity||1));
-      const count=reviews.filter(r=>String(r.orderId)===String(orderId)&&String(r.productId)===String(item.productId)).length;
-      return count>=qty;
-    });
+    const complete=(Array.isArray(order.items)?order.items:[]).every(item=>reviews.some(r=>String(r.orderId)===String(orderId)&&String(r.productId)===String(item.productId)));
     if(complete) return {success:true,sent:false,completed:true,message:"Customer has already reviewed this order."};
     const notes=await getCollection("notifications");
     const existing=notes.find(n=>String(n.orderId)===String(orderId)&&n.type==="REVIEW_REQUEST"&&!n.readAt);
@@ -795,7 +767,6 @@
       case "getCustomerPaymentHistory": return (await getOrdersForUser(args[0])).map(o=>({orderId:o.orderId,total:o.total,paymentMethod:o.paymentMethod,paymentStatus:o.paymentStatus,orderStatus:o.orderStatus,orderedAt:o.orderedAt}));
       case "confirmCustomerOrderReceived": return respondReceipt(args[0],args[1],true,"");
       case "respondCustomerReceipt": return respondReceipt(args[0],args[1],String(args[2]).toLowerCase()==="true",args[3]);
-      case "dismissReceiptPrompt": return dismissReceiptPrompt(args[0],args[1],args[2]);
       case "getCustomerReviewForm": return getReviewForm(args[0],args[1]);
       case "submitCustomerReview": return submitReview(args[0],args[1],args[2],args[3],args[4]);
       case "getPublishedReviews": return getPublishedReviews();
