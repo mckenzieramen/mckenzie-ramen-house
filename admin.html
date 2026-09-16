@@ -1828,7 +1828,7 @@ function startCustomerChatsRealtime_(){
         return String(old.status||'Open')!==String(now.status||'Open') || String(old.customerName||'')!==String(now.customerName||'') || String(old.customerEmail||'')!==String(now.customerEmail||'') || String(old.orderId||'')!==String(now.orderId||'');
       });
       var nextChats=snap.docs.map(function(d){return Object.assign({chatId:d.id},d.data()||{});}).sort(function(a,b){return String(b.updatedAt||b.createdAt||'').localeCompare(String(a.updatedAt||a.createdAt||''));});
-      var shouldRing=changes.some(function(ch){if(ch.type==='removed')return false;var d=ch.doc.data()||{};return !!d.unreadForAdmin&&String(d.lastSenderType||'')==='customer';});
+      var shouldRing=changes.some(function(ch){if(ch.type==='removed')return false;var d=ch.doc.data()||{};return !!d.unreadForAdmin&&String(d.lastSenderType||'')==='customer'&&String(d.status||'Open')==='Open';});
       if(shouldRing)playAdminBellNotification_();
       updateChatBadge_(nextChats);
       var notice=document.getElementById('customerChatNotice');if(notice)notice.textContent=nextChats.length?('Live • '+nextChats.length+' conversation'+(nextChats.length===1?'':'s')):'No customer conversations yet.';
@@ -1857,7 +1857,7 @@ function startCustomerChatsRealtime_(){
   }).catch(function(err){console.warn('Customer chat realtime setup failed:',err);});
 }
 async function loadCustomerChatsBadge_(){try{const f=await adminFirebase_();if(!f.auth.currentUser)return;const snap=await f.getDocs(f.collection(f.db,'supportChats'));updateChatBadge_(snap.docs.map(d=>d.data()||{}));}catch(e){}}
-function updateChatBadge_(chats){const b=document.getElementById('chatBadge');if(!b)return;const n=(chats||[]).filter(c=>c.unreadForAdmin).length;b.textContent=n;b.style.display=n?'inline-block':'none';}
+function updateChatBadge_(chats){const b=document.getElementById('chatBadge');if(!b)return;const n=(chats||[]).filter(function(c){return String(c.status||'Open')==='Open';}).length;b.textContent=n;b.style.display=n?'inline-block':'none';}
 function updateAdminTypingIndicator_(chatId, chat){
   var el=document.getElementById('adminTyping_'+String(chatId));
   if(!el)return;
