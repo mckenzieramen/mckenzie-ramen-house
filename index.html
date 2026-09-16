@@ -10697,6 +10697,144 @@ body.mck-customer-chat-open .sticky-search-button,body.mck-customer-chat-open .s
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind);else bind();
 })();
 </script>
+
+
+<style id="mck-v50-search-bar-final">
+/* V50: final header search treatment. Keep the real search field visible.
+   This intentionally overrides older compact icon-only rules that targeted
+   the same element through .sticky-search-button. */
+.site-sticky-nav .sticky-search-bar#stickySearchButton{
+  display:flex !important;
+  align-items:center !important;
+  justify-content:flex-start !important;
+  position:absolute !important;
+  z-index:10000044 !important;
+  box-sizing:border-box !important;
+  height:44px !important;
+  min-height:44px !important;
+  min-width:220px !important;
+  width:auto !important;
+  left:350px !important;
+  right:154px !important;
+  top:10px !important;
+  padding:0 15px !important;
+  gap:10px !important;
+  border:1.5px solid rgba(246,195,76,.95) !important;
+  border-radius:999px !important;
+  background:rgba(255,250,242,.97) !important;
+  color:#5f080c !important;
+  box-shadow:0 8px 24px rgba(0,0,0,.22),inset 0 0 0 1px rgba(255,255,255,.35) !important;
+  cursor:text !important;
+}
+.site-sticky-nav .sticky-search-bar#stickySearchButton .sticky-search-icon-wrap{
+  display:flex !important;
+  flex:0 0 22px !important;
+  width:22px !important;
+  height:22px !important;
+  align-items:center !important;
+  justify-content:center !important;
+  color:#6f0c12 !important;
+}
+.site-sticky-nav .sticky-search-bar#stickySearchButton .sticky-search-icon-wrap .mck-svg-icon{
+  display:block !important;
+  width:21px !important;
+  height:21px !important;
+}
+.site-sticky-nav .sticky-search-bar#stickySearchButton #stickyMenuSearchInput{
+  display:block !important;
+  flex:1 1 auto !important;
+  width:auto !important;
+  min-width:0 !important;
+  height:100% !important;
+  border:0 !important;
+  outline:0 !important;
+  background:transparent !important;
+  color:#4b1618 !important;
+  font-size:14px !important;
+  font-weight:650 !important;
+  padding:0 !important;
+  margin:0 !important;
+  box-shadow:none !important;
+  -webkit-appearance:none !important;
+  appearance:none !important;
+}
+.site-sticky-nav .sticky-search-bar#stickySearchButton #stickyMenuSearchInput::placeholder{
+  color:#8b716b !important;
+  opacity:1 !important;
+}
+/* Keep the three controls visually separated: Search | Cart | Hamburger. */
+.site-sticky-nav .sticky-cart-button{
+  right:76px !important;
+  top:10px !important;
+  width:44px !important;
+  height:44px !important;
+  min-width:44px !important;
+  min-height:44px !important;
+}
+.site-sticky-nav .account-menu-wrap{
+  right:14px !important;
+  top:10px !important;
+  width:44px !important;
+  height:44px !important;
+}
+.site-sticky-nav .account-menu-button{
+  width:44px !important;
+  height:44px !important;
+  min-width:44px !important;
+  min-height:44px !important;
+}
+@media(max-width:900px){
+  .site-sticky-nav{padding-left:82px !important;padding-right:132px !important;}
+  .site-sticky-nav .sticky-search-bar#stickySearchButton{
+    left:290px !important; right:136px !important; top:11px !important; height:40px !important; min-height:40px !important;
+  }
+  .site-sticky-nav .sticky-cart-button{right:68px !important;top:11px !important;width:40px !important;height:40px !important;min-width:40px !important;min-height:40px !important;}
+  .site-sticky-nav .account-menu-wrap{right:12px !important;top:11px !important;width:40px !important;height:40px !important;}
+  .site-sticky-nav .account-menu-button{width:40px !important;height:40px !important;min-width:40px !important;min-height:40px !important;}
+}
+@media(max-width:700px){
+  .site-sticky-nav{height:58px !important;min-height:58px !important;padding:7px 108px 7px 52px !important;}
+  .site-sticky-nav .sticky-search-bar#stickySearchButton{
+    left:210px !important; right:98px !important; top:11px !important; height:36px !important; min-height:36px !important;
+    min-width:150px !important; padding:0 10px !important; gap:6px !important;
+  }
+  .site-sticky-nav .sticky-search-bar#stickySearchButton .sticky-search-icon-wrap{flex-basis:18px !important;width:18px !important;height:18px !important;}
+  .site-sticky-nav .sticky-search-bar#stickySearchButton .sticky-search-icon-wrap .mck-svg-icon{width:18px !important;height:18px !important;}
+  .site-sticky-nav .sticky-search-bar#stickySearchButton #stickyMenuSearchInput{font-size:11px !important;}
+  .site-sticky-nav .sticky-search-bar#stickySearchButton #stickyMenuSearchInput::placeholder{font-size:10px !important;}
+  .site-sticky-nav .sticky-cart-button{right:56px !important;top:11px !important;width:36px !important;height:36px !important;min-width:36px !important;min-height:36px !important;}
+  .site-sticky-nav .account-menu-wrap{right:8px !important;top:11px !important;width:36px !important;height:36px !important;}
+  .site-sticky-nav .account-menu-button{width:36px !important;height:36px !important;min-width:36px !important;min-height:36px !important;}
+}
+@media(max-width:480px){
+  .site-sticky-nav{padding-left:44px !important;padding-right:94px !important;}
+  .site-sticky-logo{left:4px !important;width:34px !important;height:34px !important;}
+  .site-sticky-nav-inner{gap:7px !important;}
+  .site-sticky-nav a{font-size:7.5px !important;letter-spacing:.2px !important;}
+  .site-sticky-nav .sticky-search-bar#stickySearchButton{left:154px !important;right:91px !important;height:34px !important;min-height:34px !important;min-width:120px !important;top:12px !important;padding:0 8px !important;}
+  .site-sticky-nav .sticky-search-bar#stickySearchButton .sticky-search-icon-wrap{flex-basis:16px !important;width:16px !important;height:16px !important;}
+  .site-sticky-nav .sticky-search-bar#stickySearchButton .sticky-search-icon-wrap .mck-svg-icon{width:16px !important;height:16px !important;}
+  .site-sticky-nav .sticky-search-bar#stickySearchButton #stickyMenuSearchInput{font-size:10px !important;}
+  .site-sticky-nav .sticky-search-bar#stickySearchButton #stickyMenuSearchInput::placeholder{font-size:9px !important;}
+  .site-sticky-nav .sticky-cart-button{right:51px !important;top:12px !important;width:34px !important;height:34px !important;min-width:34px !important;min-height:34px !important;}
+  .site-sticky-nav .account-menu-wrap{right:7px !important;top:12px !important;width:34px !important;height:34px !important;}
+  .site-sticky-nav .account-menu-button{width:34px !important;height:34px !important;min-width:34px !important;min-height:34px !important;}
+}
+@media(max-width:390px){
+  .site-sticky-nav{padding-left:40px !important;padding-right:90px !important;}
+  .site-sticky-logo{left:3px !important;width:31px !important;height:31px !important;}
+  .site-sticky-nav-inner{gap:5px !important;}
+  .site-sticky-nav a{font-size:7px !important;letter-spacing:.15px !important;}
+  .site-sticky-nav .sticky-search-bar#stickySearchButton{left:143px !important;right:86px !important;min-width:108px !important;height:32px !important;min-height:32px !important;top:13px !important;padding:0 7px !important;gap:4px !important;}
+  .site-sticky-nav .sticky-search-bar#stickySearchButton .sticky-search-icon-wrap{flex-basis:15px !important;width:15px !important;height:15px !important;}
+  .site-sticky-nav .sticky-search-bar#stickySearchButton .sticky-search-icon-wrap .mck-svg-icon{width:15px !important;height:15px !important;}
+  .site-sticky-nav .sticky-search-bar#stickySearchButton #stickyMenuSearchInput{font-size:9.5px !important;}
+  .site-sticky-nav .sticky-search-bar#stickySearchButton #stickyMenuSearchInput::placeholder{font-size:8.5px !important;}
+  .site-sticky-nav .sticky-cart-button{right:47px !important;top:13px !important;width:32px !important;height:32px !important;min-width:32px !important;min-height:32px !important;}
+  .site-sticky-nav .account-menu-wrap{right:6px !important;top:13px !important;width:32px !important;height:32px !important;}
+  .site-sticky-nav .account-menu-button{width:32px !important;height:32px !important;min-width:32px !important;min-height:32px !important;}
+}
+</style>
 </body>
 
 <style id="mck-v32-polish-final">
