@@ -7,9 +7,6 @@
   <base target="_top">
 
   <title>Mckenzie Ramen House</title>
-  <link rel="icon" type="image/webp" href="favicon.webp?v=47">
-  <link rel="apple-touch-icon" href="favicon.webp?v=47">
-
 
   <!-- Firebase standalone bridge for GitHub Pages. This creates the
        google.script.run compatibility layer used by the existing customer UI. -->
@@ -3636,9 +3633,12 @@ body:not(.mck-customer-chat-open) .sticky-cart-button{visibility:visible!importa
   <span class="sticky-cart-icon">🛒</span>
   <span id="stickyCartCount" class="sticky-cart-count">0</span>
 </button>
-<button type="button" id="stickySearchButton" class="sticky-search-button" aria-label="Search menu" title="Search menu" onclick="openMenuSearch_()">
-  <span aria-hidden="true">⌕</span>
-</button>
+<div id="stickySearchButton" class="sticky-search-button sticky-search-bar" role="search" aria-label="Search menu">
+  <span class="sticky-search-icon-wrap" aria-hidden="true">
+    <svg class="mck-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6.5"></circle><path d="m16 16 4.2 4.2"></path></svg>
+  </span>
+  <input id="stickyMenuSearchInput" type="search" inputmode="search" autocomplete="off" placeholder="Search ramen, dishes, or more…" aria-label="Search ramen, dishes, or more">
+</div>
 
 <!-- =======================================================
      ACCOUNT MENU
@@ -4075,7 +4075,6 @@ body:not(.mck-customer-chat-open) .sticky-cart-button{visibility:visible!importa
        title="Go to Home"
        onclick="goToHomeFromLogo_();">
   <nav class="site-sticky-nav-inner">
-    <a href="#home" data-section="home">Home</a>
     <a href="#menu" data-section="menu">Menu</a>
     <a href="#about" data-section="about">About</a>
     <a href="#contact" data-section="contact">Contact</a>
@@ -10584,128 +10583,128 @@ body.mck-customer-chat-open .sticky-search-button,body.mck-customer-chat-open .s
 })();
 </script>
 
-<style id="mck-v47-sticky-header-layout">
-/* V47: Clean header zones — NAV | SEARCH | CART | HAMBURGER.
-   The hamburger remains the existing functional account control. */
-.site-sticky-nav{
-  justify-content:flex-start!important;
-  padding-left:118px!important;
-  padding-right:340px!important;
-  overflow:visible!important;
-}
+<style id="mck-v48-header-search-layout">
+/* V48: premium header layout — Menu/About/Contact + full search + spaced Cart + Hamburger. */
 .site-sticky-nav-inner{
-  width:auto!important;
-  max-width:none!important;
-  margin:0!important;
-  justify-content:flex-start!important;
-  gap:24px!important;
-  overflow:visible!important;
-  flex:0 1 auto!important;
+  justify-content:flex-start !important;
+  gap:24px !important;
+  padding-left:74px !important;
+  padding-right:0 !important;
+  width:auto !important;
+  max-width:none !important;
 }
-.site-sticky-nav a{white-space:nowrap!important;}
-.sticky-search-button{
-  position:fixed!important;
-  top:9px!important;
-  right:170px!important;
-  width:150px!important;
-  height:48px!important;
-  min-width:150px!important;
-  min-height:48px!important;
-  border:2px solid rgba(233,173,53,.95)!important;
-  border-radius:999px!important;
-  background:rgba(58,7,9,.92)!important;
-  color:#ffd66a!important;
-  display:flex!important;
-  align-items:center!important;
-  justify-content:flex-start!important;
-  gap:9px!important;
-  padding:0 16px!important;
-  box-sizing:border-box!important;
-  z-index:1000011!important;
-  box-shadow:0 8px 22px rgba(0,0,0,.32),inset 0 0 0 1px rgba(255,214,106,.08)!important;
+.site-sticky-nav-inner a{font-size:12px !important;}
+.sticky-search-bar{
+  position:fixed !important;
+  z-index:1000010 !important;
+  top:10px !important;
+  right:190px !important;
+  width:min(390px,38vw) !important;
+  height:42px !important;
+  min-width:260px !important;
+  box-sizing:border-box !important;
+  display:flex !important;
+  align-items:center !important;
+  gap:10px !important;
+  padding:0 15px !important;
+  border:1.5px solid rgba(246,195,76,.95) !important;
+  border-radius:999px !important;
+  background:rgba(255,250,242,.97) !important;
+  color:#5f080c !important;
+  box-shadow:0 8px 24px rgba(0,0,0,.22), inset 0 0 0 1px rgba(255,255,255,.35) !important;
+  backdrop-filter:blur(7px) !important;
+  -webkit-backdrop-filter:blur(7px) !important;
+  cursor:text !important;
 }
-.sticky-search-button::after{
-  content:'Search menu…';
-  color:#f8e9c9!important;
-  font-size:11px!important;
-  font-weight:700!important;
-  letter-spacing:.2px!important;
-  white-space:nowrap!important;
-  opacity:.92!important;
+.sticky-search-icon-wrap{display:flex !important;align-items:center !important;justify-content:center !important;flex:0 0 22px !important;color:#6f0c12 !important;}
+.sticky-search-icon-wrap .mck-svg-icon{width:21px !important;height:21px !important;}
+#stickyMenuSearchInput{
+  width:100% !important;height:100% !important;min-width:0 !important;
+  border:0 !important;outline:0 !important;background:transparent !important;
+  color:#4b1618 !important;font-size:14px !important;font-weight:650 !important;
+  padding:0 !important;box-shadow:none !important;
 }
-.sticky-search-button .mck-svg-icon{width:21px!important;height:21px!important;flex:0 0 21px!important;}
+#stickyMenuSearchInput::placeholder{color:#8b716b !important;opacity:1 !important;}
+#stickyMenuSearchInput:focus{outline:0 !important;}
 .sticky-cart-button{
-  position:fixed!important;
-  top:9px!important;
-  right:112px!important;
-  width:48px!important;height:48px!important;
-  min-width:48px!important;min-height:48px!important;
-  z-index:1000012!important;
+  right:102px !important;
+  top:9px !important;
+  width:44px !important;height:44px !important;
 }
-.account-menu-wrap{
-  position:fixed!important;
-  top:9px!important;
-  right:54px!important;
-  width:auto!important;height:auto!important;
-  z-index:1000013!important;
+.mobile-site-nav-button{
+  right:14px !important;
+  top:9px !important;
+  width:44px !important;height:44px !important;
 }
-.account-menu-button{
-  width:48px!important;height:48px!important;
-  min-width:48px!important;min-height:48px!important;
+@media (max-width:900px){
+  .site-sticky-nav-inner{padding-left:66px !important;gap:18px !important;}
+  .sticky-search-bar{right:174px !important;width:min(300px,35vw) !important;min-width:190px !important;}
+  .sticky-cart-button{right:92px !important;}
+  .mobile-site-nav-button{right:12px !important;}
 }
-@media(max-width:700px){
-  .site-sticky-nav{
-    height:58px!important;min-height:58px!important;
-    padding-left:12px!important;padding-right:320px!important;
+@media (max-width:700px){
+  .site-sticky-nav{padding:7px 166px 7px 52px !important;height:58px !important;min-height:58px !important;}
+  .site-sticky-nav-inner{padding-left:0 !important;gap:10px !important;justify-content:flex-start !important;max-width:100% !important;}
+  .site-sticky-nav a{font-size:8.5px !important;letter-spacing:.2px !important;}
+  .site-sticky-logo{left:7px !important;width:36px !important;height:34px !important;}
+  .sticky-search-bar{
+    right:126px !important;top:11px !important;width:112px !important;min-width:112px !important;height:36px !important;
+    padding:0 10px !important;gap:6px !important;
   }
-  .site-sticky-nav-inner{
-    gap:9px!important;
-    max-width:calc(100vw - 320px)!important;
-    flex:0 1 auto!important;
-  }
-  .site-sticky-nav a{
-    font-size:8px!important;
-    letter-spacing:.25px!important;
-    padding:7px 0!important;
-  }
-  .sticky-search-button{
-    top:8px!important;right:164px!important;
-    width:112px!important;height:42px!important;
-    min-width:112px!important;min-height:42px!important;
-    padding:0 11px!important;gap:6px!important;
-  }
-  .sticky-search-button::after{font-size:9px!important;content:'Search…';}
-  .sticky-search-button .mck-svg-icon{width:18px!important;height:18px!important;flex-basis:18px!important;}
-  .sticky-cart-button{
-    top:8px!important;right:108px!important;
-    width:42px!important;height:42px!important;
-    min-width:42px!important;min-height:42px!important;
-  }
-  .account-menu-wrap{top:8px!important;right:56px!important;}
-  .account-menu-button{width:42px!important;height:42px!important;min-width:42px!important;min-height:42px!important;}
+  .sticky-search-icon-wrap{flex-basis:17px !important;}
+  .sticky-search-icon-wrap .mck-svg-icon{width:17px !important;height:17px !important;}
+  #stickyMenuSearchInput{font-size:12px !important;}
+  #stickyMenuSearchInput::placeholder{font-size:11px !important;}
+  .sticky-cart-button{right:70px !important;top:11px !important;width:36px !important;height:36px !important;}
+  .mobile-site-nav-button{right:10px !important;top:11px !important;width:36px !important;height:36px !important;}
 }
-@media(max-width:430px){
-  .site-sticky-nav{padding-left:8px!important;padding-right:270px!important;}
-  .site-sticky-nav-inner{gap:6px!important;max-width:calc(100vw - 270px)!important;}
-  .site-sticky-nav a{font-size:7px!important;letter-spacing:.1px!important;}
-  .sticky-search-button{right:139px!important;width:96px!important;min-width:96px!important;height:38px!important;min-height:38px!important;top:10px!important;padding:0 9px!important;}
-  .sticky-search-button::after{font-size:8px!important;}
-  .sticky-search-button .mck-svg-icon{width:16px!important;height:16px!important;flex-basis:16px!important;}
-  .sticky-cart-button{right:92px!important;width:38px!important;height:38px!important;min-width:38px!important;min-height:38px!important;top:10px!important;}
-  .account-menu-wrap{right:48px!important;top:10px!important;}
-  .account-menu-button{width:38px!important;height:38px!important;min-width:38px!important;min-height:38px!important;}
+@media (max-width:430px){
+  .site-sticky-nav{padding-left:47px !important;padding-right:116px !important;}
+  .site-sticky-nav-inner{gap:7px !important;}
+  .site-sticky-nav a{font-size:7.5px !important;}
+  .site-sticky-logo{left:5px !important;width:33px !important;height:31px !important;}
+  .sticky-search-bar{right:113px !important;width:100px !important;min-width:100px !important;height:34px !important;top:12px !important;}
+  #stickyMenuSearchInput{font-size:11px !important;}
+  .sticky-cart-button{right:63px !important;width:34px !important;height:34px !important;top:12px !important;}
+  .mobile-site-nav-button{right:8px !important;width:34px !important;height:34px !important;top:12px !important;}
 }
-@media(max-width:360px){
-  .site-sticky-nav{padding-right:246px!important;}
-  .site-sticky-nav-inner{max-width:calc(100vw - 246px)!important;gap:5px!important;}
-  .site-sticky-nav a{font-size:6.5px!important;}
-  .sticky-search-button{right:126px!important;width:88px!important;min-width:88px!important;}
-  .sticky-cart-button{right:84px!important;width:36px!important;height:36px!important;min-width:36px!important;min-height:36px!important;}
-  .account-menu-wrap{right:44px!important;}
-  .account-menu-button{width:36px!important;height:36px!important;min-width:36px!important;min-height:36px!important;}
+@media (max-width:360px){
+  .site-sticky-nav{padding-left:43px !important;padding-right:106px !important;}
+  .site-sticky-nav-inner{gap:5px !important;}
+  .site-sticky-nav a{font-size:7px !important;}
+  .sticky-search-bar{right:105px !important;width:91px !important;min-width:91px !important;}
+  .sticky-cart-button{right:57px !important;width:32px !important;height:32px !important;}
+  .mobile-site-nav-button{right:6px !important;width:32px !important;height:32px !important;}
 }
 </style>
 
+<script id="mck-v48-header-search-js">
+(function(){
+  function bind(){
+    var sticky=document.getElementById('stickyMenuSearchInput');
+    var menu=document.getElementById('mckMenuSearch');
+    if(!sticky||sticky.dataset.bound==='1')return;
+    sticky.dataset.bound='1';
+    sticky.addEventListener('focus',function(){
+      try{ if(typeof openMenuSearch_==='function') openMenuSearch_(); }catch(e){}
+    });
+    sticky.addEventListener('input',function(){
+      var target=document.getElementById('mckMenuSearch');
+      if(!target)return;
+      target.value=sticky.value;
+      target.dispatchEvent(new Event('input',{bubbles:true}));
+    });
+    sticky.addEventListener('keydown',function(e){
+      if(e.key==='Enter'){
+        e.preventDefault();
+        try{if(typeof openMenuSearch_==='function')openMenuSearch_();}catch(err){}
+      }
+      if(e.key==='Escape'){sticky.value='';var target=document.getElementById('mckMenuSearch');if(target){target.value='';target.dispatchEvent(new Event('input',{bubbles:true}));}}
+    });
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind);else bind();
+})();
+</script>
 </body>
 
 <style id="mck-v32-polish-final">
