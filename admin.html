@@ -316,6 +316,17 @@ button,input,select,textarea{font:inherit}
   .customer-chat-card{scroll-margin-top:70px;}
 }
 </style>
+<style id="mck-v28-admin-chat-polish">
+html{-webkit-text-size-adjust:100%;scroll-behavior:auto!important;}
+.customer-chat-messages{scroll-behavior:auto!important;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;}
+.customer-chat-compose textarea{font-size:16px!important;line-height:1.4!important;touch-action:manipulation;}
+@media(max-width:700px){
+  input,textarea,select,button{font-size:16px!important;}
+  .customer-chat-compose{position:sticky;bottom:0;background:#fff;padding-top:8px;z-index:8;}
+  .customer-chat-compose textarea{min-height:50px!important;}
+  .customer-chat-messages{max-height:52vh!important;}
+}
+</style>
 </head>
 <body>
 <button type="button" id="adminMobileMenuButton" class="admin-mobile-menu-button" aria-label="Open admin menu" aria-expanded="false" onclick="toggleAdminMobileMenu_()"><span></span><span></span><span></span></button>
@@ -1778,49 +1789,73 @@ async function loadCustomerChats(){
   }
   startCustomerChatsRealtime_();
 }
+function updateAdminChatMessagesOnly_(chatId, chat){
+  var card=document.querySelector('.customer-chat-card[data-chat-id="'+String(chatId).replace(/"/g,'\\"')+'"]');
+  if(!card)return false;
+  var box=card.querySelector('.customer-chat-messages');
+  if(!box)return false;
+  var before=box.scrollTop, distance=Math.max(0,box.scrollHeight-box.scrollTop-box.clientHeight), wasBottom=distance<=18;
+  var msgs=Array.isArray(chat.messages)?chat.messages:[];
+  var html=msgs.map(function(m){
+    var type=m.senderType==='customer'?'customer':(m.senderType==='ai'?'ai':(m.senderType==='system'?'ai':'admin'));
+    var who=m.senderType==='customer'?(chat.customerName||'Customer'):(m.senderType==='ai'?'McKenzie AI':(m.senderType==='system'?'System':'McKenzie Customer Service'));
+    return '<div class="customer-chat-msg '+type+'"><b>'+esc(who)+'</b><br>'+esc(m.text||'')+'<div style="font-size:9px;opacity:.65;margin-top:3px">'+esc(m.createdAt?new Date(m.createdAt).toLocaleString():'')+'</div></div>';
+  }).join('');
+  var typing=document.getElementById('adminTyping_'+String(chatId));
+  var typingHtml=typing?typing.outerHTML:'<div id="adminTyping_'+escAttr(chatId)+'" class="admin-typing-indicator" aria-live="polite">Customer is typing…</div>';
+  box.innerHTML=(html||'<div style="color:#806c65;font-size:12px;padding:20px">No messages yet.</div>')+typingHtml;
+  updateAdminTypingIndicator_(chatId,chat);
+  requestAnimationFrame(function(){box.scrollTop=wasBottom?box.scrollHeight:Math.min(before,Math.max(0,box.scrollHeight-box.clientHeight));});
+  return true;
+}
 function startCustomerChatsRealtime_(){
   if(adminChatsUnsub)return;
   adminFirebase_().then(function(f){
     if(!f.auth||!f.auth.currentUser||typeof f.onSnapshot!=='function')return;
     adminChatsUnsub=f.onSnapshot(f.collection(f.db,'supportChats'),function(snap){
-      const shouldRing=snap.docChanges().some(function(ch){if(ch.type==='removed')return false;const d=ch.doc.data()||{};return !!d.unreadForAdmin&&String(d.lastSenderType||'')==='customer';});
-      const nextChats=snap.docs.map(function(d){return Object.assign({chatId:d.id},d.data()||{});}).sort(function(a,b){return String(b.updatedAt||b.createdAt||'').localeCompare(String(a.updatedAt||a.createdAt||''));});
+      var pageY=window.scrollY||window.pageYOffset||0;
+      var active=document.activeElement;
+      var activeId=active&&/^adminChatInput_/.test(String(active.id||''))?active.id:'';
+      var draft=activeId?String(active.value||''):'';
+      var selStart=activeId?Number(active.selectionStart||draft.length):0;
+      var selEnd=activeId?Number(active.selectionEnd||draft.length):0;
+      var previousById={};(customerChatsData||[]).forEach(function(ch){previousById[String(ch.chatId)]=ch;});
+      var changes=snap.docChanges()||[];
+      var structural=changes.some(function(ch){
+        if(ch.type==='added'||ch.type==='removed')return true;
+        var old=previousById[String(ch.doc.id)],now=Object.assign({chatId:ch.doc.id},ch.doc.data()||{});
+        if(!old)return true;
+        return String(old.status||'Open')!==String(now.status||'Open') || String(old.customerName||'')!==String(now.customerName||'') || String(old.customerEmail||'')!==String(now.customerEmail||'') || String(old.orderId||'')!==String(now.orderId||'');
+      });
+      var nextChats=snap.docs.map(function(d){return Object.assign({chatId:d.id},d.data()||{});}).sort(function(a,b){return String(b.updatedAt||b.createdAt||'').localeCompare(String(a.updatedAt||a.createdAt||''));});
+      var shouldRing=changes.some(function(ch){if(ch.type==='removed')return false;var d=ch.doc.data()||{};return !!d.unreadForAdmin&&String(d.lastSenderType||'')==='customer';});
       if(shouldRing)playAdminBellNotification_();
       updateChatBadge_(nextChats);
-      const notice=document.getElementById('customerChatNotice');
-      if(notice)notice.textContent=nextChats.length?('Live • '+nextChats.length+' conversation'+(nextChats.length===1?'':'s')):'No customer conversations yet.';
-
-      // Typing changes must update only the indicator. Do NOT rebuild the whole
-      // customer-chat card for every keystroke, otherwise the textarea is
-      // replaced while the admin is typing/sending and the draft appears to
-      // remain after Send.
-      const previousById={};
-      (customerChatsData||[]).forEach(function(ch){previousById[String(ch.chatId)]=ch;});
-      const typingOnlyChanges=(snap.docChanges()||[]).filter(function(ch){
-        if(ch.type!=='modified')return false;
-        var id=String(ch.doc.id),old=previousById[id],now=Object.assign({chatId:id},ch.doc.data()||{});
-        if(!old)return false;
-        try{return JSON.stringify(adminChatDataWithoutTyping_(old))===JSON.stringify(adminChatDataWithoutTyping_(now));}catch(e){return false;}
-      });
-      const hasNonTypingChange=(snap.docChanges()||[]).some(function(ch){
-        if(ch.type==='added'||ch.type==='removed')return true;
-        if(ch.type!=='modified')return false;
-        var id=String(ch.doc.id),old=previousById[id],now=Object.assign({chatId:id},ch.doc.data()||{});
-        if(!old)return true;
-        try{return JSON.stringify(adminChatDataWithoutTyping_(old))!==JSON.stringify(adminChatDataWithoutTyping_(now));}catch(e){return true;}
-      });
+      var notice=document.getElementById('customerChatNotice');if(notice)notice.textContent=nextChats.length?('Live • '+nextChats.length+' conversation'+(nextChats.length===1?'':'s')):'No customer conversations yet.';
       customerChatsData=nextChats;
-      if(document.getElementById('customersSection')?.style.display!=='none'){
-        if(hasNonTypingChange){
+      var visible=document.getElementById('customersSection')?.style.display!=='none';
+      if(visible){
+        if(structural){
           renderCustomerChats();
         }else{
-          typingOnlyChanges.forEach(function(ch){updateAdminTypingIndicator_(ch.doc.id,ch.doc.data()||{});});
+          changes.filter(function(ch){return ch.type==='modified';}).forEach(function(ch){updateAdminChatMessagesOnly_(ch.doc.id,ch.doc.data()||{});});
         }
       }
+      requestAnimationFrame(function(){
+        window.scrollTo(0,pageY);
+        if(activeId){
+          var input=document.getElementById(activeId);
+          if(input){
+            input.value=draft;
+            try{input.focus({preventScroll:true});}catch(e){try{input.focus();}catch(x){}}
+            try{input.setSelectionRange(selStart,selEnd);}catch(e){}
+          }
+        }
+      });
+      setTimeout(function(){window.scrollTo(0,pageY);},60);
     },function(err){console.warn('Customer chat realtime listener stopped:',err);adminChatsUnsub=null;});
   }).catch(function(err){console.warn('Customer chat realtime setup failed:',err);});
 }
-
 async function loadCustomerChatsBadge_(){try{const f=await adminFirebase_();if(!f.auth.currentUser)return;const snap=await f.getDocs(f.collection(f.db,'supportChats'));updateChatBadge_(snap.docs.map(d=>d.data()||{}));}catch(e){}}
 function updateChatBadge_(chats){const b=document.getElementById('chatBadge');if(!b)return;const n=(chats||[]).filter(c=>c.unreadForAdmin).length;b.textContent=n;b.style.display=n?'inline-block':'none';}
 function updateAdminTypingIndicator_(chatId, chat){
