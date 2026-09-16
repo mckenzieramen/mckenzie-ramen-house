@@ -3276,6 +3276,74 @@ body.quick-loading {
 @media(min-width:601px){.sticky-search-button{right:116px;top:14px;width:40px;height:40px;font-size:22px}}
 </style>
 
+
+<!-- V32 FINAL MOBILE HEADER / LOADER / CHAT CHROME FIX -->
+<style id="mck-v32-final-chrome-fix">
+/* Prevent any navigation/account control from flashing over the full-screen loader. */
+html.quick-loading #mobileSiteNavButton,
+html.quick-loading .account-menu-wrap,
+html.quick-loading .sticky-search-button,
+html.quick-loading .sticky-cart-button,
+body.quick-loading #mobileSiteNavButton,
+body.quick-loading .account-menu-wrap,
+body.quick-loading .sticky-search-button,
+body.quick-loading .sticky-cart-button{visibility:hidden!important;opacity:0!important;pointer-events:none!important}
+
+/* Keep the single functional account hamburger clean and consistent on phones. */
+@media(max-width:700px){
+  #mobileSiteNavButton{display:none!important;visibility:hidden!important;pointer-events:none!important}
+  .account-menu-wrap{display:block!important;visibility:visible!important;opacity:1!important;pointer-events:auto!important;position:fixed!important;right:8px!important;top:9px!important;z-index:10000040!important}
+  .account-menu-button{display:flex!important;width:40px!important;height:40px!important;min-width:40px!important;min-height:40px!important;align-items:center!important;justify-content:center!important;padding:0!important;margin:0!important}
+  .account-icon-person{display:none!important}
+  .account-icon-lines{display:flex!important;flex-direction:column!important;gap:4px!important;align-items:center!important;justify-content:center!important}
+  .account-icon-lines i{display:block!important;width:18px!important;height:2px!important;margin:0!important}
+}
+
+/* Chat is a true modal layer. Its close control is never covered by global chrome. */
+#mckCustomerChatModal.show{z-index:2147483640!important}
+#mckCustomerChatBox{z-index:2147483641!important}
+#mckCustomerChatHead{position:relative!important;display:flex!important;align-items:center!important;min-height:64px!important;padding:10px 60px 10px 14px!important;box-sizing:border-box!important}
+#mckCustomerChatClose{position:absolute!important;top:50%!important;right:10px!important;transform:translateY(-50%)!important;width:40px!important;height:40px!important;min-width:40px!important;min-height:40px!important;display:flex!important;align-items:center!important;justify-content:center!important;padding:0!important;margin:0!important;box-sizing:border-box!important;border:1px solid #e8ad3b!important;border-radius:50%!important;background:#3a0709!important;color:#f6c34c!important;font-size:25px!important;line-height:1!important;z-index:2147483647!important;pointer-events:auto!important;touch-action:manipulation!important}
+#mckCustomerChatBack{width:40px!important;height:40px!important;min-width:40px!important;min-height:40px!important;display:flex!important;align-items:center!important;justify-content:center!important;padding:0!important;margin:0!important;box-sizing:border-box!important;line-height:1!important}
+#mckCustomerChatMessages{min-height:0!important;overflow-y:auto!important;overscroll-behavior:contain!important;-webkit-overflow-scrolling:touch!important}
+#mckCustomerChatComposer{flex:0 0 auto!important}
+#mckCustomerChatTyping{order:1!important;width:100%!important;box-sizing:border-box!important;padding:5px 14px!important;margin:0!important;text-align:left!important;background:#fffaf3!important;border-top:1px solid rgba(222,201,189,.5)!important;color:#806c65!important}
+#mckCustomerChatComposer{order:2!important}
+
+/* Never allow chat inputs to trigger iOS focus zoom. */
+#mckCustomerChatInput,#mckCustomerChatComposer input,#mckCustomerChatComposer textarea{font-size:16px!important;line-height:1.4!important}
+
+/* Restore global chrome immediately after chat closes. */
+body.mck-customer-chat-open .account-menu-wrap,
+body.mck-customer-chat-open .sticky-search-button,
+body.mck-customer-chat-open .sticky-cart-button{visibility:hidden!important;opacity:0!important;pointer-events:none!important}
+body:not(.mck-customer-chat-open) .account-menu-wrap,
+body:not(.mck-customer-chat-open) .sticky-search-button,
+body:not(.mck-customer-chat-open) .sticky-cart-button{visibility:visible!important;opacity:1!important;pointer-events:auto!important}
+</style>
+<script id="mck-v32-final-chrome-fix-js">
+(function(){
+  function setVisible_(el,on){if(!el)return;el.style.setProperty('visibility',on?'visible':'hidden','important');el.style.setProperty('opacity',on?'1':'0','important');el.style.setProperty('pointer-events',on?'auto':'none','important');}
+  function restoreChrome_(){
+    var modal=document.getElementById('mckCustomerChatModal');
+    var open=!!(modal&&modal.classList.contains('show'));
+    document.body.classList.toggle('mck-customer-chat-open',open);
+    var controls=document.querySelectorAll('.account-menu-wrap,.sticky-search-button,.sticky-cart-button');
+    controls.forEach(function(el){setVisible_(el,!open);});
+    var x=document.getElementById('mckCustomerChatClose');
+    if(x&&open)setVisible_(x,true);
+  }
+  function bind_(){
+    restoreChrome_();
+    var modal=document.getElementById('mckCustomerChatModal');
+    if(modal)new MutationObserver(restoreChrome_).observe(modal,{attributes:true,attributeFilter:['class']});
+    var x=document.getElementById('mckCustomerChatClose');
+    if(x)x.addEventListener('click',function(){setTimeout(restoreChrome_,40);},true);
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind_,{once:true});else bind_();
+  window.mckRestoreGlobalChrome_=restoreChrome_;
+})();
+</script>
 </head>
 
 
@@ -3590,6 +3658,13 @@ body.quick-loading {
           <textarea id="profileAdditionalInstruction" rows="3" placeholder="Landmark, gate instructions, etc."></textarea>
         </div>
       </div>
+
+      <section class="jp-profile-addresses" aria-labelledby="profileSavedAddressesTitle">
+        <div class="jp-section-kicker">DELIVERY</div>
+        <h3 id="profileSavedAddressesTitle">Saved Delivery Addresses</h3>
+        <p>Addresses used during checkout are kept here for faster ordering next time.</p>
+        <div id="profileSavedAddressesList" class="jp-address-list"><div class="jp-address-empty">Loading saved addresses…</div></div>
+      </section>
 
       <div id="profileMessage" class="profile-note" aria-live="polite"></div>
 
@@ -7784,8 +7859,8 @@ function preloadPageImage_(url, done) {
     finished = true;
     done();
   };
-  img.onload = finish;
-  img.onerror = finish;
+  img.onload = function(){ finish(true); };
+  img.onerror = function(){ finished = true; done(false); };
   img.src = String(url);
   if (img.complete && img.naturalWidth > 0) finish();
 }
@@ -7899,7 +7974,7 @@ function applyBrandAssets_(assets) {
     /* Never replace a working embedded background with a dead Firebase/cache URL.
        Preload first; only paint the custom background after the browser confirms it. */
     preloadPageImage_(backgroundSource, function(ok) {
-      if (!ok) return;
+      if (ok !== true) return;
       const bg = 'url("' + backgroundSource.replace(/"/g, '\\"') + '")';
       document.documentElement.style.setProperty('--hero-image', bg);
       if (hero) {
@@ -9814,6 +9889,7 @@ document.addEventListener('click',function(e){
       var oid=el.getAttribute('data-order-id')||'', type=el.getAttribute('data-type')||'', chatId=el.getAttribute('data-chat-id')||'';
       closeCustomerNotifications_();
       if((type==='support'||type==='support_closed') && chatId && typeof window.openCustomerSupportChat_==='function'){window.openCustomerSupportChat_(chatId);return;}
+      if(type==='review' && oid && typeof openRatingPage_==='function'){openRatingPage_(oid);return;}
       if(oid&&typeof openOrderDetailByKey_==='function'){openOrderDetailByKey_(encodeURIComponent(oid));return;}
       if(navigator&&navigator.vibrate)try{navigator.vibrate(20);}catch(e){}
     };});
@@ -10065,6 +10141,66 @@ html{scroll-behavior:auto!important;-webkit-text-size-adjust:100%;}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind);else bind();
 })();
 </script>
+<style id="mckenzie-japan-polish-style">
+:root{--jp-ink:#2b0b0b;--jp-lacquer:#5d0a10;--jp-red:#b51e2b;--jp-gold:#e8ad3b;--jp-paper:#fff9ef;--jp-wood:#2b1210;}
+html{scroll-behavior:smooth;}
+body{background-color:#fbf4e8!important;background-image:radial-gradient(circle at 1px 1px,rgba(137,74,38,.075) 1px,transparent 1.2px),linear-gradient(135deg,rgba(255,255,255,.42),rgba(247,229,206,.28))!important;background-size:18px 18px,100% 100%;}
+body:before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.28;background:radial-gradient(ellipse at 10% 15%,rgba(181,30,43,.10),transparent 32%),radial-gradient(ellipse at 90% 80%,rgba(232,173,59,.10),transparent 30%);}
+.hero,.site-sticky-nav,.account-menu-wrap,#stickyCartButton,#stickySearchButton,#mobileSiteNavButton{position:relative;}
+.hero{isolation:isolate;}
+.hero:after{content:"";position:absolute;inset:0;pointer-events:none;z-index:1;opacity:.10;background-image:radial-gradient(circle at 50% 0%,transparent 0 34%,rgba(255,255,255,.7) 34.3% 34.6%,transparent 35%),linear-gradient(90deg,transparent 49.7%,rgba(255,255,255,.5) 50%,transparent 50.3%);background-size:180px 90px,100% 100%;mix-blend-mode:screen;}
+.hero>*{position:relative;z-index:2;}
+.hero-logo,.footer-logo,.site-sticky-logo,#adminLoginLogo,.brand-preview{filter:saturate(1.42) contrast(1.12) brightness(1.04) drop-shadow(0 7px 12px rgba(54,8,7,.34))!important;}
+.site-sticky-nav{background:linear-gradient(180deg,#32110d 0%,#1b0807 100%)!important;border-bottom:2px solid var(--jp-gold)!important;box-shadow:0 8px 28px rgba(47,9,6,.28)!important;}
+.site-sticky-nav:after{content:"";position:absolute;inset:0;pointer-events:none;opacity:.08;background:repeating-linear-gradient(0deg,transparent 0 5px,rgba(255,255,255,.35) 6px 7px);} 
+.site-sticky-nav-inner a{letter-spacing:.04em;text-transform:uppercase;}
+.site-sticky-nav-inner a:hover,.site-sticky-nav-inner a.active{color:#f4c75a!important;}
+.sticky-search-button,.sticky-cart-button,#mobileSiteNavButton{box-shadow:0 6px 18px rgba(43,7,6,.28),0 0 0 1px rgba(232,173,59,.8)!important;}
+.sticky-search-button{background:linear-gradient(145deg,#7a0c14,#4c070b)!important;}
+.sticky-cart-button{background:linear-gradient(145deg,#7a0c14,#4c070b)!important;}
+#mobileSiteNavButton{background:linear-gradient(145deg,#7a0c14,#4c070b)!important;border:1px solid #e8ad3b!important;}
+.account-dropdown,.cart-card,.account-subcard,.address-card,.order-confirm-card{border-color:rgba(232,173,59,.78)!important;box-shadow:0 24px 65px rgba(49,10,6,.24)!important;}
+.product-card,.customer-review-card{box-shadow:0 10px 28px rgba(55,20,10,.10)!important;}
+.product-card:hover{transform:translateY(-4px)!important;box-shadow:0 18px 36px rgba(55,20,10,.16)!important;}
+.jp-profile-addresses{margin-top:20px;padding:16px;border:1px solid #e8d2c1;border-radius:16px;background:linear-gradient(145deg,#fffaf2,#fff4e9);box-shadow:inset 0 1px 0 rgba(255,255,255,.9);}
+.jp-section-kicker{font-size:9px;letter-spacing:.22em;font-weight:900;color:#a51620;}
+.jp-profile-addresses h3{margin:3px 0 4px;font-family:"Playfair Display",serif;color:#5f080c;font-size:21px;}
+.jp-profile-addresses>p{margin:0 0 11px;color:#806c65;font-size:10px;line-height:1.5;}
+.jp-address-list{display:grid;gap:8px;}
+.jp-address-card{padding:11px 12px;border:1px solid #ead6ca;border-radius:12px;background:#fff;}.jp-address-card.is-default{border-color:#d9a63c;box-shadow:0 4px 12px rgba(185,126,22,.08);}
+.jp-address-top{display:flex;align-items:center;justify-content:space-between;gap:8px;color:#5f080c;font-size:12px;}.jp-default-pill{font-size:8px;letter-spacing:.08em;color:#fff;background:#a51620;border-radius:999px;padding:4px 7px;font-weight:900;}.jp-address-line{margin-top:5px;color:#4d3731;font-size:11px;line-height:1.45;}.jp-address-sub{margin-top:3px;color:#927c74;font-size:9px;}.jp-address-note{margin-top:6px;padding-top:6px;border-top:1px dashed #ead8cf;color:#806c65;font-size:9px;line-height:1.4;}.jp-address-empty{padding:13px;border-radius:11px;background:#fff7ef;color:#8a746c;font-size:10px;text-align:center;}
+#mckCustomerChatHead{background:linear-gradient(180deg,#250b09,#110504)!important;border-bottom:1px solid rgba(232,173,59,.5)!important;}
+#mckCustomerChatBack,#mckCustomerChatClose,#mckReceiptBack,#mckReceiptClose,#mckSurveyClose,.login-close,.create-account-close,.cart-close,.account-subclose,.address-close,.password-close,.verification-close{display:inline-flex!important;align-items:center!important;justify-content:center!important;line-height:1!important;text-align:center!important;box-sizing:border-box!important;}
+#mckCustomerChatBack{font-size:22px!important;}
+#mckCustomerChatClose{font-size:25px!important;color:#f4c75a!important;}
+#mckCustomerChatMessages{background:linear-gradient(180deg,#fff9ef,#fff4e7)!important;}
+.mck-typing{width:fit-content!important;max-width:calc(100% - 30px)!important;margin:0 16px 6px!important;padding:6px 10px!important;border-radius:999px!important;background:#fff1d6!important;border:1px solid #eed5a8!important;color:#7a5b32!important;}
+#mckCustomerChatComposer{background:#fffaf3!important;}
+.mck-chat-input:focus{border-color:#c08b28!important;box-shadow:0 0 0 3px rgba(232,173,59,.14)!important;}
+.mck-chat-send{background:linear-gradient(145deg,#b51e2b,#7c0d14)!important;box-shadow:0 7px 16px rgba(124,13,20,.18)!important;}
+.mck-notification-item{transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease!important;}
+.mck-notification-item:hover,.mck-notification-item:focus-visible{transform:translateY(-1px);box-shadow:0 8px 18px rgba(73,20,12,.10);outline:none;}
+@media(max-width:700px){body{font-size:15px;} .hero-logo{filter:saturate(1.5) contrast(1.12) brightness(1.05) drop-shadow(0 5px 10px rgba(54,8,7,.32))!important;} .site-sticky-nav-inner{gap:10px!important;} .site-sticky-nav-inner a{font-size:10px!important;} .jp-profile-addresses{padding:13px;} .mck-chat-input,input,textarea,select{font-size:16px!important;} }
+</style>
+<script src="js/mckenzie-japan-polish.js" defer></script>
+<style id="mckenzie-japan-final-polish">
+/* FINAL JAPANESE ATMOSPHERE — restrained, tactile, not cluttered. */
+.menu-section,.features,.customer-reviews-section{position:relative;overflow:hidden;}
+.menu-section:before,.features:before,.customer-reviews-section:before{content:"";position:absolute;inset:0;pointer-events:none;opacity:.055;background-image:radial-gradient(circle at 100% 0%,#b51e2b 0 1px,transparent 1.5px),radial-gradient(circle at 0% 100%,#e8ad3b 0 1px,transparent 1.5px);background-size:26px 26px;}
+.menu-header:after,.customer-reviews-inner:after{content:"◆  ─────  ◆";display:block;margin:16px auto 0;color:#c28a2a;font-size:10px;letter-spacing:5px;text-align:center;}
+.menu-kicker,.customer-reviews-kicker{color:#a51620!important;letter-spacing:.28em!important;}
+.menu-category-filter button{border-color:#dfc5b3!important;background:rgba(255,255,255,.82)!important;color:#6a3830!important;}
+.menu-category-filter button.active,.menu-category-filter button:hover{background:#5f080c!important;color:#f7cf63!important;border-color:#e8ad3b!important;}
+.mck-menu-search{border-color:#dfc5b3!important;background:rgba(255,255,255,.92)!important;box-shadow:0 5px 16px rgba(73,20,12,.07)!important;}
+.mck-menu-search:focus{border-color:#c08b28!important;box-shadow:0 0 0 3px rgba(232,173,59,.12),0 8px 22px rgba(73,20,12,.08)!important;}
+.mck-current-order-tracker{border:1px solid #e5c78e!important;border-radius:18px!important;padding:16px!important;background:linear-gradient(145deg,#fffaf0,#fff3df)!important;box-shadow:0 10px 26px rgba(89,50,15,.08)!important;margin-bottom:14px!important;}
+.mck-current-order-title{color:#5f080c!important;font-family:"Playfair Display",serif!important;font-size:21px!important;}
+.mck-current-order-status strong{color:#a51620!important;}
+.mck-order-progress-step.done span,.mck-order-progress-step.active span{box-shadow:0 0 0 4px rgba(232,173,59,.13)!important;}
+.mck-notification-clear:hover{background:#5f080c!important;color:#fff!important;border-color:#5f080c!important;}
+@media(max-width:600px){.menu-header:after,.customer-reviews-inner:after{letter-spacing:2px;font-size:8px}.mck-current-order-tracker{padding:13px!important;border-radius:15px!important}.mck-order-progress-step span{width:17px!important;height:17px!important}.mck-order-progress-step:after{top:8px!important}}
+</style>
+
 <script src="js/mckenzie-app-enhancements.js" defer></script>
 
 <style id="mck-v30-chat-modal-visibility-fix">
@@ -10177,6 +10313,49 @@ body.mck-customer-chat-open #mckCustomerChatBox{
 </script>
 
 </body>
+
+<style id="mck-v32-polish-final">
+/* V32: one clean mobile account control; no icon flash during loader. */
+html.quick-loading #mobileSiteNavButton,html.quick-loading .account-menu-wrap,html.quick-loading .sticky-search-button,html.quick-loading .sticky-cart-button,
+body.quick-loading #mobileSiteNavButton,body.quick-loading .account-menu-wrap,body.quick-loading .sticky-search-button,body.quick-loading .sticky-cart-button{visibility:hidden!important;opacity:0!important;pointer-events:none!important}
+@media(max-width:700px){
+  #mobileSiteNavButton{display:none!important;}
+  .account-menu-wrap{display:block!important;visibility:visible!important;opacity:1!important;pointer-events:auto!important;position:fixed!important;right:8px!important;top:9px!important;left:auto!important;z-index:10000040!important;margin:0!important;transform:none!important}
+  .account-menu-button{display:flex!important;visibility:visible!important;opacity:1!important;width:40px!important;height:40px!important;min-width:40px!important;min-height:40px!important;padding:0!important;margin:0!important;align-items:center!important;justify-content:center!important}
+  .account-icon-person{display:none!important}.account-icon-lines{display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:4px!important}.account-icon-lines i{display:block!important;width:18px!important;height:2px!important;margin:0!important}
+}
+/* Chat modal always owns the header while it is open. */
+#mckCustomerChatModal.show{z-index:2147483640!important}#mckCustomerChatBox{z-index:2147483641!important}
+#mckCustomerChatHead{position:relative!important;display:flex!important;align-items:center!important;min-height:64px!important;padding:10px 60px 10px 14px!important;box-sizing:border-box!important}
+#mckCustomerChatClose{position:absolute!important;top:50%!important;right:10px!important;transform:translateY(-50%)!important;width:40px!important;height:40px!important;min-width:40px!important;min-height:40px!important;display:flex!important;align-items:center!important;justify-content:center!important;padding:0!important;margin:0!important;box-sizing:border-box!important;border:1px solid #e8ad3b!important;border-radius:50%!important;background:#3a0709!important;color:#f6c34c!important;font-size:25px!important;line-height:1!important;z-index:2147483647!important;visibility:visible!important;opacity:1!important;pointer-events:auto!important;touch-action:manipulation!important}
+#mckCustomerChatBack{width:40px!important;height:40px!important;min-width:40px!important;min-height:40px!important;display:flex!important;align-items:center!important;justify-content:center!important;padding:0!important;margin:0!important;box-sizing:border-box!important;line-height:1!important}
+#mckCustomerChatMessages{min-height:0!important;overflow-y:auto!important;overscroll-behavior:contain!important;-webkit-overflow-scrolling:touch!important}
+#mckCustomerChatTyping{width:100%!important;box-sizing:border-box!important;text-align:left!important;padding:5px 14px!important;margin:0!important;background:#fffaf3!important;border-top:1px solid rgba(222,201,189,.5)!important;color:#806c65!important}
+#mckCustomerChatInput,#mckCustomerChatComposer input,#mckCustomerChatComposer textarea{font-size:16px!important;line-height:1.4!important}
+body.mck-customer-chat-open .account-menu-wrap,body.mck-customer-chat-open .sticky-search-button,body.mck-customer-chat-open .sticky-cart-button{visibility:hidden!important;opacity:0!important;pointer-events:none!important}
+body:not(.mck-customer-chat-open) .account-menu-wrap,body:not(.mck-customer-chat-open) .sticky-search-button,body:not(.mck-customer-chat-open) .sticky-cart-button{visibility:visible!important;opacity:1!important;pointer-events:auto!important}
+</style>
+<script id="mck-v32-polish-final-js">
+(function(){
+  function vis(el,on){if(!el)return;el.style.setProperty('visibility',on?'visible':'hidden','important');el.style.setProperty('opacity',on?'1':'0','important');el.style.setProperty('pointer-events',on?'auto':'none','important');}
+  function sync(){
+    var modal=document.getElementById('mckCustomerChatModal'),open=!!(modal&&modal.classList.contains('show'));
+    document.body.classList.toggle('mck-customer-chat-open',open);
+    document.querySelectorAll('.account-menu-wrap,.sticky-search-button,.sticky-cart-button').forEach(function(el){vis(el,!open);});
+    if(open)vis(document.getElementById('mckCustomerChatClose'),true);
+  }
+  function bind(){
+    sync();
+    var m=document.getElementById('mckCustomerChatModal');
+    if(m)new MutationObserver(sync).observe(m,{attributes:true,attributeFilter:['class']});
+    var x=document.getElementById('mckCustomerChatClose');
+    if(x)x.addEventListener('click',function(){setTimeout(sync,60);},true);
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind,{once:true});else bind();
+  window.mckRestoreGlobalChrome_=sync;
+})();
+</script>
+
 </html>
 
 <style id="mck-v21-organized-header-icons">
