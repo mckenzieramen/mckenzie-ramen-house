@@ -3446,6 +3446,37 @@ body:not(.mck-customer-chat-open) .sticky-cart-button{visibility:visible!importa
   .sticky-cart-button{right:68px !important;left:auto !important;}
 }
 </style>
+
+<style id="v56-cart-hamburger-spacing">
+/* V56: keep cart and hamburger together on the right, with deliberate breathing room.
+   The hamburger position is preserved; only the cart position is adjusted. */
+@media (max-width:700px){
+  .sticky-cart-button{
+    left:auto !important;
+    right:55px !important;
+    top:12px !important;
+    width:34px !important;
+    height:34px !important;
+  }
+  body.mobile-top-scrolled .sticky-cart-button{
+    left:auto !important;
+    right:55px !important;
+    top:12px !important;
+    width:34px !important;
+    height:34px !important;
+  }
+}
+@media (max-width:360px){
+  .sticky-cart-button, body.mobile-top-scrolled .sticky-cart-button{
+    left:auto !important;
+    right:50px !important;
+    top:13px !important;
+    width:31px !important;
+    height:31px !important;
+  }
+}
+</style>
+
 </head>
 
 
