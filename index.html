@@ -4025,36 +4025,33 @@ body:not(.mck-customer-chat-open) .sticky-cart-button{visibility:visible!importa
     <button type="button" class="password-close" onclick="closeForgotPassword_()">×</button>
     <div class="account-subkicker">MCKENZIE RAMEN HOUSE</div>
     <h2 id="forgotPasswordTitle">Forgot Password?</h2>
-    <p>Enter your username or email. We will send an OTP to the email registered to your account.</p>
+    <p>Enter the email address associated with your account. We'll send you a secure link to create a new password.</p>
     <div class="password-field">
-      <label for="forgotPasswordIdentifier">Username or Email</label>
-      <input id="forgotPasswordIdentifier" type="text" autocomplete="username" placeholder="Enter your username or email">
+      <label for="forgotPasswordIdentifier">Email Address</label>
+      <input id="forgotPasswordIdentifier" type="email" autocomplete="email" placeholder="Enter your registered email">
     </div>
-    <button type="button" id="forgotPasswordSendButton" class="password-submit" onclick="sendForgotPasswordOtp_()">Send OTP</button>
+    <button type="button" id="forgotPasswordSendButton" class="password-submit" onclick="sendForgotPasswordLink_()">Send Reset Link</button>
     <div id="forgotPasswordMessage" class="password-message" aria-live="polite"></div>
   </div>
 </div>
 
-<div id="passwordOtpModal" class="password-modal" role="dialog" aria-modal="true" aria-labelledby="passwordOtpTitle">
+<!-- Password reset opened from the secure Firebase email link -->
+<div id="passwordResetModal" class="password-modal" role="dialog" aria-modal="true" aria-labelledby="passwordResetTitle">
   <div class="password-card">
-    <button type="button" class="password-close" onclick="closePasswordOtp_()">×</button>
+    <button type="button" class="password-close" onclick="closePasswordReset_()">×</button>
     <div class="account-subkicker">MCKENZIE RAMEN HOUSE</div>
-    <h2 id="passwordOtpTitle">Verify OTP</h2>
-    <p>Enter the 6-digit code sent to <strong id="passwordOtpEmail"></strong>. The code expires in 10 minutes.</p>
+    <h2 id="passwordResetTitle">Create New Password</h2>
+    <p>You're securely updating your McKenzie Ramen House password. Choose a new password below.</p>
     <div class="password-field">
-      <label for="passwordOtpCode">OTP Code</label>
-      <input id="passwordOtpCode" class="password-otp" type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="000000">
+      <label for="passwordResetNewPassword">New Password</label>
+      <input id="passwordResetNewPassword" type="password" autocomplete="new-password" placeholder="At least 6 characters">
     </div>
     <div class="password-field">
-      <label for="passwordOtpNewPassword">New Password</label>
-      <input id="passwordOtpNewPassword" type="password" autocomplete="new-password" placeholder="At least 6 characters">
+      <label for="passwordResetConfirmPassword">Confirm New Password</label>
+      <input id="passwordResetConfirmPassword" type="password" autocomplete="new-password" placeholder="Re-enter your new password">
     </div>
-    <div class="password-field">
-      <label for="passwordOtpConfirmPassword">Confirm New Password</label>
-      <input id="passwordOtpConfirmPassword" type="password" autocomplete="new-password" placeholder="Re-enter new password">
-    </div>
-    <button type="button" id="passwordOtpSubmit" class="password-submit" onclick="submitPasswordOtp_()">Verify &amp; Change Password</button>
-    <div id="passwordOtpMessage" class="password-message" aria-live="polite"></div>
+    <button type="button" id="passwordResetSubmit" class="password-submit" onclick="submitPasswordReset_()">Update Password</button>
+    <div id="passwordResetMessage" class="password-message" aria-live="polite"></div>
   </div>
 </div>
 
@@ -4063,7 +4060,7 @@ body:not(.mck-customer-chat-open) .sticky-cart-button{visibility:visible!importa
     <button type="button" class="password-close" onclick="closeChangePassword_()">×</button>
     <div class="account-subkicker">MCKENZIE RAMEN HOUSE</div>
     <h2 id="changePasswordTitle">Change Password</h2>
-    <p>Enter your current password. If you forgot it, use the email OTP option below.</p>
+    <p>Enter your current password. If you forgot it, we can send a secure password-reset link to your registered email.</p>
     <div class="password-field">
       <label for="oldPassword">Old Password</label>
       <input id="oldPassword" type="password" autocomplete="current-password" placeholder="Enter your old password">
@@ -4077,7 +4074,7 @@ body:not(.mck-customer-chat-open) .sticky-cart-button{visibility:visible!importa
       <input id="confirmNewPassword" type="password" autocomplete="new-password" placeholder="Re-enter new password">
     </div>
     <button type="button" id="changePasswordSubmit" class="password-submit" onclick="submitChangePassword_()">Change Password</button>
-    <a href="#" class="password-link" onclick="useForgotPasswordFromChange_(event)">I forgot my old password — Send OTP to my email</a>
+    <a href="#" class="password-link" onclick="useForgotPasswordFromChange_(event)">I forgot my old password — Email me a reset link</a>
     <div id="changePasswordMessage" class="password-message" aria-live="polite"></div>
   </div>
 </div>
@@ -7377,63 +7374,84 @@ function useForgotPasswordFromChange_(event) {
   closeChangePassword_();
   const user=getSavedUser_()||{};
   if(!user.userId){openForgotPassword_();return;}
-  passwordResetMode_="loggedIn";
-  sendPasswordOtpForUser_(String(user.userId));
+  sendPasswordResetLinkForUser_(String(user.userId));
 }
-function sendForgotPasswordOtp_() {
+function sendForgotPasswordLink_() {
   const identifier=String(document.getElementById("forgotPasswordIdentifier")?.value||"").trim();
   const btn=document.getElementById("forgotPasswordSendButton"), msg=document.getElementById("forgotPasswordMessage");
-  if(!identifier){if(msg)msg.textContent="Please enter your username or email.";return;}
+  if(!identifier || !identifier.includes("@")){if(msg)msg.textContent="Please enter your registered email address.";return;}
   if(btn){btn.disabled=true;btn.textContent="Sending...";}
   google.script.run.withSuccessHandler(function(result){
-    if(btn){btn.disabled=false;btn.textContent="Send OTP";}
-    passwordResetMode_="forgot"; passwordResetToken_=result.verificationToken||"";
-    closeForgotPassword_(); openPasswordOtp_(result.email);
+    if(btn){btn.disabled=false;btn.textContent="Send Reset Link";}
+    if(msg){msg.style.color="#198754";msg.textContent="Reset link sent. Please check your inbox or spam folder.";}
   }).withFailureHandler(function(error){
-    if(btn){btn.disabled=false;btn.textContent="Send OTP";}
-    if(msg)msg.textContent=error&&error.message?error.message:"Unable to send OTP.";
-  }).requestPasswordResetOtp(identifier);
+    if(btn){btn.disabled=false;btn.textContent="Send Reset Link";}
+    if(msg){msg.style.color="#a51620";msg.textContent=error&&error.message?error.message:"Unable to send the reset link.";}
+  }).requestPasswordResetLink(identifier);
 }
-function sendPasswordOtpForUser_(userId) {
-  google.script.run.withSuccessHandler(function(result){
-    passwordResetToken_=result.verificationToken||"";
-    openPasswordOtp_(result.email);
+function sendPasswordResetLinkForUser_(userId) {
+  google.script.run.withSuccessHandler(function(){
+    const modal=document.getElementById("changePasswordModal");
+    const msg=document.getElementById("changePasswordMessage");
+    if(msg){msg.style.color="#198754";msg.textContent="A secure password-reset link has been sent to your registered email.";}
+    if(modal)modal.classList.add("show");
   }).withFailureHandler(function(error){
     const modal=document.getElementById("changePasswordModal"); if(modal)modal.classList.add("show");
-    const msg=document.getElementById("changePasswordMessage"); if(msg)msg.textContent=error&&error.message?error.message:"Unable to send OTP.";
+    const msg=document.getElementById("changePasswordMessage"); if(msg)msg.textContent=error&&error.message?error.message:"Unable to send the reset link.";
   }).requestPasswordResetOtpForUser(userId);
 }
-function openPasswordOtp_(email) {
-  const modal=document.getElementById("passwordOtpModal"); if(!modal)return;
+function openPasswordReset_(){
+  const modal=document.getElementById("passwordResetModal"); if(!modal)return;
   modal.classList.add("show"); document.body.style.overflow="hidden";
-  const emailEl=document.getElementById("passwordOtpEmail"); if(emailEl){const safeEmail=String(email||"your registered email");emailEl.innerHTML=safeEmail.indexOf("@")>0?'<a class="mck-email-link" href="mailto:'+safeEmail.replace(/"/g,"&quot;")+'">'+safeEmail.replace(/</g,"&lt;")+'</a>':safeEmail;}
-  ["passwordOtpCode","passwordOtpNewPassword","passwordOtpConfirmPassword"].forEach(function(id){const e=document.getElementById(id);if(e)e.value="";});
-  const msg=document.getElementById("passwordOtpMessage"); if(msg)msg.textContent="";
-  setTimeout(function(){const e=document.getElementById("passwordOtpCode");if(e)e.focus();},50);
+  ["passwordResetNewPassword","passwordResetConfirmPassword"].forEach(function(id){const e=document.getElementById(id);if(e)e.value="";});
+  const msg=document.getElementById("passwordResetMessage"); if(msg){msg.style.color="#a51620";msg.textContent="";}
+  setTimeout(function(){const e=document.getElementById("passwordResetNewPassword");if(e)e.focus();},80);
 }
-function closePasswordOtp_() {
-  const modal=document.getElementById("passwordOtpModal");if(modal)modal.classList.remove("show");
+function closePasswordReset_(){
+  const modal=document.getElementById("passwordResetModal");if(modal)modal.classList.remove("show");
   if(!document.querySelector(".password-modal.show"))document.body.style.overflow="";
 }
-function submitPasswordOtp_() {
-  const code=String(document.getElementById("passwordOtpCode")?.value||"").replace(/\D/g,"");
-  const newPassword=String(document.getElementById("passwordOtpNewPassword")?.value||"");
-  const confirm=String(document.getElementById("passwordOtpConfirmPassword")?.value||"");
-  const btn=document.getElementById("passwordOtpSubmit"),msg=document.getElementById("passwordOtpMessage");
-  if(!passwordResetToken_){if(msg)msg.textContent="Your OTP session expired. Please request a new code.";return;}
-  if(!/^\d{6}$/.test(code)){if(msg)msg.textContent="Please enter the 6-digit OTP.";return;}
+async function preparePasswordResetFromUrl_(){
+  const params=new URLSearchParams(window.location.search);
+  const mode=params.get("mode");
+  const oobCode=params.get("oobCode");
+  if(mode!=="resetPassword" || !oobCode)return;
+  window._mckPasswordResetCode=oobCode;
+  try{
+    const f=window.MckenzieFirebaseReady ? await window.MckenzieFirebaseReady : null;
+    if(!f || !f.verifyPasswordResetCode)throw new Error("Password reset service is unavailable.");
+    window._mckPasswordResetEmail=await f.verifyPasswordResetCode(f.auth,oobCode);
+    openPasswordReset_();
+  }catch(error){
+    const modal=document.getElementById("passwordResetModal");
+    const msg=document.getElementById("passwordResetMessage");
+    if(modal)modal.classList.add("show");
+    if(msg)msg.textContent="This password-reset link is invalid or has expired. Please request a new reset link.";
+    document.body.style.overflow="hidden";
+  }
+}
+async function submitPasswordReset_(){
+  const newPassword=String(document.getElementById("passwordResetNewPassword")?.value||"");
+  const confirm=String(document.getElementById("passwordResetConfirmPassword")?.value||"");
+  const btn=document.getElementById("passwordResetSubmit"),msg=document.getElementById("passwordResetMessage");
+  if(!window._mckPasswordResetCode){if(msg)msg.textContent="Your reset session is missing. Please request a new link.";return;}
   if(newPassword.length<6){if(msg)msg.textContent="Password must be at least 6 characters.";return;}
   if(newPassword!==confirm){if(msg)msg.textContent="Passwords do not match.";return;}
   if(btn){btn.disabled=true;btn.textContent="Updating...";}
-  google.script.run.withSuccessHandler(function(){
-    if(btn){btn.disabled=false;btn.textContent="Verify & Change Password";}
-    if(msg){msg.style.color="#198754";msg.textContent="Password changed successfully.";}
-    passwordResetToken_="";
-    setTimeout(function(){closePasswordOtp_();},800);
-  }).withFailureHandler(function(error){
-    if(btn){btn.disabled=false;btn.textContent="Verify & Change Password";}
-    if(msg){msg.style.color="#a51620";msg.textContent=error&&error.message?error.message:"Unable to change password.";}
-  }).resetPasswordWithOtp(passwordResetToken_,code,newPassword);
+  try{
+    const f=await window.MckenzieFirebaseReady;
+    await f.confirmPasswordReset(f.auth,window._mckPasswordResetCode,newPassword);
+    if(btn){btn.disabled=false;btn.textContent="Password Updated";}
+    if(msg){msg.style.color="#198754";msg.textContent="Your password has been changed successfully. You can now log in with your new password.";}
+    window._mckPasswordResetCode="";
+    const cleanUrl=new URL(window.location.href);
+    ["mode","oobCode","apiKey","continueUrl","lang"].forEach(function(k){cleanUrl.searchParams.delete(k);});
+    window.history.replaceState({},document.title,cleanUrl.pathname+(cleanUrl.search?cleanUrl.search:"")+(cleanUrl.hash||""));
+    setTimeout(function(){closePasswordReset_();openLoginModal&&openLoginModal();},1400);
+  }catch(error){
+    if(btn){btn.disabled=false;btn.textContent="Update Password";}
+    if(msg){msg.style.color="#a51620";msg.textContent=error&&error.message?error.message:"Unable to change your password. Please request a new reset link.";}
+  }
 }
 function submitChangePassword_() {
   const user=getSavedUser_()||{};
@@ -11117,6 +11135,14 @@ body.mck-customer-chat-open .sticky-search-button,body.mck-customer-chat-open .s
   }
 }
 </style>
+
+<script id="mck-password-reset-route">
+(function(){
+  function init(){ if(typeof preparePasswordResetFromUrl_==='function') preparePasswordResetFromUrl_(); }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init,{once:true});
+  else init();
+})();
+</script>
 </body>
 
 <style id="mck-v32-polish-final">
@@ -11528,7 +11554,6 @@ body:not(.mck-customer-chat-open) .account-menu-wrap,body:not(.mck-customer-chat
       'paymentHistoryModal':function(){closeAccountSubmodal_('paymentHistoryModal');},
       'couponsModal':function(){closeAccountSubmodal_('couponsModal');},
       'forgotPasswordModal':function(){if(typeof closeForgotPassword_==='function')closeForgotPassword_();},
-      'passwordOtpModal':function(){if(typeof closePasswordOtp_==='function')closePasswordOtp_();},
       'changePasswordModal':function(){if(typeof closeChangePassword_==='function')closeChangePassword_();},
       'emailVerificationModal':function(){if(typeof closeEmailVerificationModal==='function')closeEmailVerificationModal();},
       'mckSurveyModal':function(){if(typeof closeSurveyModal_==='function')closeSurveyModal_();},
