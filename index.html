@@ -9817,6 +9817,27 @@ function showThankYouThenSurvey_(orderId){
           try{localStorage.setItem('mckenzie_receipt_local_'+String(orderId),received?'received':'not-received');}catch(e){}
           done({success:true,received:received,localOnly:true}); return;
         }
+        if(api==='autoConfirmExpiredReceipt'){
+          var autoOrderId=String(params.orderId||'');
+          if(!autoOrderId) throw new Error('Order ID is required.');
+          var aref=f.doc(f.db,'orders',autoOrderId),asnap=await f.getDoc(aref);
+          if(!asnap.exists()) throw new Error('Order not found.');
+          var aorder=asnap.data()||{};
+          if(String(aorder.userId||'')!==uid) throw new Error('Invalid customer account.');
+          if(String(aorder.orderStatus||'')!=='Delivered') throw new Error('The order has not been marked as delivered yet.');
+          if(aorder.customerConfirmed) { try{localStorage.setItem('mckenzie_receipt_local_'+autoOrderId,'received');}catch(e){}; done({success:true,received:true,alreadyConfirmed:true}); return; }
+          var adelivered=aorder.deliveredAt&&aorder.deliveredAt.toDate?aorder.deliveredAt.toDate().getTime():Date.parse(String(aorder.deliveredAt||''));
+          if(!Number.isFinite(adelivered) || (Date.now()-adelivered)<(3*60*60*1000)) { done({success:false,notExpired:true}); return; }
+          var anow=new Date().toISOString();
+          try{
+            await f.updateDoc(aref,{customerConfirmed:true,confirmedAt:anow,closed:true,receiptPromptDismissed:true,receiptPromptDismissedAt:anow,receiptAutoConfirmed:true,autoConfirmedAt:anow});
+          }catch(writeErr){
+            var amsg=String(writeErr&&writeErr.message||writeErr||'');
+            if(!/permission|insufficient/i.test(amsg)) throw writeErr;
+          }
+          try{localStorage.setItem('mckenzie_receipt_local_'+autoOrderId,'received');}catch(e){}
+          done({success:true,received:true,autoConfirmed:true}); return;
+        }
         if(api==='dismissReceiptPrompt'){
           var dismissOrderId=String(params.orderId||'');
           if(!dismissOrderId) throw new Error('Order ID is required.');
@@ -9853,6 +9874,7 @@ function showThankYouThenSurvey_(orderId){
       else if(api==='markCustomerNotificationRead') r.markCustomerNotificationRead(String(params.userId||''),String(params.notificationId||''));
       else if(api==='respondCustomerReceipt') r.respondCustomerReceipt(String(params.userId||''),String(params.orderId||''),String(params.received||'').toLowerCase()==='true',String(params.notificationId||''));
       else if(api==='dismissReceiptPrompt') r.dismissReceiptPrompt(String(params.userId||''),String(params.orderId||''),String(params.notificationId||''));
+      else if(api==='autoConfirmExpiredReceipt') r.autoConfirmExpiredReceipt(String(params.userId||''),String(params.orderId||''));
       return;
     }
     done({success:false,error:'Customer API is unavailable.'});
@@ -9929,7 +9951,20 @@ function showThankYouThenSurvey_(orderId){
   function handleDeliveredOrder(order){
     var id=String(order.orderId||'');
     var localReceiptState='';try{localReceiptState=localStorage.getItem('mckenzie_receipt_local_'+id)||'';}catch(e){}
-    if(!id||String(order.orderStatus||'')!=='Delivered'||order.customerConfirmed||order.closed||order.receiptPromptDismissed||localReceiptState||wasShown(id))return;
+    if(!id||String(order.orderStatus||'')!=='Delivered')return;
+    var deliveredAt=order.deliveredAt&&order.deliveredAt.toDate?order.deliveredAt.toDate().getTime():Date.parse(String(order.deliveredAt||''));
+    var expired=Number.isFinite(deliveredAt) && (Date.now()-deliveredAt)>=(3*60*60*1000);
+    if(expired && !order.customerConfirmed && !localReceiptState){
+      callApi('autoConfirmExpiredReceipt',{userId:user().userId||'',orderId:id},function(v){
+        if(v&&v.success){rememberShown(id);return;}
+        // If the browser cannot persist the server-side change, do not keep
+        // bothering the customer with a receipt popup after the 3-hour window.
+        try{localStorage.setItem('mckenzie_receipt_local_'+id,'received');}catch(e){}
+        rememberShown(id);
+      });
+      return;
+    }
+    if(order.customerConfirmed||order.closed||order.receiptPromptDismissed||localReceiptState||wasShown(id))return;
     open({orderId:id,title:'Did you receive your order?',message:'Your order was marked as Delivered. Did you receive your food?'});
   }
   function startRealtime(){
