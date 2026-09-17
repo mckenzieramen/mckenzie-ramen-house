@@ -8383,7 +8383,8 @@ async function loadPublishedMenuRatings_(reviewsOverride){
           const rating=Math.max(1,Math.min(5,Number(r.rating||0)));
           const stars=Array.from({length:5},function(_,i){return i<Math.round(rating)?'★':'☆';}).join(' ');
           const when=r.submittedAt?new Date(r.submittedAt).toLocaleDateString() : '';
-          return '<article class="customer-review-card" data-review-menu="'+escapeHtml(String(r.productName||'Menu item'))+'"><div class="customer-review-menu">🍜 '+escapeHtml(String(r.productName||'Menu item'))+'<span class="mck-customer-review-verified">✓ Verified Purchase</span></div>'+(r.image?'<img class="mck-public-review-photo" src="'+escapeHtml(String(r.image))+'" alt="Customer review photo" loading="lazy">':'')+'<div class="customer-review-stars">'+stars+'</div><p class="customer-review-text">“'+escapeHtml(String(r.review).trim())+'”</p><div class="customer-review-name">— '+escapeHtml(String(r.customerName||'Customer'))+(r.anonymous?' <span class="mck-anonymous-badge">Anonymous</span>':'')+'</div>'+(when?'<div class="customer-review-date">'+escapeHtml(when)+'</div>':'')+'</article>';
+          var publicName=r.anonymous?'Anonymous':String(r.customerName||'Customer');
+          return '<article class="customer-review-card" data-review-menu="'+escapeHtml(String(r.productName||'Menu item'))+'"><div class="customer-review-menu">🍜 '+escapeHtml(String(r.productName||'Menu item'))+'<span class="mck-customer-review-verified">✓ Verified Purchase</span></div>'+(r.image?'<img class="mck-public-review-photo" src="'+escapeHtml(String(r.image))+'" alt="Customer review photo" loading="lazy">':'')+'<div class="customer-review-stars">'+stars+'</div><p class="customer-review-text">“'+escapeHtml(String(r.review).trim())+'”</p><div class="customer-review-name">— '+escapeHtml(publicName)+'</div>'+(when?'<div class="customer-review-date">'+escapeHtml(when)+'</div>':'')+'</article>';
         }).join('');
         /* Duplicate the exact comment set so the CSS animation can loop
            continuously without a visible jump. The viewport shows five
@@ -11766,14 +11767,14 @@ body:not(.mck-customer-chat-open) .account-menu-wrap,body:not(.mck-customer-chat
 (function(){'use strict';
 function favoriteKey(){try{var id=(typeof customerCurrentUserId_==='function'?customerCurrentUserId_():'')||'guest';return 'mckFavorites_'+String(id).replace(/[^a-zA-Z0-9_-]/g,'_')}catch(e){return 'mckFavorites_guest'}}function getFav(){try{var a=JSON.parse(localStorage.getItem(favoriteKey())||'[]');return Array.isArray(a)?a:[]}catch(e){return []}}function saveFav(a){try{localStorage.setItem(favoriteKey(),JSON.stringify(a.slice(0,100)))}catch(e){}}
 function getProduct(btn){var card=btn.closest('.product-card');if(!card)return null;var id=String(card.getAttribute('data-product-id')||''),name=String(card.getAttribute('data-product-name')||''),all=Object.keys(window.mckenzieProducts||{}).map(function(k){return window.mckenzieProducts[k]});return all.find(function(p){return String(p.id||'')===id&&String(p.name||'')===name})||all.find(function(p){return String(p.id||'')===id})||all.find(function(p){return String(p.name||'')===name})||{id:id,name:name,price:0,image:(card.querySelector('.product-image')||{}).src||'',category:''}}
-document.addEventListener('click',function(e){var btn=e.target&&e.target.closest?e.target.closest('.mck-favorite-toggle'):null;if(!btn)return;e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();var p=getProduct(btn);if(!p||!String(p.id||p.name||''))return;if(typeof isLoggedIn_==='function'&&!isLoggedIn_()){if(typeof accountMenuLogin_==='function')accountMenuLogin_();return}var a=getFav(),id=String(p.id||''),name=String(p.name||''),i=a.findIndex(function(x){return String(x.id)===id&&String(x.name)===name});if(i>=0){a.splice(i,1);btn.classList.remove('active');btn.setAttribute('aria-label','Add '+name+' to favorites')}else{a.unshift({id:id,name:name,price:p.price,image:p.image||((btn.closest('.product-card').querySelector('.product-image')||{}).src||''),category:p.category||''});btn.classList.add('active');btn.setAttribute('aria-label','Remove '+name+' from favorites')}saveFav(a);if(typeof openCustomerFavorites_==='function')setTimeout(function(){openCustomerFavorites_()},90)},true);
+document.addEventListener('click',function(e){var btn=e.target&&e.target.closest?e.target.closest('.mck-favorite-toggle'):null;if(!btn)return;e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();var p=getProduct(btn);if(!p||!String(p.id||p.name||''))return;if(typeof isLoggedIn_==='function'&&!isLoggedIn_()){if(typeof accountMenuLogin_==='function')accountMenuLogin_();return}var a=getFav(),id=String(p.id||''),name=String(p.name||''),i=a.findIndex(function(x){return String(x.id)===id&&String(x.name)===name});if(i>=0){a.splice(i,1);btn.classList.remove('active');btn.setAttribute('aria-label','Add '+name+' to favorites')}else{a.unshift({id:id,name:name,price:p.price,image:p.image||((btn.closest('.product-card').querySelector('.product-image')||{}).src||''),category:p.category||''});btn.classList.add('active');btn.setAttribute('aria-label','Remove '+name+' from favorites')}saveFav(a);},true);
 function setChatMode(v){var m=document.getElementById('mckCustomerChatModal');if(m)m.classList.toggle('mck-chat-conversation',!!v)}var oldShow=window.openExistingCustomerSupportChat_;if(oldShow&&!oldShow.__v59){window.openExistingCustomerSupportChat_=async function(){setChatMode(true);return oldShow.apply(this,arguments)};window.openExistingCustomerSupportChat_.__v59=true}var oldStart=window.openCustomerSupportChat_;if(oldStart&&!oldStart.__v59){window.openCustomerSupportChat_=async function(){setChatMode(false);var r=await oldStart.apply(this,arguments);return r};window.openCustomerSupportChat_.__v59=true}
 document.addEventListener('click',function(e){if(e.target&&e.target.id==='mckStartAgentBtn')setTimeout(function(){setChatMode(true)},50);if(e.target&&e.target.closest&&e.target.closest('.mck-chat-ticket'))setTimeout(function(){setChatMode(true)},50)},true);
 function addSakura(){if(document.querySelector('.mck-sakura-layer'))return;var l=document.createElement('div');l.className='mck-sakura-layer';for(var i=0;i<6;i++){var p=document.createElement('i');p.className='mck-sakura-petal';l.appendChild(p)}document.body.appendChild(l)}function addSteam(){var h=document.querySelector('.hero#home');if(!h||h.querySelector('.mck-steam'))return;['s1','s2','s3'].forEach(function(c){var x=document.createElement('i');x.className='mck-steam '+c;h.appendChild(x)})}function bindCartBounce(){document.addEventListener('click',function(e){var add=e.target&&e.target.closest?e.target.closest('[data-cart-plus],.add-to-cart,.cart-add-button'):null;if(!add)return;setTimeout(function(){var c=document.getElementById('stickyCartButton');if(c){c.classList.remove('mck-cart-bounce');void c.offsetWidth;c.classList.add('mck-cart-bounce');setTimeout(function(){c.classList.remove('mck-cart-bounce')},520)}},40)},false)}
 document.addEventListener('DOMContentLoaded',function(){addSakura();addSteam();bindCartBounce()});window.addEventListener('load',function(){setTimeout(addSteam,300)})})();
 </script>
 
-<style id="mck-v60-chat-lobby-close-fix">
+<style id="mck-v61-chat-lobby-close-fix">
 /* V60: preserve the approved Customer Support lobby design; only normalize the close control. */
 #mckCustomerChatHead{
   position:relative!important;
@@ -11841,3 +11842,40 @@ document.addEventListener('DOMContentLoaded',function(){addSakura();addSteam();b
   }
 }
 </style>
+
+<style id="mck-v61-anonymous-favorites-final">
+/* V61: public reviews must show only Anonymous when the customer opts in.
+   Admin retains the private customerName/customerEmail fields. */
+.mck-anonymous-badge{display:none!important}
+/* Favorite heart is a save/toggle control only. It must never redirect the customer. */
+.mck-favorite-toggle{pointer-events:auto!important;cursor:pointer!important}
+</style>
+<script id="mck-v61-anonymous-favorites-guard">
+(function(){
+  'use strict';
+  /* Defensive guard: if an older favorite click handler tries to open the
+     Favorites modal, this capture handler consumes the click first while
+     still allowing the heart to toggle its saved state. */
+  document.addEventListener('click',function(e){
+    var btn=e.target&&e.target.closest?e.target.closest('.mck-favorite-toggle'):null;
+    if(!btn)return;
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+    var card=btn.closest('.product-card');
+    if(!card)return;
+    var id=String(card.getAttribute('data-product-id')||'');
+    var name=String(card.getAttribute('data-product-name')||'');
+    var all=Object.keys(window.mckenzieProducts||{}).map(function(k){return window.mckenzieProducts[k]});
+    var p=all.find(function(x){return String(x.id||'')===id})||all.find(function(x){return String(x.name||'')===name});
+    if(!p){p={id:id,name:name,price:0,image:(card.querySelector('.product-image')||{}).src||'',category:''};}
+    if(typeof isLoggedIn_==='function'&&!isLoggedIn_()){if(typeof accountMenuLogin_==='function')accountMenuLogin_();return;}
+    var key='mckFavorites_'+String((typeof customerCurrentUserId_==='function'?customerCurrentUserId_():'')||'guest').replace(/[^a-zA-Z0-9_-]/g,'_');
+    var a=[];try{a=JSON.parse(localStorage.getItem(key)||'[]');if(!Array.isArray(a))a=[];}catch(_){a=[];}
+    var i=a.findIndex(function(x){return String(x.id)===String(p.id)&&String(x.name)===String(p.name)});
+    if(i>=0){a.splice(i,1);btn.classList.remove('active');btn.setAttribute('aria-label','Add '+String(p.name||'item')+' to favorites');}
+    else{a.unshift({id:String(p.id||''),name:String(p.name||''),price:p.price,image:p.image||((card.querySelector('.product-image')||{}).src||''),category:p.category||''});btn.classList.add('active');btn.setAttribute('aria-label','Remove '+String(p.name||'item')+' from favorites');}
+    try{localStorage.setItem(key,JSON.stringify(a.slice(0,100)));}catch(_){}
+  },true);
+})();
+</script>
