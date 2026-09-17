@@ -607,6 +607,31 @@
     return {success:true,received:!!received,closed:!!received,contact:{phone:"09123456789",email:"Mckenzieramenhouse@gmail.com",facebook:"Mckenzie Ramen House"}};
   }
 
+  async function autoConfirmExpiredReceipt(userId, orderId) {
+    const f = await READY;
+    const u = await currentUser(true);
+    if (u.uid !== String(userId)) throw makeError("Invalid customer account.");
+    const ref=f.doc(f.db,"orders",String(orderId));
+    const snap=await f.getDoc(ref);
+    if(!snap.exists() || String(snap.data().userId)!==u.uid) throw makeError("Order not found.");
+    const o=snap.data()||{};
+    if(String(o.orderStatus)!=="Delivered") throw makeError("The order has not been marked as delivered yet.");
+    if(o.customerConfirmed) return {success:true,received:true,alreadyConfirmed:true};
+    const deliveredAt=o.deliveredAt&&typeof o.deliveredAt.toDate==='function' ? o.deliveredAt.toDate().getTime() : Date.parse(String(o.deliveredAt||""));
+    if(!Number.isFinite(deliveredAt) || (Date.now()-deliveredAt) < (3*60*60*1000)) return {success:false,notExpired:true};
+    const now=isoNow();
+    try {
+      await f.updateDoc(ref,{customerConfirmed:true,confirmedAt:now,closed:true,receiptPromptDismissed:true,receiptPromptDismissedAt:now,receiptAutoConfirmed:true,autoConfirmedAt:now});
+    } catch(writeErr) {
+      const msg=String(writeErr&&writeErr.message||writeErr||'');
+      if(!/permission|insufficient/i.test(msg)) throw writeErr;
+      try{localStorage.setItem('mckenzie_receipt_local_'+String(orderId),'received');}catch(e){}
+      return {success:true,received:true,localOnly:true,autoConfirmed:true};
+    }
+    try{localStorage.setItem('mckenzie_receipt_local_'+String(orderId),'received');}catch(e){}
+    return {success:true,received:true,autoConfirmed:true};
+  }
+
   async function dismissReceiptPrompt(userId, orderId, notificationId) {
     const f = await READY;
     const u = await currentUser(true);
@@ -662,8 +687,23 @@
   }
 
   async function adminOrders() {
+    const f=await READY;
     await requireAdmin();
     const list=await getCollection("orders");
+    // Safety net for customers who never answer the receipt popup: once an
+    // order has been Delivered for 3 hours, the system treats it as received
+    // and closes the order. This runs whenever the Admin dashboard refreshes.
+    const autoCutoff=Date.now()-(3*60*60*1000);
+    for(const rawOrder of list){
+      if(String(rawOrder.orderStatus||'')!=='Delivered' || rawOrder.customerConfirmed || rawOrder.closed) continue;
+      const deliveredMs=rawOrder.deliveredAt&&typeof rawOrder.deliveredAt.toDate==='function' ? rawOrder.deliveredAt.toDate().getTime() : Date.parse(String(rawOrder.deliveredAt||''));
+      if(!Number.isFinite(deliveredMs) || deliveredMs>autoCutoff) continue;
+      const now=isoNow();
+      try{
+        await f.updateDoc(f.doc(f.db,'orders',String(rawOrder.orderId||rawOrder.id)),{customerConfirmed:true,confirmedAt:now,closed:true,receiptPromptDismissed:true,receiptPromptDismissedAt:now,receiptAutoConfirmed:true,autoConfirmedAt:now});
+        rawOrder.customerConfirmed=true; rawOrder.confirmedAt=now; rawOrder.closed=true; rawOrder.receiptPromptDismissed=true; rawOrder.receiptAutoConfirmed=true; rawOrder.autoConfirmedAt=now;
+      }catch(e){ console.warn('Automatic 3-hour receipt confirmation failed for '+String(rawOrder.orderId||rawOrder.id),e); }
+    }
     const orders=list.map(normalizeOrder);
     const reviews=await getCollection("reviews");
     const notes=await getCollection("notifications");
@@ -757,6 +797,14 @@
     if(!orderSnap.exists()) throw makeError("Order not found.");
     const order=orderSnap.data();
     if(order.orderStatus!=="Delivered") throw makeError("The customer can only be notified after the order is Delivered.");
+    if(!order.customerConfirmed){
+      const deliveredMs=order.deliveredAt&&typeof order.deliveredAt.toDate==='function' ? order.deliveredAt.toDate().getTime() : Date.parse(String(order.deliveredAt||''));
+      if(Number.isFinite(deliveredMs) && (Date.now()-deliveredMs)>=(3*60*60*1000)){
+        const autoNow=isoNow();
+        await f.updateDoc(f.doc(f.db,'orders',String(orderId)),{customerConfirmed:true,confirmedAt:autoNow,closed:true,receiptPromptDismissed:true,receiptPromptDismissedAt:autoNow,receiptAutoConfirmed:true,autoConfirmedAt:autoNow});
+        order.customerConfirmed=true; order.closed=true; order.receiptPromptDismissed=true;
+      }
+    }
     if(!order.customerConfirmed) throw makeError("Wait for the customer to confirm that the order was received before sending the review request.");
     const reviews=await getCollection("reviews");
     const complete=(Array.isArray(order.items)?order.items:[]).every(item=>{
@@ -807,6 +855,7 @@
       case "confirmCustomerOrderReceived": return respondReceipt(args[0],args[1],true,"");
       case "respondCustomerReceipt": return respondReceipt(args[0],args[1],String(args[2]).toLowerCase()==="true",args[3]);
       case "dismissReceiptPrompt": return dismissReceiptPrompt(args[0],args[1],args[2]);
+      case "autoConfirmExpiredReceipt": return autoConfirmExpiredReceipt(args[0],args[1]);
       case "getCustomerReviewForm": return getReviewForm(args[0],args[1]);
       case "submitCustomerReview": return submitReview(args[0],args[1],args[2],args[3],args[4]);
       case "getPublishedReviews": return getPublishedReviews();
