@@ -2209,6 +2209,9 @@ body.quick-loading {
 .password-submit { width:100%; margin-top:4px; padding:14px 18px; border:0; border-radius:12px; background:linear-gradient(135deg,#9f1118,#5f080c); color:#fff; font-size:14px; font-weight:800; cursor:pointer; }
 .password-submit:disabled { opacity:.65; cursor:wait; }
 .password-message { min-height:18px; margin-top:12px; color:#a51620; font-size:12px; text-align:center; }
+.password-success-card { text-align:center; }
+.password-success-icon { width:64px; height:64px; margin:0 auto 16px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:#198754; color:#fff; font-size:34px; font-weight:900; box-shadow:0 10px 25px rgba(25,135,84,.22); }
+.password-success-card .password-submit { margin-top:8px; }
 .password-secondary { background:#f5ddd5; color:#6d1014; }
 .password-otp { text-align:center; letter-spacing:6px; font-size:22px !important; font-weight:900; }
 
@@ -4025,7 +4028,7 @@ body:not(.mck-customer-chat-open) .sticky-cart-button{visibility:visible!importa
     <button type="button" class="password-close" onclick="closeForgotPassword_()">×</button>
     <div class="account-subkicker">MCKENZIE RAMEN HOUSE</div>
     <h2 id="forgotPasswordTitle">Forgot Password?</h2>
-    <p>Enter the email address associated with your account. We'll send you a secure link to create a new password.</p>
+    <p>Enter the email address associated with your account and we’ll send you a secure password-reset link.</p>
     <div class="password-field">
       <label for="forgotPasswordIdentifier">Email Address</label>
       <input id="forgotPasswordIdentifier" type="email" autocomplete="email" placeholder="Enter your registered email">
@@ -4035,22 +4038,30 @@ body:not(.mck-customer-chat-open) .sticky-cart-button{visibility:visible!importa
   </div>
 </div>
 
-<!-- Password reset opened from the secure Firebase email link -->
+<div id="passwordResetSentModal" class="password-modal" role="dialog" aria-modal="true" aria-labelledby="passwordResetSentTitle">
+  <div class="password-card password-success-card">
+    <div class="password-success-icon" aria-hidden="true">✓</div>
+    <div class="account-subkicker">MCKENZIE RAMEN HOUSE</div>
+    <h2 id="passwordResetSentTitle">Reset Link Sent</h2>
+    <p id="passwordResetSentMessage">A password-reset link has been sent to your registered email. Please check your inbox and follow the link to create a new password.</p>
+  </div>
+</div>
+
 <div id="passwordResetModal" class="password-modal" role="dialog" aria-modal="true" aria-labelledby="passwordResetTitle">
   <div class="password-card">
     <button type="button" class="password-close" onclick="closePasswordReset_()">×</button>
     <div class="account-subkicker">MCKENZIE RAMEN HOUSE</div>
     <h2 id="passwordResetTitle">Create New Password</h2>
-    <p>You're securely updating your McKenzie Ramen House password. Choose a new password below.</p>
+    <p id="passwordResetSubtitle">Create a new password for your McKenzie Ramen House account.</p>
     <div class="password-field">
       <label for="passwordResetNewPassword">New Password</label>
       <input id="passwordResetNewPassword" type="password" autocomplete="new-password" placeholder="At least 6 characters">
     </div>
     <div class="password-field">
       <label for="passwordResetConfirmPassword">Confirm New Password</label>
-      <input id="passwordResetConfirmPassword" type="password" autocomplete="new-password" placeholder="Re-enter your new password">
+      <input id="passwordResetConfirmPassword" type="password" autocomplete="new-password" placeholder="Re-enter new password">
     </div>
-    <button type="button" id="passwordResetSubmit" class="password-submit" onclick="submitPasswordReset_()">Update Password</button>
+    <button type="button" id="passwordResetSubmit" class="password-submit" onclick="submitPasswordReset_()">Change Password</button>
     <div id="passwordResetMessage" class="password-message" aria-live="polite"></div>
   </div>
 </div>
@@ -4060,7 +4071,7 @@ body:not(.mck-customer-chat-open) .sticky-cart-button{visibility:visible!importa
     <button type="button" class="password-close" onclick="closeChangePassword_()">×</button>
     <div class="account-subkicker">MCKENZIE RAMEN HOUSE</div>
     <h2 id="changePasswordTitle">Change Password</h2>
-    <p>Enter your current password. If you forgot it, we can send a secure password-reset link to your registered email.</p>
+    <p>Enter your current password to set a new one.</p>
     <div class="password-field">
       <label for="oldPassword">Old Password</label>
       <input id="oldPassword" type="password" autocomplete="current-password" placeholder="Enter your old password">
@@ -4810,6 +4821,9 @@ async function getMcKenzieCustomerAuthDirect_() {
       deleteUser: authMod.deleteUser,
       onAuthStateChanged: authMod.onAuthStateChanged,
       applyActionCode: authMod.applyActionCode,
+      sendPasswordResetEmail: authMod.sendPasswordResetEmail,
+      verifyPasswordResetCode: authMod.verifyPasswordResetCode,
+      confirmPasswordReset: authMod.confirmPasswordReset,
       setDoc: fsMod.setDoc,
       getDoc: fsMod.getDoc,
       runTransaction: fsMod.runTransaction,
@@ -7340,8 +7354,7 @@ document.addEventListener("click", function(event) {
 /* =========================================================
    PASSWORD RESET / CHANGE PASSWORD
 ========================================================= */
-let passwordResetToken_ = "";
-let passwordResetMode_ = "forgot";
+let passwordResetOobCode_ = "";
 
 function openForgotPassword_(event) {
   if (event) event.preventDefault();
@@ -7351,11 +7364,14 @@ function openForgotPassword_(event) {
   modal.classList.add("show");
   document.body.style.overflow = "hidden";
   const msg = document.getElementById("forgotPasswordMessage");
-  if (msg) msg.textContent = "";
-  setTimeout(function(){ const el=document.getElementById("forgotPasswordIdentifier"); if(el)el.focus(); },50);
+  if (msg) { msg.textContent = ""; msg.style.color = "#a51620"; }
+  const input = document.getElementById("forgotPasswordIdentifier");
+  if (input) input.value = "";
+  setTimeout(function(){ if(input) input.focus(); },50);
 }
 function closeForgotPassword_() {
-  const modal=document.getElementById("forgotPasswordModal"); if(modal)modal.classList.remove("show");
+  const modal=document.getElementById("forgotPasswordModal");
+  if(modal) modal.classList.remove("show");
   if (!document.querySelector(".password-modal.show") && !document.getElementById("loginModal")?.classList.contains("show")) document.body.style.overflow="";
 }
 function openChangePassword_() {
@@ -7363,97 +7379,137 @@ function openChangePassword_() {
   const modal=document.getElementById("changePasswordModal"); if(!modal)return;
   modal.classList.add("show"); document.body.style.overflow="hidden";
   ["oldPassword","newPassword","confirmNewPassword"].forEach(function(id){const e=document.getElementById(id);if(e)e.value="";});
-  const msg=document.getElementById("changePasswordMessage"); if(msg)msg.textContent="";
+  const msg=document.getElementById("changePasswordMessage"); if(msg){msg.textContent="";msg.style.color="#a51620";}
 }
 function closeChangePassword_() {
   const modal=document.getElementById("changePasswordModal"); if(modal)modal.classList.remove("show");
   if (!document.querySelector(".password-modal.show") && !document.getElementById("editProfileModal")?.classList.contains("show")) document.body.style.overflow="";
 }
-function useForgotPasswordFromChange_(event) {
-  if(event)event.preventDefault();
-  closeChangePassword_();
-  const user=getSavedUser_()||{};
-  if(!user.userId){openForgotPassword_();return;}
-  sendPasswordResetLinkForUser_(String(user.userId));
+function showPasswordResetSent_(email) {
+  const modal=document.getElementById("passwordResetSentModal");
+  const message=document.getElementById("passwordResetSentMessage");
+  if(!modal)return;
+  const safeEmail=String(email||"").trim();
+  if(message){
+    message.textContent=safeEmail
+      ? "A password-reset link has been sent to " + safeEmail + ". Please check your inbox and follow the link to create a new password."
+      : "A password-reset link has been sent to your registered email. Please check your inbox and follow the link to create a new password.";
+  }
+  modal.classList.add("show");
+  document.body.style.overflow="hidden";
+  clearTimeout(window.__mckResetSentTimer);
+  window.__mckResetSentTimer=setTimeout(function(){closePasswordResetSent_();},2800);
 }
-function sendForgotPasswordLink_() {
-  const identifier=String(document.getElementById("forgotPasswordIdentifier")?.value||"").trim();
-  const btn=document.getElementById("forgotPasswordSendButton"), msg=document.getElementById("forgotPasswordMessage");
-  if(!identifier || !identifier.includes("@")){if(msg)msg.textContent="Please enter your registered email address.";return;}
+function closePasswordResetSent_(){
+  const modal=document.getElementById("passwordResetSentModal");
+  if(modal)modal.classList.remove("show");
+  if(!document.querySelector(".password-modal.show")) document.body.style.overflow="";
+}
+async function sendForgotPasswordLink_() {
+  const email=String(document.getElementById("forgotPasswordIdentifier")?.value||"").trim().toLowerCase();
+  const btn=document.getElementById("forgotPasswordSendButton");
+  const msg=document.getElementById("forgotPasswordMessage");
+  if(!email || !email.includes("@")){ if(msg)msg.textContent="Please enter your registered email address."; return; }
   if(btn){btn.disabled=true;btn.textContent="Sending...";}
-  google.script.run.withSuccessHandler(function(result){
-    if(btn){btn.disabled=false;btn.textContent="Send Reset Link";}
-    if(msg){msg.style.color="#198754";msg.textContent="Reset link sent. Please check your inbox or spam folder.";}
-  }).withFailureHandler(function(error){
-    if(btn){btn.disabled=false;btn.textContent="Send Reset Link";}
-    if(msg){msg.style.color="#a51620";msg.textContent=error&&error.message?error.message:"Unable to send the reset link.";}
-  }).requestPasswordResetLink(identifier);
-}
-function sendPasswordResetLinkForUser_(userId) {
-  google.script.run.withSuccessHandler(function(){
-    const modal=document.getElementById("changePasswordModal");
-    const msg=document.getElementById("changePasswordMessage");
-    if(msg){msg.style.color="#198754";msg.textContent="A secure password-reset link has been sent to your registered email.";}
-    if(modal)modal.classList.add("show");
-  }).withFailureHandler(function(error){
-    const modal=document.getElementById("changePasswordModal"); if(modal)modal.classList.add("show");
-    const msg=document.getElementById("changePasswordMessage"); if(msg)msg.textContent=error&&error.message?error.message:"Unable to send the reset link.";
-  }).requestPasswordResetOtpForUser(userId);
-}
-function openPasswordReset_(){
-  const modal=document.getElementById("passwordResetModal"); if(!modal)return;
-  modal.classList.add("show"); document.body.style.overflow="hidden";
-  ["passwordResetNewPassword","passwordResetConfirmPassword"].forEach(function(id){const e=document.getElementById(id);if(e)e.value="";});
-  const msg=document.getElementById("passwordResetMessage"); if(msg){msg.style.color="#a51620";msg.textContent="";}
-  setTimeout(function(){const e=document.getElementById("passwordResetNewPassword");if(e)e.focus();},80);
-}
-function closePasswordReset_(){
-  const modal=document.getElementById("passwordResetModal");if(modal)modal.classList.remove("show");
-  if(!document.querySelector(".password-modal.show"))document.body.style.overflow="";
-}
-async function preparePasswordResetFromUrl_(){
-  const params=new URLSearchParams(window.location.search);
-  const mode=params.get("mode");
-  const oobCode=params.get("oobCode");
-  if(mode!=="resetPassword" || !oobCode)return;
-  window._mckPasswordResetCode=oobCode;
   try{
-    const f=window.MckenzieFirebaseReady ? await window.MckenzieFirebaseReady : null;
-    if(!f || !f.verifyPasswordResetCode)throw new Error("Password reset service is unavailable.");
-    window._mckPasswordResetEmail=await f.verifyPasswordResetCode(f.auth,oobCode);
-    openPasswordReset_();
+    const f=await getMcKenzieCustomerAuthDirect_();
+    const actionCodeSettings={url:window.location.origin+window.location.pathname,handleCodeInApp:false};
+    await f.sendPasswordResetEmail(f.auth,email,actionCodeSettings);
+    closeForgotPassword_();
+    showPasswordResetSent_(email);
   }catch(error){
+    console.error("Password reset email failed:",error);
+    if(msg){
+      msg.style.color="#a51620";
+      if(error&&error.code==="auth/invalid-email") msg.textContent="Please enter a valid email address.";
+      else if(error&&error.code==="auth/too-many-requests") msg.textContent="Too many requests. Please wait a few minutes and try again.";
+      else msg.textContent="We couldn't send the reset link right now. Please check your email address and try again.";
+    }
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent="Send Reset Link";}
+  }
+}
+async function useForgotPasswordFromChange_(event) {
+  if(event)event.preventDefault();
+  const user=getSavedUser_()||{};
+  const email=String(user.email||"").trim().toLowerCase();
+  closeChangePassword_();
+  if(!email){ openForgotPassword_(); return; }
+  try{
+    const f=await getMcKenzieCustomerAuthDirect_();
+    const actionCodeSettings={url:window.location.origin+window.location.pathname,handleCodeInApp:false};
+    await f.sendPasswordResetEmail(f.auth,email,actionCodeSettings);
+    showPasswordResetSent_(email);
+  }catch(error){
+    console.error("Logged-in password reset failed:",error);
+    openForgotPassword_();
+    const input=document.getElementById("forgotPasswordIdentifier"); if(input)input.value=email;
+    const msg=document.getElementById("forgotPasswordMessage"); if(msg)msg.textContent="We couldn't send the reset link right now. Please try again.";
+  }
+}
+async function processPasswordResetAction_(){
+  const params=new URLSearchParams(window.location.search||"");
+  const mode=String(params.get("mode")||"").trim();
+  const code=String(params.get("oobCode")||"").trim();
+  if(mode!=="resetPassword" || !code) return false;
+  passwordResetOobCode_=code;
+  try{
+    const f=await getMcKenzieCustomerAuthDirect_();
+    const info=await f.verifyPasswordResetCode(f.auth,code);
+    const modal=document.getElementById("passwordResetModal");
+    const subtitle=document.getElementById("passwordResetSubtitle");
+    if(subtitle && info && info.indexOf("@")>0) subtitle.textContent="Create a new password for "+info+".";
+    if(modal){
+      modal.classList.add("show"); document.body.style.overflow="hidden";
+      const msg=document.getElementById("passwordResetMessage"); if(msg){msg.textContent="";msg.style.color="#a51620";}
+      const submit=document.getElementById("passwordResetSubmit"); if(submit)submit.disabled=false;
+      setTimeout(function(){const e=document.getElementById("passwordResetNewPassword");if(e)e.focus();},50);
+    }
+    return true;
+  }catch(error){
+    console.error("Password reset link validation failed:",error);
+    passwordResetOobCode_="";
     const modal=document.getElementById("passwordResetModal");
     const msg=document.getElementById("passwordResetMessage");
-    if(modal)modal.classList.add("show");
-    if(msg)msg.textContent="This password-reset link is invalid or has expired. Please request a new reset link.";
-    document.body.style.overflow="hidden";
+    if(modal){modal.classList.add("show");document.body.style.overflow="hidden";}
+    if(msg){msg.style.color="#a51620";msg.textContent="This password-reset link is invalid or has expired. Please request a new reset link.";}
+    const submit=document.getElementById("passwordResetSubmit"); if(submit)submit.disabled=true;
+    return true;
   }
+}
+function closePasswordReset_(){
+  const modal=document.getElementById("passwordResetModal"); if(modal)modal.classList.remove("show");
+  if(!document.querySelector(".password-modal.show")) document.body.style.overflow="";
 }
 async function submitPasswordReset_(){
   const newPassword=String(document.getElementById("passwordResetNewPassword")?.value||"");
   const confirm=String(document.getElementById("passwordResetConfirmPassword")?.value||"");
-  const btn=document.getElementById("passwordResetSubmit"),msg=document.getElementById("passwordResetMessage");
-  if(!window._mckPasswordResetCode){if(msg)msg.textContent="Your reset session is missing. Please request a new link.";return;}
+  const btn=document.getElementById("passwordResetSubmit");
+  const msg=document.getElementById("passwordResetMessage");
+  if(!passwordResetOobCode_){if(msg)msg.textContent="This reset session is no longer valid. Please request a new reset link.";return;}
   if(newPassword.length<6){if(msg)msg.textContent="Password must be at least 6 characters.";return;}
   if(newPassword!==confirm){if(msg)msg.textContent="Passwords do not match.";return;}
   if(btn){btn.disabled=true;btn.textContent="Updating...";}
   try{
-    const f=await window.MckenzieFirebaseReady;
-    await f.confirmPasswordReset(f.auth,window._mckPasswordResetCode,newPassword);
-    if(btn){btn.disabled=false;btn.textContent="Password Updated";}
-    if(msg){msg.style.color="#198754";msg.textContent="Your password has been changed successfully. You can now log in with your new password.";}
-    window._mckPasswordResetCode="";
-    const cleanUrl=new URL(window.location.href);
-    ["mode","oobCode","apiKey","continueUrl","lang"].forEach(function(k){cleanUrl.searchParams.delete(k);});
-    window.history.replaceState({},document.title,cleanUrl.pathname+(cleanUrl.search?cleanUrl.search:"")+(cleanUrl.hash||""));
-    setTimeout(function(){closePasswordReset_();openLoginModal&&openLoginModal();},1400);
+    const f=await getMcKenzieCustomerAuthDirect_();
+    await f.confirmPasswordReset(f.auth,passwordResetOobCode_,newPassword);
+    passwordResetOobCode_="";
+    if(msg){msg.style.color="#198754";msg.textContent="Your password has been changed successfully.";}
+    if(btn)btn.textContent="Password Changed";
+    setTimeout(function(){
+      closePasswordReset_();
+      if(window.history&&window.history.replaceState) window.history.replaceState({},document.title,window.location.pathname+window.location.hash);
+      openLoginModal();
+      const loginMessage=document.getElementById("popupLoginMessage");
+      if(loginMessage){loginMessage.style.color="#198754";loginMessage.textContent="Your password has been changed. Please log in with your new password.";}
+    },900);
   }catch(error){
-    if(btn){btn.disabled=false;btn.textContent="Update Password";}
-    if(msg){msg.style.color="#a51620";msg.textContent=error&&error.message?error.message:"Unable to change your password. Please request a new reset link.";}
+    console.error("Password reset failed:",error);
+    if(msg){msg.style.color="#a51620";msg.textContent=(error&&error.code==="auth/expired-action-code")?"This reset link has expired. Please request a new one.":"Unable to change the password. Please request a new reset link.";}
+    if(btn){btn.disabled=false;btn.textContent="Change Password";}
   }
 }
-function submitChangePassword_() {
+async function submitChangePassword_() {
   const user=getSavedUser_()||{};
   const oldPassword=String(document.getElementById("oldPassword")?.value||"");
   const newPassword=String(document.getElementById("newPassword")?.value||"");
@@ -9222,6 +9278,7 @@ function startCustomerFirebase_() {
     loadBrandAssets();
     (async function(){
       const handled = await processEmailVerificationAction_();
+    processPasswordResetAction_();
       if (!handled) setTimeout(function() { checkEmailVerificationReturn_(0); }, 250);
     })();
   } catch (error) {
@@ -11135,14 +11192,6 @@ body.mck-customer-chat-open .sticky-search-button,body.mck-customer-chat-open .s
   }
 }
 </style>
-
-<script id="mck-password-reset-route">
-(function(){
-  function init(){ if(typeof preparePasswordResetFromUrl_==='function') preparePasswordResetFromUrl_(); }
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init,{once:true});
-  else init();
-})();
-</script>
 </body>
 
 <style id="mck-v32-polish-final">
@@ -11554,6 +11603,8 @@ body:not(.mck-customer-chat-open) .account-menu-wrap,body:not(.mck-customer-chat
       'paymentHistoryModal':function(){closeAccountSubmodal_('paymentHistoryModal');},
       'couponsModal':function(){closeAccountSubmodal_('couponsModal');},
       'forgotPasswordModal':function(){if(typeof closeForgotPassword_==='function')closeForgotPassword_();},
+      'passwordResetSentModal':function(){if(typeof closePasswordResetSent_==='function')closePasswordResetSent_();},
+      'passwordResetModal':function(){if(typeof closePasswordReset_==='function')closePasswordReset_();},
       'changePasswordModal':function(){if(typeof closeChangePassword_==='function')closeChangePassword_();},
       'emailVerificationModal':function(){if(typeof closeEmailVerificationModal==='function')closeEmailVerificationModal();},
       'mckSurveyModal':function(){if(typeof closeSurveyModal_==='function')closeSurveyModal_();},
