@@ -11645,3 +11645,104 @@ body:not(.mck-customer-chat-open) .account-menu-wrap,body:not(.mck-customer-chat
   var obs=new MutationObserver(function(){decorateFavorites();});try{obs.observe(document.getElementById('products')||document.body,{childList:true,subtree:true});}catch(e){}
 })();
 </script>
+
+<style id="mck-v58-clean-header-favorites-rewards">
+/* V58 FINAL UI SAFETY OVERRIDES
+   - No floating/duplicate top search control.
+   - Keep the three-line account button fixed and clean.
+   - Give the cart deliberate breathing room before the account button.
+   - Restore the real menu search beneath Best Seller & New Menu.
+*/
+#stickySearchButton,
+.sticky-search-button,
+.sticky-search-bar#stickySearchButton{display:none !important;visibility:hidden !important;opacity:0 !important;pointer-events:none !important;}
+.mck-menu-tools{position:relative !important;width:min(760px,92vw) !important;height:auto !important;min-width:0 !important;min-height:0 !important;display:flex !important;align-items:center !important;justify-content:center !important;overflow:visible !important;clip:auto !important;clip-path:none !important;margin:24px auto 24px !important;padding:0 !important;white-space:normal !important;}
+.mck-menu-search{display:block !important;width:100% !important;min-width:0 !important;height:46px !important;box-sizing:border-box !important;font-size:16px !important;}
+.sticky-cart-button{left:auto !important;right:76px !important;top:10px !important;width:42px !important;height:42px !important;min-width:42px !important;min-height:42px !important;max-width:42px !important;max-height:42px !important;z-index:10000040 !important;}
+.account-menu-wrap{left:auto !important;right:10px !important;top:10px !important;width:42px !important;height:42px !important;z-index:10000041 !important;}
+.account-menu-button{width:42px !important;height:42px !important;min-width:42px !important;min-height:42px !important;max-width:42px !important;max-height:42px !important;}
+.sticky-cart-icon .mck-svg-icon,.sticky-cart-icon svg{width:19px !important;height:19px !important;}
+.account-icon-lines i{width:18px !important;}
+@media(max-width:760px){
+  .mck-menu-tools{width:min(92vw,620px) !important;margin:20px auto 18px !important;}
+  .mck-menu-search{height:44px !important;font-size:16px !important;}
+  .sticky-cart-button{right:70px !important;top:10px !important;width:40px !important;height:40px !important;min-width:40px !important;min-height:40px !important;}
+  .account-menu-wrap{right:10px !important;top:10px !important;width:40px !important;height:40px !important;}
+  .account-menu-button{width:40px !important;height:40px !important;min-width:40px !important;min-height:40px !important;}
+}
+@media(max-width:430px){
+  .mck-menu-tools{width:calc(100vw - 28px) !important;}
+  .mck-menu-search{height:44px !important;font-size:16px !important;padding-left:15px !important;padding-right:15px !important;}
+  .sticky-cart-button{right:68px !important;width:38px !important;height:38px !important;min-width:38px !important;min-height:38px !important;top:11px !important;}
+  .account-menu-wrap{right:8px !important;top:11px !important;width:38px !important;height:38px !important;}
+  .account-menu-button{width:38px !important;height:38px !important;min-width:38px !important;min-height:38px !important;}
+  .account-icon-lines i{width:17px !important;}
+}
+/* Favorite button is a real button, never covered by the card image/content. */
+.mck-favorite-toggle{position:absolute !important;right:10px !important;top:10px !important;z-index:20 !important;width:40px !important;height:40px !important;min-width:40px !important;min-height:40px !important;display:flex !important;align-items:center !important;justify-content:center !important;border:1px solid rgba(233,173,53,.72) !important;border-radius:50% !important;background:rgba(255,250,242,.96) !important;color:#8f1825 !important;cursor:pointer !important;touch-action:manipulation !important;box-shadow:0 6px 16px rgba(55,20,10,.18) !important;}
+.mck-favorite-toggle svg{width:21px !important;height:21px !important;fill:none !important;stroke:currentColor !important;stroke-width:1.9 !important;stroke-linecap:round !important;stroke-linejoin:round !important;}
+.mck-favorite-toggle.active{background:#a51620 !important;color:#fff !important;}
+@media(max-width:600px){.mck-favorite-toggle{width:42px !important;height:42px !important;min-width:42px !important;min-height:42px !important;}.mck-favorite-toggle svg{width:22px !important;height:22px !important;}}
+</style>
+<script id="mck-v58-functional-favorites-rewards">
+(function(){
+  'use strict';
+  function safe(fn){try{return fn();}catch(e){return null;}}
+  function loggedIn(){return safe(function(){return typeof isLoggedIn_==='function'&&isLoggedIn_();})===true;}
+  function openFav(){safe(function(){if(typeof openCustomerFavorites_==='function')openCustomerFavorites_();});}
+
+  /* Heart click = save favorite, then open the customer's Favorites view. */
+  document.addEventListener('click',function(e){
+    var btn=e.target&&e.target.closest?e.target.closest('.mck-favorite-toggle'):null;
+    if(!btn)return;
+    setTimeout(function(){
+      if(loggedIn()) openFav();
+    },60);
+  },false);
+
+  /* Rewards rule: every completed ₱200 of cumulative eligible spend = 1 point.
+     Only Delivered orders count; points are calculated from the customer's own
+     orders, so no extra Firestore write/permission is required. */
+  function getOrders(){
+    if(typeof customerGetOrdersDirect_!=='function') return Promise.resolve([]);
+    return customerGetOrdersDirect_().catch(function(){return [];});
+  }
+  function eligibleSpend(orders){
+    return (orders||[]).reduce(function(sum,o){
+      var status=String(o&&o.orderStatus||'').trim().toLowerCase();
+      if(status!=='delivered')return sum;
+      var total=Number(o&&o.total||0);
+      return sum+(Number.isFinite(total)&&total>0?total:0);
+    },0);
+  }
+  function renderRewards(){
+    var c=document.getElementById('mckCustomerExtrasContent');
+    if(!c)return;
+    c.innerHTML='<div class="mck-extras-hero"><h3>🍜 McKenzie Rewards</h3><p>Earn <strong>1 point for every ₱200</strong> of completed purchases.</p><div class="mck-reward-points"><div><small>YOUR POINTS</small><strong id="mckRewardsLivePoints">0</strong></div><div><small>ELIGIBLE SPEND</small><b id="mckRewardsLiveSpend">₱0.00</b></div></div><div class="mck-reward-progress"><i id="mckRewardsLiveProgress" style="width:0%"></i></div><div style="margin-top:12px;font-size:11px;color:#765f5a;line-height:1.55"><b>How it works:</b> Every ₱200 in Delivered orders earns 1 point. Spend is cumulative, so smaller purchases can combine toward the next point. Cancelled, pending, preparing, ready, or on-the-way orders do not earn points.</div></div><div class="mck-favorite-empty"><strong>Points never disappear from your balance.</strong><br><span>Your rewards balance is based on your completed purchase history.</span></div>';
+    getOrders().then(function(orders){
+      var spend=eligibleSpend(orders), points=Math.floor(spend/200), remainder=spend%200, progress=(remainder/200)*100;
+      var p=document.getElementById('mckRewardsLivePoints'),s=document.getElementById('mckRewardsLiveSpend'),bar=document.getElementById('mckRewardsLiveProgress');
+      if(p)p.textContent=String(points);
+      if(s)s.textContent='₱'+spend.toFixed(2);
+      if(bar)bar.style.width=progress+'%';
+    });
+  }
+  var oldRewards=window.openCustomerRewards_;
+  window.openCustomerRewards_=function(){
+    if(oldRewards)oldRewards.apply(this,arguments);
+    setTimeout(renderRewards,80);
+  };
+
+  /* Make the menu search the only search field visible, and keep it synced with
+     the existing menu filtering logic. */
+  function bindMenuSearch(){
+    var input=document.getElementById('mckMenuSearch');
+    if(!input||input.dataset.mckV58Bound==='1')return;
+    input.dataset.mckV58Bound='1';
+    input.style.fontSize='16px';
+    input.addEventListener('focus',function(){input.style.fontSize='16px';});
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bindMenuSearch);else bindMenuSearch();
+  new MutationObserver(bindMenuSearch).observe(document.body,{childList:true,subtree:true});
+})();
+</script>
