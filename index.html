@@ -8512,9 +8512,18 @@ async function loadPublishedMenuRatings_(reviewsOverride){
              version marker. visibility='anonymous' is accepted only when an
              explicit anonymous flag is also true. No display-name string is ever
              used by itself to infer anonymity. */
-          var canonicalAnon=(typeof r.anonymousChoice==='boolean') ? r.anonymousChoice : null;
-          var explicitAnon=(r.anonymousExplicit===true || r.anonymousOptIn===true || r.isAnonymous===true || r.postAnonymously===true || r.anonymousReview===true);
-          var isAnon=(canonicalAnon===true) || (String(r.visibility||'').toLowerCase()==='anonymous' && explicitAnon);
+          /* V87: normalize Firestore/legacy boolean representations. The standalone
+             Firebase bridge may return booleans, while older documents/imports can
+             contain true/false as strings or numeric 1/0. Anonymous must remain an
+             explicit opt-in; the display-name text alone is never sufficient. */
+          function anonTrue_(v){
+            if(v===true || v===1)return true;
+            var sv=String(v==null?'':v).trim().toLowerCase();
+            return sv==='true' || sv==='1' || sv==='yes';
+          }
+          var canonicalAnon=anonTrue_(r.anonymousChoice);
+          var explicitAnon=(anonTrue_(r.anonymousExplicit) || anonTrue_(r.anonymousOptIn) || anonTrue_(r.isAnonymous) || anonTrue_(r.postAnonymously) || anonTrue_(r.anonymousReview));
+          var isAnon=canonicalAnon || (String(r.visibility||'').trim().toLowerCase()==='anonymous' && explicitAnon);
           var storedPublicName=String(r.publicName||r.displayName||'').trim();
           var privateCustomerName=String(r.customerName||'Customer').trim();
           /* A legacy record may contain publicName:'Anonymous' from an older buggy build.
@@ -12278,6 +12287,7 @@ document.addEventListener('DOMContentLoaded',function(){addSakura();addSteam();b
 })();
 </script>
 
+<!-- V87 PATCH: fix anonymous review state lost by standalone Firebase public-review mapping. -->
 <!-- V84 PATCH: checklist fixes — realtime review privacy, verification auto-detect,
      receipt persistence/navigation, customer notifications, mobile chat layout. -->
 <style id="mck-v85-checklist-polish">
