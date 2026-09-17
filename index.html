@@ -8493,12 +8493,15 @@ async function loadPublishedMenuRatings_(reviewsOverride){
              of whether older/newer records store it as boolean or string. */
           /* V74: canonical public visibility. New reviews write visibility explicitly from the
              checkbox state. Legacy records fall back only to an explicit anonymous flag. */
-          var v75Choice=(r.anonymousChoiceVersion==='v75' && typeof r.anonymousChoice==='boolean') ? r.anonymousChoice : null;
-          var isAnon=(v75Choice!==null) ? v75Choice : false;
-          /* V75: only a review created by the current checkbox flow can become
-             anonymous. Legacy records are treated as public because their old
-             fields cannot reliably prove that the customer actually checked the
-             Anonymous box. This prevents historical buggy data from hiding names. */
+          /* V83: the explicit checkbox choice is the privacy source of truth.
+             Do not require anonymousChoiceVersion to be present: deployed/older
+             documents can legitimately carry the canonical boolean without the
+             version marker. visibility='anonymous' is accepted only when an
+             explicit anonymous flag is also true. No display-name string is ever
+             used by itself to infer anonymity. */
+          var canonicalAnon=(typeof r.anonymousChoice==='boolean') ? r.anonymousChoice : null;
+          var explicitAnon=(r.anonymousExplicit===true || r.anonymousOptIn===true || r.isAnonymous===true || r.postAnonymously===true || r.anonymousReview===true);
+          var isAnon=(canonicalAnon===true) || (String(r.visibility||'').toLowerCase()==='anonymous' && explicitAnon);
           var storedPublicName=String(r.publicName||r.displayName||'').trim();
           var privateCustomerName=String(r.customerName||'Customer').trim();
           /* A legacy record may contain publicName:'Anonymous' from an older buggy build.
@@ -12229,6 +12232,26 @@ document.addEventListener('DOMContentLoaded',function(){addSakura();addSteam();b
 })();
 </script>
 
+
+<style id="mck-v83-public-anonymous-hard-privacy">
+/* V83: public review cards marked by the canonical anonymous choice never expose
+   the private customer name. Admin/private review data is untouched. */
+.customer-review-card[data-review-anonymous="1"] .customer-review-name{color:#5f201f!important;}
+</style>
+<script id="mck-v83-public-anonymous-hard-privacy-js">
+(function(){
+  'use strict';
+  function scrubExplicitAnonymous(){
+    document.querySelectorAll('.customer-review-card[data-review-anonymous="1"]').forEach(function(card){
+      var name=card.querySelector('.customer-review-name');
+      if(name) name.textContent='— Anonymous';
+    });
+  }
+  window.mckV83ScrubExplicitAnonymous=scrubExplicitAnonymous;
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',scrubExplicitAnonymous,{once:true});
+  else scrubExplicitAnonymous();
+})();
+</script>
 <style id="mck-v72-anonymous-review-exact-ui">
 .mck-review-public-name{margin-top:7px;font-size:10px;color:#8a756d;transition:color .18s ease}.mck-review-public-name b{color:#5f201f}.mck-review-public-name.is-anonymous{color:#a51620}.mck-review-public-name.is-anonymous b{color:#a51620}
 </style>
