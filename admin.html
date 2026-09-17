@@ -1291,7 +1291,7 @@ html{-webkit-text-size-adjust:100%;scroll-behavior:auto!important;}
     const avg=published.length ? published.reduce((s,r)=>s+Number(r.rating||0),0)/published.length : 0;
     return {success:true,reviews:reviews.sort((a,b)=>String(b.submittedAt||"").localeCompare(String(a.submittedAt||""))).map(r=>({
       reviewId:r.reviewId||r.id,orderId:r.orderId,customerId:r.customerId,productId:r.productId,
-      productName:r.productName,rating:r.rating,review:r.review,customerName:r.customerName,
+      productName:r.productName,rating:r.rating,review:r.review,customerName:r.customerName,customerEmail:r.customerEmail||"",anonymous:!!r.anonymous,image:r.image||"",quantityRepresented:Number(r.quantityRepresented||1),
       submittedAt:cleanTimestamp(r.submittedAt),status:r.status||"Published"
     })),stats:{total:reviews.length,published:published.length,hidden:reviews.length-published.length,average:Math.round(avg*10)/10}};
   }
@@ -2407,7 +2407,7 @@ function renderReviews(){
   container.innerHTML=list.map(r=>{
     const status=String(r.status||'Published');
     const stars='★★★★★'.split('').map((x,i)=>i<Number(r.rating||0)?'★':'☆').join('');
-    return '<article class="review-card"><div class="review-card-head"><div><div class="review-customer">'+esc(r.customerName||'Customer')+'</div><div class="review-menu">'+esc(r.productName||'Menu item')+' · Order #'+esc(r.orderId||'')+'</div></div><span class="review-status '+(status==='Published'?'published':'hidden')+'">'+esc(status)+'</span></div><div class="review-stars">'+stars+'</div><div class="review-text">'+(r.review?esc(r.review):'<em>No written comment.</em>')+'</div><div class="review-meta">Submitted '+esc(r.submittedAt?new Date(r.submittedAt).toLocaleString():'')+'</div><div class="review-actions"><button class="'+(status==='Published'?'active':'')+'" onclick="updateReviewStatus(\''+escAttr(r.reviewId)+'\',\'Published\')">✓ Publish</button><button class="'+(status==='Hidden'?'active':'')+'" onclick="updateReviewStatus(\''+escAttr(r.reviewId)+'\',\'Hidden\')">Hide</button></div></article>';
+    return '<article class="review-card"><div class="review-card-head"><div><div class="review-customer">'+esc(r.customerName||'Customer')+(r.anonymous?' <span class="admin-anon-badge">Anonymous to customers</span>':'')+'</div><div class="review-menu">'+esc(r.productName||'Menu item')+' · Order #'+esc(r.orderId||'')+(r.quantityRepresented>1?' · '+esc(r.quantityRepresented)+' units':'')+'</div><div class="review-admin-email">'+esc(r.customerEmail||'')+'</div></div><span class="review-status '+(status==='Published'?'published':'hidden')+'">'+esc(status)+'</span></div>'+(r.image?'<img class="admin-review-photo" src="'+esc(r.image)+'" alt="Customer review photo">':'')+'<div class="review-stars">'+stars+'</div><div class="review-text">'+(r.review?esc(r.review):'<em>No written comment.</em>')+'</div><div class="review-meta">Submitted '+esc(r.submittedAt?new Date(r.submittedAt).toLocaleString():'')+'</div><div class="review-actions"><button class="'+(status==='Published'?'active':'')+'" onclick="updateReviewStatus(\''+escAttr(r.reviewId)+'\',\'Published\')">✓ Publish</button><button class="'+(status==='Hidden'?'active':'')+'" onclick="updateReviewStatus(\''+escAttr(r.reviewId)+'\',\'Hidden\')">Hide</button></div></article>';
   }).join('');
 }
 function updateReviewStatus(reviewId,status){
@@ -2635,3 +2635,4 @@ document.addEventListener('click',function(e){
 </style>
 
 <script src="js/mckenzie-admin-enhancements.js" defer></script>
+<style id="mck-v59-admin-review-style">.admin-anon-badge{display:inline-flex;margin-left:6px;padding:3px 7px;border-radius:999px;background:#f3e8de;color:#7b5b4f;font-size:8px;font-weight:900;text-transform:uppercase;letter-spacing:.04em;vertical-align:middle}.review-admin-email{margin-top:4px;font-size:9px;color:#8b7770}.admin-review-photo{display:block;width:100%;max-height:300px;object-fit:cover;border-radius:12px;margin:10px 0;border:1px solid #ead8cf}</style>
