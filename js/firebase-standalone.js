@@ -223,8 +223,16 @@
     if (!email || !email.includes("@")) {
       throw makeError("Please enter your registered email address.");
     }
-    await f.sendPasswordResetEmail(f.auth, email);
-    return { success: true, email, message: "Password reset email sent." };
+
+    // Firebase sends the secure reset email. The link returns to the branded
+    // McKenzie Ramen House page so the customer never has to enter an OTP.
+    const returnUrl = new URL("index.html", window.location.href).href;
+    const actionCodeSettings = {
+      url: returnUrl,
+      handleCodeInApp: true
+    };
+    await f.sendPasswordResetEmail(f.auth, email, actionCodeSettings);
+    return { success: true, email, message: "Password reset link sent." };
   }
 
   async function changePassword(userId, oldPassword, newPassword) {
@@ -802,6 +810,7 @@
       case "getCustomerNotifications": return getNotifications(args[0]);
       case "markCustomerNotificationRead": return markNotificationRead(args[0],args[1]);
       case "requestPasswordResetOtp": return sendPasswordReset(args[0]);
+      case "requestPasswordResetLink": return sendPasswordReset(args[0]);
       case "requestPasswordResetOtpForUser": {
         const p=await getProfile(args[0]); return sendPasswordReset(p.email);
       }
