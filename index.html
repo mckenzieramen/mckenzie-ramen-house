@@ -10625,10 +10625,12 @@ body.mck-customer-chat-open #mckCustomerChatBox{
   }
   function start(){
     polish();
-    let timer=0;
-    const obs=new MutationObserver(function(){clearTimeout(timer);timer=setTimeout(polish,80);});
-    obs.observe(document.body,{childList:true,subtree:true});
-    window.MckenzieIconSystem={icon,polish};
+    /* Stability: do not observe the entire document. Many customer-side
+       components update the DOM frequently; a global observer can create
+       needless main-thread work during startup. Re-polish at a low cadence
+       instead, and keep the actual icon work idempotent. */
+    var iconTimer=setInterval(polish,2000);
+    window.MckenzieIconSystem={icon:icon,polish:polish,stop:function(){clearInterval(iconTimer);}};
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
 })();
@@ -11749,7 +11751,13 @@ body:not(.mck-customer-chat-open) .account-menu-wrap,body:not(.mck-customer-chat
     input.addEventListener('focus',function(){input.style.fontSize='16px';});
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bindMenuSearch);else bindMenuSearch();
-  new MutationObserver(bindMenuSearch).observe(document.body,{childList:true,subtree:true});
+  /* The menu search is created during normal page startup; use a lightweight
+     fallback poll rather than a document-wide MutationObserver. */
+  var menuSearchTimer=setInterval(function(){
+    bindMenuSearch();
+    var input=document.getElementById('mckMenuSearch');
+    if(input&&input.dataset.mckV58Bound==='1')clearInterval(menuSearchTimer);
+  },1000);
 })();
 </script>
 
@@ -11927,14 +11935,20 @@ document.addEventListener('DOMContentLoaded',function(){addSakura();addSteam();b
       var type=item.getAttribute('data-type')||'';
       var title=item.querySelector('.mck-notification-title');
       var status=(title?title.textContent:'');
+      var key=type+'|'+status;
+      if(box.dataset.mckV64PaintedKey===key)return;
       box.innerHTML=notificationSvg(type,status);
-      box.dataset.mckV64Painted='1';
+      box.dataset.mckV64PaintedKey=key;
     });
   }
   function run(){paintReviewIcons(document);paintNotifications(document);}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',run);else run();
-  var obs=new MutationObserver(function(){run();});
-  obs.observe(document.body,{childList:true,subtree:true});
+  /* Stability: notification/review lists are rendered asynchronously, but
+     a document-wide MutationObserver is unnecessary here. Paint only when
+     needed on a short, bounded cadence; each element is guarded by a key so
+     already-painted icons are never rewritten. */
+  var iconTimer=setInterval(run,1500);
   window.mckV64IconPolish=run;
+  window.mckV64StopIconPolling=function(){clearInterval(iconTimer);};
 })();
 </script>
