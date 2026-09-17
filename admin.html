@@ -2749,3 +2749,68 @@ document.addEventListener('click',function(e){
 })();
 </script>
 
+
+<style id="mck-v63-live-dashboard-style">
+  .dash-stat strong{transition:transform .22s ease,opacity .22s ease;}
+  .dash-stat.mck-live-pulse strong{transform:scale(1.045);}
+  .mck-live-status{display:inline-flex;align-items:center;gap:7px;margin-left:8px;font-size:10px;font-weight:800;color:#6e625d;vertical-align:middle;}
+  .mck-live-status i{width:7px;height:7px;border-radius:50%;background:#4b8b62;box-shadow:0 0 0 4px rgba(75,139,98,.12);animation:mckLivePulse 1.8s ease-in-out infinite;}
+  @keyframes mckLivePulse{0%,100%{opacity:1}50%{opacity:.42}}
+  @media (prefers-reduced-motion:reduce){.mck-live-status i{animation:none}.dash-stat strong{transition:none}}
+</style>
+<script id="mck-v63-live-dashboard-js">
+(function(){
+  'use strict';
+  var liveUnsub=null, refreshTimer=null, lastSignature='';
+  function pulseStats(){
+    var box=document.getElementById('dashboardStats');
+    if(!box)return;
+    box.classList.remove('mck-live-pulse');
+    void box.offsetWidth;
+    box.classList.add('mck-live-pulse');
+    setTimeout(function(){box.classList.remove('mck-live-pulse');},260);
+  }
+  function ensureLiveLabel(){
+    var title=document.querySelector('#dashboardSection h2, #dashboardSection h1, #dashboardSection .section-title');
+    if(!title||title.querySelector('.mck-live-status'))return;
+    var s=document.createElement('span');
+    s.className='mck-live-status';
+    s.innerHTML='<i aria-hidden="true"></i><span>Live</span>';
+    title.appendChild(s);
+  }
+  function refreshDashboardFromOrders(){
+    if(refreshTimer)clearTimeout(refreshTimer);
+    refreshTimer=setTimeout(function(){
+      refreshTimer=null;
+      var before=lastSignature;
+      if(typeof loadOrders==='function'){
+        Promise.resolve(loadOrders({silent:true,setBaseline:false})).catch(function(){}).finally(function(){
+          try{if(typeof renderDashboard_==='function')renderDashboard_();}catch(e){}
+          var sig=(orders||[]).map(function(o){return String(o.orderId||'')+'|'+String(o.orderStatus||'')+'|'+String(o.total||0)+'|'+String(o.updatedAt||o.orderedAt||'');}).sort().join('||');
+          if(before!==sig && before!=='')pulseStats();
+          lastSignature=sig;
+        });
+      }else if(typeof renderDashboard_==='function')renderDashboard_();
+    },220);
+  }
+  function startLiveDashboard(){
+    if(liveUnsub)try{liveUnsub();}catch(e){}
+    if(typeof adminFirebase_!=='function')return;
+    adminFirebase_().then(function(f){
+      if(!f||!f.auth||!f.auth.currentUser||typeof f.onSnapshot!=='function'||!f.db)return;
+      liveUnsub=f.onSnapshot(f.collection(f.db,'orders'),function(){
+        refreshDashboardFromOrders();
+      },function(err){console.warn('Dashboard live sales listener stopped:',err);liveUnsub=null;});
+      ensureLiveLabel();
+      refreshDashboardFromOrders();
+    }).catch(function(err){console.warn('Dashboard live sales setup failed:',err);});
+  }
+  function boot(){
+    ensureLiveLabel();
+    startLiveDashboard();
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){setTimeout(boot,900);},{once:true});
+  else setTimeout(boot,900);
+  window.addEventListener('beforeunload',function(){if(liveUnsub)try{liveUnsub();}catch(e){}});
+})();
+</script>
