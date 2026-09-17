@@ -8384,7 +8384,10 @@ async function loadPublishedMenuRatings_(reviewsOverride){
           const stars=Array.from({length:5},function(_,i){return i<Math.round(rating)?'★':'☆';}).join(' ');
           const when=r.submittedAt?new Date(r.submittedAt).toLocaleDateString() : '';
           var publicName=r.anonymous?'Anonymous':String(r.customerName||'Customer');
-          return '<article class="customer-review-card" data-review-menu="'+escapeHtml(String(r.productName||'Menu item'))+'"><div class="customer-review-menu">🍜 '+escapeHtml(String(r.productName||'Menu item'))+'<span class="mck-customer-review-verified">✓ Verified Purchase</span></div>'+(r.image?'<img class="mck-public-review-photo" src="'+escapeHtml(String(r.image))+'" alt="Customer review photo" loading="lazy">':'')+'<div class="customer-review-stars">'+stars+'</div><p class="customer-review-text">“'+escapeHtml(String(r.review).trim())+'”</p><div class="customer-review-name">— '+escapeHtml(publicName)+'</div>'+(when?'<div class="customer-review-date">'+escapeHtml(when)+'</div>':'')+'</article>';
+          var category=String(r.category||'');
+          if(!category){var pm=Object.keys(window.mckenzieProducts||{}).map(function(k){return window.mckenzieProducts[k]}).find(function(p){return String(p.name||'')===String(r.productName||'')});category=pm&&pm.category?String(pm.category):'';}
+          var reviewIconKey=/ramen|noodle|soup|tonkatsu|spicy/i.test(category+' '+String(r.productName||''))?'ramen':/side|gyoza|dumpling|karaage|fries|takoyaki|appetizer/i.test(category+' '+String(r.productName||''))?'side':/drink|beverage|tea|coke|soda/i.test(category+' '+String(r.productName||''))?'drink':'dish';
+          return '<article class="customer-review-card" data-review-menu="'+escapeHtml(String(r.productName||'Menu item'))+'" data-review-category="'+escapeHtml(category)+'"><div class="customer-review-menu"><span class="mck-review-menu-icon" data-review-icon="'+reviewIconKey+'" aria-hidden="true"></span> '+escapeHtml(String(r.productName||'Menu item'))+'<span class="mck-customer-review-verified">✓ Verified Purchase</span></div>'+(r.image?'<img class="mck-public-review-photo" src="'+escapeHtml(String(r.image))+'" alt="Customer review photo" loading="lazy">':'')+'<div class="customer-review-stars">'+stars+'</div><p class="customer-review-text">“'+escapeHtml(String(r.review).trim())+'”</p><div class="customer-review-name">— '+escapeHtml(publicName)+'</div>'+(when?'<div class="customer-review-date">'+escapeHtml(when)+'</div>':'')+'</article>';
         }).join('');
         /* Duplicate the exact comment set so the CSS animation can loop
            continuously without a visible jump. The viewport shows five
@@ -8410,7 +8413,7 @@ function startPublishedReviewRealtime_(){
       mckPublishedReviewUnsub_=f.onSnapshot(q,function(snap){
         const rows=(snap.docs||[]).map(function(d){
           const r=d.data()||{};
-          return {reviewId:r.reviewId||d.id,orderId:r.orderId,productId:r.productId,productName:r.productName,rating:r.rating,review:r.review,customerName:r.customerName,submittedAt:r.submittedAt,status:r.status};
+          return {reviewId:r.reviewId||d.id,orderId:r.orderId,productId:r.productId,productName:r.productName,rating:r.rating,review:r.review,customerName:r.customerName,anonymous:!!r.anonymous,image:r.image||'',category:r.category||'',submittedAt:r.submittedAt,status:r.status};
         });
         loadPublishedMenuRatings_(rows).catch(function(e){console.warn('Realtime review render:',e);});
       },function(e){
@@ -11877,5 +11880,61 @@ document.addEventListener('DOMContentLoaded',function(){addSakura();addSteam();b
     else{a.unshift({id:String(p.id||''),name:String(p.name||''),price:p.price,image:p.image||((card.querySelector('.product-image')||{}).src||''),category:p.category||''});btn.classList.add('active');btn.setAttribute('aria-label','Remove '+String(p.name||'item')+' from favorites');}
     try{localStorage.setItem(key,JSON.stringify(a.slice(0,100)));}catch(_){}
   },true);
+})();
+</script>
+
+
+<style id="mck-v64-review-notification-icons">
+/* V64: public anonymous privacy + category-aware review icons + guaranteed notification icons. */
+.mck-review-menu-icon{width:18px!important;height:18px!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;vertical-align:-4px!important;color:#8f1825!important;flex:none!important}
+.mck-review-menu-icon svg{width:18px!important;height:18px!important;display:block!important;fill:none!important;stroke:currentColor!important;stroke-width:1.8!important;stroke-linecap:round!important;stroke-linejoin:round!important}
+.customer-review-name{font-weight:900!important}
+@media(max-width:600px){.mck-review-menu-icon,.mck-review-menu-icon svg{width:16px!important;height:16px!important}}
+</style>
+<script id="mck-v64-review-notification-icons-js">
+(function(){
+  'use strict';
+  function svg(kind){
+    var paths={
+      ramen:'<path d="M4 10h16l-1 6a3 3 0 0 1-3 2H8a3 3 0 0 1-3-2l-1-6Z"/><path d="M7 10c.3-3 1.8-5 5-5s4.7 2 5 5"/><path d="M8 14h8M10 17h4"/>',
+      side:'<path d="M4 8h16v8a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V8Z"/><path d="M7 8c0-2 2-3 5-3s5 1 5 3M8 12h8"/>',
+      drink:'<path d="M7 4h10l-1 16H8L7 4Z"/><path d="M9 8h6M10 12h4M12 4V2"/>',
+      dish:'<path d="M4 12h16"/><path d="M6 12a6 6 0 0 0 12 0"/><path d="M9 8h6"/>'
+    };
+    return '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">'+(paths[kind]||paths.dish)+'</svg>';
+  }
+  function paintReviewIcons(root){
+    (root||document).querySelectorAll('.mck-review-menu-icon[data-review-icon]').forEach(function(el){
+      if(el.dataset.mckV64Painted==='1')return;
+      el.innerHTML=svg(el.getAttribute('data-review-icon')||'dish');
+      el.dataset.mckV64Painted='1';
+    });
+  }
+  function notificationSvg(type, status){
+    type=String(type||''); status=String(status||'');
+    var p;
+    if(type==='review') p='<path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9L12 3Z"/>';
+    else if(type==='support') p='<path d="M4 6a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3h-5l-5 4v-4H7a3 3 0 0 1-3-3V6Z"/><path d="M8 8h8M8 11h5"/>';
+    else if(type==='support_closed') p='<path d="M5 5l14 14M19 5 5 19"/><circle cx="12" cy="12" r="9"/>';
+    else if(type==='order' && /delivered/i.test(status)) p='<path d="m5 12 4 4L19 6"/><circle cx="12" cy="12" r="9"/>';
+    else if(type==='order') p='<path d="m4 7 8-4 8 4-8 4-8-4Z"/><path d="M4 7v10l8 4 8-4V7M12 11v10"/>';
+    else p='<path d="M6 9a6 6 0 0 1 12 0c0 6 2.5 6 2.5 8H3.5c0-2 2.5-2 2.5-8Z"/><path d="M10 21h4"/>';
+    return '<svg class="mck-svg-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">'+p+'</g></svg>';
+  }
+  function paintNotifications(root){
+    (root||document).querySelectorAll('.mck-notification-item').forEach(function(item){
+      var box=item.querySelector('.mck-notification-icon'); if(!box)return;
+      var type=item.getAttribute('data-type')||'';
+      var title=item.querySelector('.mck-notification-title');
+      var status=(title?title.textContent:'');
+      box.innerHTML=notificationSvg(type,status);
+      box.dataset.mckV64Painted='1';
+    });
+  }
+  function run(){paintReviewIcons(document);paintNotifications(document);}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',run);else run();
+  var obs=new MutationObserver(function(){run();});
+  obs.observe(document.body,{childList:true,subtree:true});
+  window.mckV64IconPolish=run;
 })();
 </script>
