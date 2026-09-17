@@ -8385,8 +8385,13 @@ async function loadPublishedMenuRatings_(reviewsOverride){
           const when=r.submittedAt?new Date(r.submittedAt).toLocaleDateString() : '';
           /* Public privacy must be based on an explicit anonymous flag, regardless
              of whether older/newer records store it as boolean or string. */
+          /* V74: canonical public visibility. New reviews write visibility explicitly from the
+             checkbox state. Legacy records fall back only to an explicit anonymous flag. */
+          var visibilityRaw=r.visibility;
+          var hasCanonicalVisibility=(visibilityRaw==='anonymous' || visibilityRaw==='public');
           var anonRaw=(r.anonymousOptIn!=null?r.anonymousOptIn:(r.anonymousExplicit!=null?r.anonymousExplicit:(r.anonymous!=null?r.anonymous:(r.isAnonymous!=null?r.isAnonymous:(r.postAnonymously!=null?r.postAnonymously:r.anonymousReview)))));
-          var isAnon=(anonRaw===true || String(anonRaw||'').trim().toLowerCase()==='true' || String(anonRaw||'').trim()==='1' || String(anonRaw||'').trim().toLowerCase()==='yes');
+          var explicitAnon=(anonRaw===true || String(anonRaw||'').trim().toLowerCase()==='true' || String(anonRaw||'').trim()==='1' || String(anonRaw||'').trim().toLowerCase()==='yes');
+          var isAnon=hasCanonicalVisibility ? visibilityRaw==='anonymous' : explicitAnon;
           /* Only the customer's explicit Anonymous checkbox controls public privacy.
              If the checkbox was not selected, the review remains public under the
              customer's saved public name (or customer name for older records). */
@@ -8426,7 +8431,7 @@ function startPublishedReviewRealtime_(){
       mckPublishedReviewUnsub_=f.onSnapshot(q,function(snap){
         const rows=(snap.docs||[]).map(function(d){
           const r=d.data()||{};
-          return {reviewId:r.reviewId||d.id,orderId:r.orderId,productId:r.productId,productName:r.productName,rating:r.rating,review:r.review,customerName:r.customerName,customerEmail:r.customerEmail,anonymous:r.anonymous,anonymousExplicit:r.anonymousExplicit,anonymousOptIn:r.anonymousOptIn,isAnonymous:r.isAnonymous,postAnonymously:r.postAnonymously,anonymousReview:r.anonymousReview,publicName:r.publicName,displayName:r.displayName,image:r.image||'',category:r.category||'',submittedAt:r.submittedAt,status:r.status};
+          return {reviewId:r.reviewId||d.id,orderId:r.orderId,productId:r.productId,productName:r.productName,rating:r.rating,review:r.review,customerName:r.customerName,customerEmail:r.customerEmail,anonymous:r.anonymous,anonymousExplicit:r.anonymousExplicit,anonymousOptIn:r.anonymousOptIn,isAnonymous:r.isAnonymous,postAnonymously:r.postAnonymously,anonymousReview:r.anonymousReview,visibility:r.visibility,publicName:r.publicName,displayName:r.displayName,image:r.image||'',category:r.category||'',submittedAt:r.submittedAt,status:r.status};
         });
         loadPublishedMenuRatings_(rows).catch(function(e){console.warn('Realtime review render:',e);});
       },function(e){
@@ -9434,12 +9439,12 @@ if (window.MckenzieFirebaseReady && typeof window.MckenzieFirebaseReady.then ===
             var key=String(params.orderId||'')+'|'+pid;
             var already=Number(existingCounts[key]||0),qty=Math.max(1,Number(target.quantity||1)),remaining=Math.max(0,qty-already);
             var image=String(ent.image||''); if(image.length>650000) throw new Error('Review photo is too large. Please choose a smaller photo.');
-            var anonymous=(ent.anonymousOptIn===true || ent.anonymous===true);
+            var anonymous=(ent.visibility==='anonymous');
             var anonymousOptIn=anonymous;
             for(var unit=0;unit<remaining;unit++){
               var id='REV-'+Date.now()+'-'+Math.floor(Math.random()*100000)+'-'+count;
               var privateCustomerName=String(odb.customerName||odb.fullName||'Customer');
-              batch.set(f.doc(f.db,'reviews',id),{reviewId:id,orderId:String(params.orderId||''),customerId:String(u.uid),productId:pid,productName:String(target.productName||target.name||'Ramen item'),rating:rating,review:review,unitIndex:already+unit+1,reviewedUnit:already+unit+1,quantityRepresented:qty,anonymous:anonymous,anonymousExplicit:anonymous,anonymousOptIn:anonymous,isAnonymous:anonymous,postAnonymously:anonymous,anonymousReview:anonymous,publicName:anonymous?'Anonymous':privateCustomerName,customerName:privateCustomerName,customerEmail:String(odb.email||u.email||''),image:image,submittedAt:new Date().toISOString(),status:'Published'});
+              batch.set(f.doc(f.db,'reviews',id),{reviewId:id,orderId:String(params.orderId||''),customerId:String(u.uid),productId:pid,productName:String(target.productName||target.name||'Ramen item'),rating:rating,review:review,unitIndex:already+unit+1,reviewedUnit:already+unit+1,quantityRepresented:qty,anonymous:anonymous,anonymousExplicit:anonymous,anonymousOptIn:anonymous,isAnonymous:anonymous,postAnonymously:anonymous,anonymousReview:anonymous,visibility:anonymous?'anonymous':'public',publicName:anonymous?'Anonymous':privateCustomerName,customerName:privateCustomerName,customerEmail:String(odb.email||u.email||''),image:image,submittedAt:new Date().toISOString(),status:'Published'});
               count++;
             }
           });
@@ -9468,7 +9473,7 @@ if (window.MckenzieFirebaseReady && typeof window.MckenzieFirebaseReady.then ===
           await f.setDoc(f.doc(f.db,'reviews',id),{
             reviewId:id,orderId:String(params.orderId||''),customerId:String(u.uid),productId:String(params.productId||''),
             productName:String(target.productName||target.name||'Ramen item'),rating:rating,review:review,
-            customerName:String(od.customerName||od.fullName||'Customer'),anonymous:params.anonymous===true,anonymousExplicit:params.anonymous===true,anonymousOptIn:params.anonymous===true,isAnonymous:params.anonymous===true,postAnonymously:params.anonymous===true,anonymousReview:params.anonymous===true,publicName:params.anonymous===true?'Anonymous':String(od.customerName||od.fullName||'Customer'),submittedAt:new Date().toISOString(),status:'Published'
+            customerName:String(od.customerName||od.fullName||'Customer'),anonymous:params.anonymous===true,anonymousExplicit:params.anonymous===true,anonymousOptIn:params.anonymous===true,isAnonymous:params.anonymous===true,postAnonymously:params.anonymous===true,anonymousReview:params.anonymous===true,visibility:params.anonymous===true?'anonymous':'public',publicName:params.anonymous===true?'Anonymous':String(od.customerName||od.fullName||'Customer'),submittedAt:new Date().toISOString(),status:'Published'
           });
           done({success:true,message:'Your review has been submitted.',reviewId:id});
           return;
@@ -9513,9 +9518,11 @@ if (window.MckenzieFirebaseReady && typeof window.MckenzieFirebaseReady.then ===
       cb.checked=false;
       cb.addEventListener('change',function(){
         cb.dataset.mckAnonymousOptIn=cb.checked?'true':'false';
+        cb.dataset.mckVisibility=cb.checked?'anonymous':'public';
         syncAnonymousPreview();
       });
       cb.dataset.mckAnonymousOptIn='false';
+      cb.dataset.mckVisibility='public';
       syncAnonymousPreview();
     });
     remaining.forEach(function(item,idx){document.querySelectorAll('#mckSurveyStars_'+idx+' .mck-survey-star').forEach(function(b){b.onclick=function(){var n=Number(b.dataset.rating);document.getElementById('mckSurveyRating_'+idx).value=n;document.querySelectorAll('#mckSurveyStars_'+idx+' .mck-survey-star').forEach(function(x){x.classList.toggle('active',Number(x.dataset.rating)<=n);});};});});
@@ -9527,7 +9534,10 @@ if (window.MckenzieFirebaseReady && typeof window.MckenzieFirebaseReady.then ===
   }
   async function submitSurveyAll_(items){
     if(surveyBusy)return;var u=surveyUser(),entries=[];
-    try{for(var idx=0;idx<(items||[]).length;idx++){var item=items[idx],rating=Number(document.getElementById('mckSurveyRating_'+idx).value||0),review=document.getElementById('mckSurveyReview_'+idx).value||'',photo=document.getElementById('mckSurveyPhoto_'+idx),anonymous=document.getElementById('mckSurveyAnonymous_'+idx);var anonymousChecked=!!(anonymous&&anonymous.checked); entries.push({productId:item.productId,rating:rating,review:review,anonymous:anonymousChecked,anonymousOptIn:anonymousChecked,anonymousExplicit:anonymousChecked,image:await readReviewPhoto_(photo&&photo.files&&photo.files[0]?photo.files[0]:null)});}}catch(err){alert(err&&err.message?err.message:'Unable to process the review photo.');return;}
+    try{for(var idx=0;idx<(items||[]).length;idx++){var item=items[idx],rating=Number(document.getElementById('mckSurveyRating_'+idx).value||0),review=document.getElementById('mckSurveyReview_'+idx).value||'',photo=document.getElementById('mckSurveyPhoto_'+idx),anonymous=document.getElementById('mckSurveyAnonymous_'+idx);var anonymousChecked=!!(anonymous&&anonymous.checked);
+      /* The checkbox is the sole source of truth for this submission. */
+      var visibility=anonymousChecked?'anonymous':'public';
+      entries.push({productId:item.productId,rating:rating,review:review,anonymous:anonymousChecked,anonymousOptIn:anonymousChecked,anonymousExplicit:anonymousChecked,visibility:visibility,image:await readReviewPhoto_(photo&&photo.files&&photo.files[0]?photo.files[0]:null)});}}catch(err){alert(err&&err.message?err.message:'Unable to process the review photo.');return;}
     if(entries.some(function(e){return e.rating<1||e.rating>5;})){alert('Please select a rating from 1 to 5 stars for every menu item.');return;}
     surveyBusy=true;var btn=document.getElementById('mckSurveySubmitAll');if(btn){btn.disabled=true;btn.textContent='Submitting All Feedback…';}
     surveyCall('submitCustomerReviewsBatch',{userId:u.userId,orderId:surveyOrderId,entries:entries},function(v){surveyBusy=false;if(!v||!v.success){if(btn){btn.disabled=false;btn.textContent='Submit All Feedback';}alert(v&&v.error?v.error:'Unable to submit your feedback.');return;}if(btn){btn.textContent='✓ Feedback Submitted';}var c=document.getElementById('mckSurveyContent');if(c)c.innerHTML='<div class="mck-survey-wrap"><div class="mck-survey-success">✓ Thank you for supporting McKenzie Ramen House!<br><span style="font-weight:600;opacity:.8">Your feedback has been submitted successfully.</span></div></div>';setTimeout(function(){closeSurveyModal_();},1700);});
