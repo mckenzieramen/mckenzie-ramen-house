@@ -82,6 +82,95 @@ async function sendVerificationEmail({ to, code }) {
   }
 }
 
+
+
+async function sendCustomPasswordResetEmail(req, res) {
+  const email = normalizeEmail(req.body?.email);
+  const continueUrl = String(req.body?.continueUrl || "").trim();
+
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return jsonError(res, 400, "Please enter a valid email address.");
+  }
+
+  // Keep the reset destination tied to the site that requested it. This prevents
+  // the endpoint from being used to generate password-reset links to arbitrary sites.
+  let parsedUrl;
+  try { parsedUrl = new URL(continueUrl); } catch (_) {}
+  const requestOrigin = String(req.get("origin") || "").trim();
+  if (!parsedUrl || !/^https?:$/.test(parsedUrl.protocol) ||
+      (requestOrigin && parsedUrl.origin !== requestOrigin)) {
+    return jsonError(res, 400, "Invalid password-reset destination.");
+  }
+
+  try {
+    const actionCodeSettings = {
+      url: continueUrl,
+      handleCodeInApp: false
+    };
+
+    let resetLink = "";
+    try {
+      resetLink = await admin.auth().generatePasswordResetLink(email, actionCodeSettings);
+    } catch (error) {
+      // Do not expose whether an email is registered. Firebase's default
+      // password-reset flow also avoids account enumeration.
+      if (error && error.code === "auth/user-not-found") {
+        return res.json({ success: true, message: "If an account exists for this email, a password-reset link has been sent." });
+      }
+      throw error;
+    }
+
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${RESEND_API_KEY.value()}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        from: RESEND_FROM_EMAIL.value(),
+        to: [email],
+        subject: "Reset your McKenzie Ramen House password",
+        html: `
+          <div style="margin:0;padding:32px 16px;background:#f7eee7;font-family:Arial,Helvetica,sans-serif;color:#3a0709">
+            <div style="max-width:600px;margin:0 auto;background:#fffaf3;border:1px solid #e7c8b8;border-radius:20px;overflow:hidden;box-shadow:0 10px 30px rgba(58,7,9,.08)">
+              <div style="padding:30px 32px 14px;text-align:center">
+                <div style="font-size:12px;font-weight:800;letter-spacing:3px;color:#a51620">MCKENZIE RAMEN HOUSE</div>
+                <h1 style="font-family:Georgia,'Times New Roman',serif;font-size:30px;line-height:1.2;margin:12px 0 8px;color:#4a080b">Reset Your Password</h1>
+                <p style="font-size:15px;line-height:1.7;color:#765f5a;margin:0">We received a request to reset the password for your McKenzie Ramen House account.</p>
+              </div>
+              <div style="padding:14px 32px 32px;text-align:center">
+                <p style="font-size:15px;line-height:1.7;color:#4f3935;margin:0 0 22px">Click the button below to securely create a new password.</p>
+                <a href="${resetLink}" style="display:inline-block;background:#a51620;color:#ffffff;text-decoration:none;font-size:15px;font-weight:800;line-height:1;padding:15px 28px;border-radius:10px;letter-spacing:.2px">Reset My Password</a>
+                <p style="font-size:13px;line-height:1.7;color:#765f5a;margin:24px 0 0">This secure link will take you to the official McKenzie Ramen House website.</p>
+                <div style="height:1px;background:#ead8cf;margin:24px 0"></div>
+                <p style="font-size:12px;line-height:1.7;color:#8a716b;margin:0">If you did not request a password reset, you can safely ignore this email. Your password will remain unchanged.</p>
+              </div>
+              <div style="padding:18px 32px;background:#4a080b;text-align:center;color:#fff7f1">
+                <div style="font-family:Georgia,'Times New Roman',serif;font-size:18px">McKenzie Ramen House</div>
+                <div style="font-size:11px;opacity:.8;margin-top:5px">Thank you for choosing us.</div>
+              </div>
+            </div>
+          </div>
+        `
+      })
+    });
+
+    if (!response.ok) {
+      let detail = "";
+      try {
+        const body = await response.json();
+        detail = body && body.message ? String(body.message) : "";
+      } catch (_) {}
+      throw new Error(detail || `Email service returned HTTP ${response.status}.`);
+    }
+
+    return res.json({ success: true, message: "If an account exists for this email, a password-reset link has been sent." });
+  } catch (error) {
+    console.error("sendCustomPasswordResetEmail error:", error);
+    return jsonError(res, 502, "We could not send the password-reset email right now. Please try again later.");
+  }
+}
+
 async function createVerification(req, res) {
   const fullName = String(req.body?.fullName || "").trim();
   const email = normalizeEmail(req.body?.email);
@@ -433,6 +522,27 @@ async function customerReceiptAction(req, res) {
   if(notificationId){const nr=db.collection("notifications").doc(notificationId), ns=await nr.get(); if(ns.exists && String((ns.data()||{}).userId||"")===decoded.uid) await nr.update({readAt:now});}
   return res.json({success:true,received:action==="received",dismissed:action==="dismiss"});
 }
+
+
+
+exports.sendCustomPasswordResetEmail = onRequest(
+  {
+    region: "us-central1",
+    secrets: [RESEND_API_KEY, RESEND_FROM_EMAIL],
+    invoker: "public"
+  },
+  async (req, res) => {
+    setCors(res);
+    if (req.method === "OPTIONS") return res.status(204).send("");
+    if (req.method !== "POST") return jsonError(res, 405, "Method not allowed.");
+    try {
+      return await sendCustomPasswordResetEmail(req, res);
+    } catch (error) {
+      console.error(error);
+      return jsonError(res, 500, "Unable to process the password-reset request.");
+    }
+  }
+);
 
 exports.requestEmailVerification = onRequest(
   {
