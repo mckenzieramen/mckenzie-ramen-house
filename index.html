@@ -11772,3 +11772,72 @@ document.addEventListener('click',function(e){if(e.target&&e.target.id==='mckSta
 function addSakura(){if(document.querySelector('.mck-sakura-layer'))return;var l=document.createElement('div');l.className='mck-sakura-layer';for(var i=0;i<6;i++){var p=document.createElement('i');p.className='mck-sakura-petal';l.appendChild(p)}document.body.appendChild(l)}function addSteam(){var h=document.querySelector('.hero#home');if(!h||h.querySelector('.mck-steam'))return;['s1','s2','s3'].forEach(function(c){var x=document.createElement('i');x.className='mck-steam '+c;h.appendChild(x)})}function bindCartBounce(){document.addEventListener('click',function(e){var add=e.target&&e.target.closest?e.target.closest('[data-cart-plus],.add-to-cart,.cart-add-button'):null;if(!add)return;setTimeout(function(){var c=document.getElementById('stickyCartButton');if(c){c.classList.remove('mck-cart-bounce');void c.offsetWidth;c.classList.add('mck-cart-bounce');setTimeout(function(){c.classList.remove('mck-cart-bounce')},520)}},40)},false)}
 document.addEventListener('DOMContentLoaded',function(){addSakura();addSteam();bindCartBounce()});window.addEventListener('load',function(){setTimeout(addSteam,300)})})();
 </script>
+
+<style id="mck-v60-chat-lobby-close-fix">
+/* V60: preserve the approved Customer Support lobby design; only normalize the close control. */
+#mckCustomerChatHead{
+  position:relative!important;
+  min-height:62px!important;
+  box-sizing:border-box!important;
+  padding:10px 58px 10px 14px!important;
+  display:flex!important;
+  align-items:center!important;
+  overflow:visible!important;
+}
+#mckCustomerChatClose{
+  position:absolute!important;
+  top:50%!important;
+  right:12px!important;
+  transform:translateY(-50%)!important;
+  width:34px!important;
+  height:34px!important;
+  min-width:34px!important;
+  min-height:34px!important;
+  max-width:34px!important;
+  max-height:34px!important;
+  margin:0!important;
+  padding:0!important;
+  box-sizing:border-box!important;
+  border:1px solid #e8ad3b!important;
+  border-radius:50%!important;
+  background:#7e1018!important;
+  color:#ffd66a!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  line-height:0!important;
+  font-size:0!important;
+  z-index:2147483647!important;
+  visibility:visible!important;
+  opacity:1!important;
+  pointer-events:auto!important;
+  touch-action:manipulation!important;
+  box-shadow:0 3px 10px rgba(0,0,0,.22)!important;
+}
+#mckCustomerChatClose .mck-svg-icon{
+  width:16px!important;
+  height:16px!important;
+  min-width:16px!important;
+  min-height:16px!important;
+  display:block!important;
+  color:#ffd66a!important;
+}
+#mckCustomerChatClose:hover{filter:brightness(1.08)!important;transform:translateY(-50%) scale(1.03)!important;}
+#mckCustomerChatClose:active{transform:translateY(-50%) scale(.94)!important;}
+#mckCustomerChatBack{box-sizing:border-box!important;}
+@media(max-width:600px){
+  #mckCustomerChatHead{
+    position:relative!important;
+    min-height:62px!important;
+    padding:10px 54px 10px 14px!important;
+  }
+  #mckCustomerChatClose{
+    top:50%!important;
+    right:12px!important;
+    width:34px!important;
+    height:34px!important;
+    min-width:34px!important;
+    min-height:34px!important;
+  }
+}
+</style>
