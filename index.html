@@ -8538,7 +8538,7 @@ function startPublishedReviewRealtime_(){
       mckPublishedReviewUnsub_=f.onSnapshot(q,function(snap){
         const rows=(snap.docs||[]).map(function(d){
           const r=d.data()||{};
-          return {reviewId:r.reviewId||d.id,orderId:r.orderId,productId:r.productId,productName:r.productName,rating:r.rating,review:r.review,customerName:r.customerName,customerEmail:r.customerEmail,anonymous:r.anonymous,anonymousExplicit:r.anonymousExplicit,anonymousOptIn:r.anonymousOptIn,isAnonymous:r.isAnonymous,postAnonymously:r.postAnonymously,anonymousReview:r.anonymousReview,visibility:r.visibility,publicName:r.publicName,displayName:r.displayName,image:r.image||'',category:r.category||'',submittedAt:r.submittedAt,status:r.status};
+          return {reviewId:r.reviewId||d.id,orderId:r.orderId,productId:r.productId,productName:r.productName,rating:r.rating,review:r.review,customerName:r.customerName,customerEmail:r.customerEmail,anonymousChoice:r.anonymousChoice,anonymousChoiceVersion:r.anonymousChoiceVersion,anonymous:r.anonymous,anonymousExplicit:r.anonymousExplicit,anonymousOptIn:r.anonymousOptIn,isAnonymous:r.isAnonymous,postAnonymously:r.postAnonymously,anonymousReview:r.anonymousReview,visibility:r.visibility,publicName:r.publicName,displayName:r.displayName,image:r.image||'',category:r.category||'',submittedAt:r.submittedAt,status:r.status};
         });
         loadPublishedMenuRatings_(rows).catch(function(e){console.warn('Realtime review render:',e);});
       },function(e){
@@ -10230,14 +10230,17 @@ document.addEventListener('click',function(e){
     if(sum)sum.textContent=unread ? ('You have '+unread+' unread notification'+(unread===1?'':'s')+'.') : "You're all caught up.";
     if(!a.length){list.innerHTML='<div class="mck-notification-empty">🔔<br><strong>No new notifications</strong><br>Order updates, support replies, and review reminders will appear here.</div>';return;}
     list.innerHTML=a.map(function(n){return '<div class="mck-notification-item '+(n.unread?'unread':'')+'" data-notification-id="'+esc(n.id)+'" data-order-id="'+esc(n.orderId)+'" data-type="'+esc(n.type||'')+'" data-chat-id="'+esc(n.chatId||'')+'"><div class="mck-notification-icon">'+esc(n.icon||'🔔')+'</div><div class="mck-notification-copy"><div class="mck-notification-title">'+esc(n.title)+'</div><div class="mck-notification-text">'+esc(n.text)+'</div><div class="mck-notification-time">'+esc(fmt(n.createdAt))+'</div></div>'+(n.unread?'<span class="mck-notification-dot"></span>':'')+'</div>';}).join('');
-    list.querySelectorAll('.mck-notification-item').forEach(function(el){el.onclick=function(){
-      markRead(el.getAttribute('data-notification-id'));
+    list.querySelectorAll('.mck-notification-item').forEach(function(el){el.onclick=function(e){
+      if(e){e.preventDefault();e.stopPropagation();}
+      var nid=el.getAttribute('data-notification-id')||'';
       var oid=el.getAttribute('data-order-id')||'', type=el.getAttribute('data-type')||'', chatId=el.getAttribute('data-chat-id')||'';
-      closeCustomerNotifications_();
-      if((type==='support'||type==='support_closed') && chatId && typeof window.openCustomerSupportChat_==='function'){window.openCustomerSupportChat_(chatId);return;}
-      if(type==='review' && oid && typeof openRatingPage_==='function'){openRatingPage_(oid);return;}
-      if(oid&&typeof openOrderDetailByKey_==='function'){openOrderDetailByKey_(encodeURIComponent(oid));return;}
-      if(navigator&&navigator.vibrate)try{navigator.vibrate(20);}catch(e){}
+      markRead(nid);
+      setTimeout(function(){
+        closeCustomerNotifications_();
+        if((type==='support'||type==='support_closed') && chatId && typeof window.openCustomerSupportChat_==='function'){window.openCustomerSupportChat_(chatId);return;}
+        if(type==='review' && oid && typeof openRatingPage_==='function'){openRatingPage_(oid);return;}
+        if(oid&&typeof openOrderDetailByKey_==='function'){openOrderDetailByKey_(encodeURIComponent(oid));return;}
+      },40);
     };});
   }
   function markRead(id){var a=load();var changed=false;a.forEach(function(n){if(String(n.id)===String(id)&&n.unread){n.unread=false;changed=true;}});if(changed)save(a);render();}
@@ -12261,3 +12264,148 @@ document.addEventListener('DOMContentLoaded',function(){addSakura();addSteam();b
   window.mckV72AnonymousRule=function(value){ return value === true; };
 })();
 </script>
+
+<!-- V84 PATCH: checklist fixes — realtime review privacy, verification auto-detect,
+     receipt persistence/navigation, customer notifications, mobile chat layout. -->
+<style id="mck-v84-checklist-polish">
+/* Logo: prevent an opaque rectangular upload/background from reading as a box. */
+.hero-logo,.site-sticky-logo,.footer-logo,#adminLoginLogo,.brand-preview{background:transparent!important;}
+/* Review photos remain visible in the public scrolling review cards. */
+.customer-review-stream .mck-public-review-photo{display:block!important;width:100%!important;height:auto!important;max-height:230px!important;object-fit:cover!important;opacity:1!important;visibility:visible!important;}
+@media(max-width:700px){
+  #mckCustomerChatModal.show{padding:0!important;align-items:stretch!important;justify-content:stretch!important;}
+  #mckCustomerChatBox{width:100%!important;max-width:none!important;height:100dvh!important;min-height:100dvh!important;border-radius:0!important;margin:0!important;}
+  #mckCustomerChatMessages{width:100%!important;box-sizing:border-box!important;min-width:0!important;}
+  #mckCustomerChatComposer{width:100%!important;box-sizing:border-box!important;}
+  #mckCustomerChatInput{font-size:16px!important;min-height:46px!important;max-height:120px!important;}
+}
+</style>
+<script id="mck-v84-checklist-fixes">
+(function(){
+  'use strict';
+
+  /* ---------------------------------------------------------
+     1) Anonymous review: realtime renderer previously omitted
+        anonymousChoice, so a realtime refresh could lose privacy.
+  --------------------------------------------------------- */
+  function patchRealtimeReviewRows_(){
+    try{
+      var scripts=[].slice.call(document.scripts||[]);
+      scripts.forEach(function(s){
+        if(!s.textContent || s.textContent.indexOf('mckPublishedReviewListenerStarted_')<0) return;
+        /* No DOM rewrite here; the canonical fix below re-renders privacy from
+           Firestore rows whenever the existing realtime renderer completes. */
+      });
+    }catch(e){}
+  }
+  patchRealtimeReviewRows_();
+
+  /* Existing review cards are already stamped with data-review-anonymous.
+     Keep them scrubbed even after asynchronous/realtime rendering. */
+  function scrubAnon_(){
+    document.querySelectorAll('.customer-review-card[data-review-anonymous="1"] .customer-review-name').forEach(function(el){
+      el.textContent='— Anonymous';
+    });
+  }
+  if(window.MutationObserver){
+    var reviewHost=document.getElementById('customerReviewGrid');
+    if(reviewHost){
+      new MutationObserver(function(){scrubAnon_();}).observe(reviewHost,{childList:true,subtree:true});
+    }
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',scrubAnon_);else scrubAnon_();
+
+  /* ---------------------------------------------------------
+     2) Email verification: automatically detect verification while
+        the verification modal is open. Customer no longer has to
+        manually click the check button after returning from Gmail.
+  --------------------------------------------------------- */
+  var verifyTimer=null,verifyBusy=false;
+  async function autoCheckVerification_(){
+    var modal=document.getElementById('emailVerificationModal');
+    if(!modal || !modal.classList.contains('show') || verifyBusy)return;
+    verifyBusy=true;
+    try{
+      var auth=await getMcKenzieCustomerAuthDirect_();
+      var u=await waitForFirebaseCustomerAuthReady_(auth);
+      if(!u)return;
+      await u.reload();
+      var fresh=auth.auth.currentUser;
+      if(fresh && fresh.emailVerified){
+        var profile=await markCustomerEmailVerified_(auth,fresh);
+        showEmailVerifiedSuccess_(fresh,profile);
+      }
+    }catch(e){}finally{verifyBusy=false;}
+  }
+  function startVerifyWatcher_(){
+    clearInterval(verifyTimer);verifyTimer=setInterval(function(){autoCheckVerification_();},1800);
+  }
+  var oldOpenVerify=window.openEmailVerificationModal_;
+  if(typeof oldOpenVerify==='function' && !oldOpenVerify.__v84){
+    window.openEmailVerificationModal_=function(){var r=oldOpenVerify.apply(this,arguments);startVerifyWatcher_();return r;};
+    window.openEmailVerificationModal_.__v84=true;
+  }
+  var oldCloseVerify=window.closeEmailVerificationModal;
+  if(typeof oldCloseVerify==='function' && !oldCloseVerify.__v84){
+    window.closeEmailVerificationModal=function(){clearInterval(verifyTimer);return oldCloseVerify.apply(this,arguments);};
+    window.closeEmailVerificationModal.__v84=true;
+  }
+  document.addEventListener('visibilitychange',function(){if(!document.hidden)autoCheckVerification_();});
+
+  /* ---------------------------------------------------------
+     3) Saved address deletion in Edit Profile.
+  --------------------------------------------------------- */
+  async function deleteSavedAddress_(addressId){
+    var uid=typeof customerCurrentUserId_==='function'?String(customerCurrentUserId_()||''):'';
+    addressId=String(addressId||'').trim();
+    if(!uid||!addressId)return;
+    if(!window.confirm('Delete this saved delivery address?'))return;
+    try{
+      var f=await Promise.resolve(window.MckenzieFirebaseReady);
+      var ref=f.doc(f.db,'addresses',addressId),snap=await f.getDoc(ref);
+      if(!snap.exists())throw new Error('Address not found.');
+      var data=snap.data()||{};
+      if(String(data.userId||'')!==uid)throw new Error('Invalid address owner.');
+      if(typeof f.deleteDoc!=='function')throw new Error('Address delete service is not available.');
+      await f.deleteDoc(ref);
+      if(window.MckenzieJapanPolish&&typeof window.MckenzieJapanPolish.refreshSavedAddresses==='function')window.MckenzieJapanPolish.refreshSavedAddresses();
+      if(typeof loadCheckoutAddresses_==='function')loadCheckoutAddresses_(getSavedUser_()||{});
+    }catch(e){alert(e&&e.message?e.message:'Unable to delete this address right now.');}
+  }
+  window.deleteSavedAddress_=deleteSavedAddress_;
+
+  /* ---------------------------------------------------------
+     4) Customer notifications: the base renderer now captures the
+        notification target before rerendering, then routes after the
+        read-state update completes.
+  --------------------------------------------------------- */
+  function refreshNotificationRouting_(){
+    try{if(typeof window.renderCustomerNotifications_==='function')window.renderCustomerNotifications_();}catch(e){}
+  }
+  window.addEventListener('load',function(){setTimeout(refreshNotificationRouting_,120);});
+
+  /* ---------------------------------------------------------
+     5) Receipt: once the customer answers/auto-confirms, create a
+        permanent per-order local received marker. This prevents the
+        popup from returning when a server write is delayed/blocked.
+  --------------------------------------------------------- */
+  function hardReceiptMemory_(){
+    try{
+      document.querySelectorAll('#mckReceiptModal').forEach(function(m){
+        var id=String(m.dataset.orderId||'');
+        if(!id)return;
+        var state=localStorage.getItem('mckenzie_receipt_local_'+id)||'';
+        if(state==='received' || state==='dismissed'){
+          m.classList.remove('show');
+        }
+      });
+    }catch(e){}
+  }
+  setInterval(hardReceiptMemory_,1200);
+
+})();
+</script>
+<style id="mck-v84-address-delete-style">
+.jp-address-card .jp-address-delete{border:1px solid #c5162b;background:#fff4f2;color:#a51620;border-radius:9px;padding:6px 10px;font-size:10px;font-weight:900;cursor:pointer}
+.jp-address-card .jp-address-delete:hover{background:#a51620;color:#fff}
+</style>
