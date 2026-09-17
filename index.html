@@ -7409,14 +7409,29 @@ async function sendForgotPasswordLink_() {
   const email=String(document.getElementById("forgotPasswordIdentifier")?.value||"").trim().toLowerCase();
   const btn=document.getElementById("forgotPasswordSendButton");
   const msg=document.getElementById("forgotPasswordMessage");
-  if(!email || !email.includes("@")){ if(msg)msg.textContent="Please enter your registered email address."; return; }
+  if(!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ if(msg)msg.textContent="Please enter your registered email address."; return; }
   if(btn){btn.disabled=true;btn.textContent="Sending...";}
   try{
-    const endpoint="https://us-central1-mckenzie-ramen-house.cloudfunctions.net/sendCustomPasswordResetEmail";
-    const continueUrl=window.location.origin+window.location.pathname;
-    const response=await fetch(endpoint,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email,continueUrl})});
-    const data=await response.json().catch(function(){return {};});
-    if(!response.ok || data.success===false) throw new Error(data.message||"Unable to send reset link.");
+    // First try the branded email service. If it is not deployed/configured yet,
+    // automatically fall back to Firebase's native password-reset sender so the
+    // customer still receives a working reset email instead of seeing an error.
+    let sent=false;
+    try{
+      const endpoint="https://us-central1-mckenzie-ramen-house.cloudfunctions.net/sendCustomPasswordResetEmail";
+      const continueUrl=window.location.origin+window.location.pathname;
+      const response=await fetch(endpoint,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email,continueUrl})});
+      const data=await response.json().catch(function(){return {};});
+      if(response.ok && data.success!==false) sent=true;
+      else console.warn("Branded reset email service unavailable; using Firebase fallback.",data);
+    }catch(serviceError){
+      console.warn("Branded reset email service unavailable; using Firebase fallback.",serviceError);
+    }
+    if(!sent){
+      const f=window.MCKENZIE_FIREBASE_AUTH_API;
+      if(!f || typeof f.sendPasswordResetEmail!=="function") throw new Error("Password reset service is not available.");
+      const continueUrl=window.location.origin+window.location.pathname;
+      await f.sendPasswordResetEmail(f.auth,email,{url:continueUrl,handleCodeInApp:false});
+    }
     closeForgotPassword_();
     showPasswordResetSent_(email);
   }catch(error){
@@ -7425,7 +7440,8 @@ async function sendForgotPasswordLink_() {
       msg.style.color="#a51620";
       if(error&&error.code==="auth/invalid-email") msg.textContent="Please enter a valid email address.";
       else if(error&&error.code==="auth/too-many-requests") msg.textContent="Too many requests. Please wait a few minutes and try again.";
-      else msg.textContent="We couldn't send the reset link right now. Please check your email address and try again.";
+      else if(error&&error.code==="auth/user-not-found") msg.textContent="Please enter the email address associated with your account.";
+      else msg.textContent="We couldn't send the reset link right now. Please try again.";
     }
   }finally{
     if(btn){btn.disabled=false;btn.textContent="Send Reset Link";}
@@ -7438,11 +7454,23 @@ async function useForgotPasswordFromChange_(event) {
   closeChangePassword_();
   if(!email){ openForgotPassword_(); return; }
   try{
-    const endpoint="https://us-central1-mckenzie-ramen-house.cloudfunctions.net/sendCustomPasswordResetEmail";
-    const continueUrl=window.location.origin+window.location.pathname;
-    const response=await fetch(endpoint,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email,continueUrl})});
-    const data=await response.json().catch(function(){return {};});
-    if(!response.ok || data.success===false) throw new Error(data.message||"Unable to send reset link.");
+    let sent=false;
+    try{
+      const endpoint="https://us-central1-mckenzie-ramen-house.cloudfunctions.net/sendCustomPasswordResetEmail";
+      const continueUrl=window.location.origin+window.location.pathname;
+      const response=await fetch(endpoint,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email,continueUrl})});
+      const data=await response.json().catch(function(){return {};});
+      if(response.ok && data.success!==false) sent=true;
+      else console.warn("Branded reset email service unavailable; using Firebase fallback.",data);
+    }catch(serviceError){
+      console.warn("Branded reset email service unavailable; using Firebase fallback.",serviceError);
+    }
+    if(!sent){
+      const f=window.MCKENZIE_FIREBASE_AUTH_API;
+      if(!f || typeof f.sendPasswordResetEmail!=="function") throw new Error("Password reset service is not available.");
+      const continueUrl=window.location.origin+window.location.pathname;
+      await f.sendPasswordResetEmail(f.auth,email,{url:continueUrl,handleCodeInApp:false});
+    }
     showPasswordResetSent_(email);
   }catch(error){
     console.error("Logged-in password reset failed:",error);
@@ -8465,14 +8493,12 @@ async function loadPublishedMenuRatings_(reviewsOverride){
              of whether older/newer records store it as boolean or string. */
           /* V74: canonical public visibility. New reviews write visibility explicitly from the
              checkbox state. Legacy records fall back only to an explicit anonymous flag. */
-          var visibilityRaw=r.visibility;
-          var hasCanonicalVisibility=(visibilityRaw==='anonymous' || visibilityRaw==='public');
-          var anonRaw=(r.anonymousOptIn!=null?r.anonymousOptIn:(r.anonymousExplicit!=null?r.anonymousExplicit:(r.anonymous!=null?r.anonymous:(r.isAnonymous!=null?r.isAnonymous:(r.postAnonymously!=null?r.postAnonymously:r.anonymousReview)))));
-          var explicitAnon=(anonRaw===true || String(anonRaw||'').trim().toLowerCase()==='true' || String(anonRaw||'').trim()==='1' || String(anonRaw||'').trim().toLowerCase()==='yes');
-          var isAnon=hasCanonicalVisibility ? visibilityRaw==='anonymous' : explicitAnon;
-          /* Only the customer's explicit Anonymous checkbox controls public privacy.
-             If the checkbox was not selected, the review remains public under the
-             customer's saved public name (or customer name for older records). */
+          var v75Choice=(r.anonymousChoiceVersion==='v75' && typeof r.anonymousChoice==='boolean') ? r.anonymousChoice : null;
+          var isAnon=(v75Choice!==null) ? v75Choice : false;
+          /* V75: only a review created by the current checkbox flow can become
+             anonymous. Legacy records are treated as public because their old
+             fields cannot reliably prove that the customer actually checked the
+             Anonymous box. This prevents historical buggy data from hiding names. */
           var storedPublicName=String(r.publicName||r.displayName||'').trim();
           var privateCustomerName=String(r.customerName||'Customer').trim();
           /* A legacy record may contain publicName:'Anonymous' from an older buggy build.
@@ -9282,7 +9308,6 @@ function startCustomerFirebase_() {
     loadBrandAssets();
     (async function(){
       const handled = await processEmailVerificationAction_();
-    processPasswordResetAction_();
       if (!handled) setTimeout(function() { checkEmailVerificationReturn_(0); }, 250);
     })();
   } catch (error) {
@@ -9518,12 +9543,12 @@ if (window.MckenzieFirebaseReady && typeof window.MckenzieFirebaseReady.then ===
             var key=String(params.orderId||'')+'|'+pid;
             var already=Number(existingCounts[key]||0),qty=Math.max(1,Number(target.quantity||1)),remaining=Math.max(0,qty-already);
             var image=String(ent.image||''); if(image.length>650000) throw new Error('Review photo is too large. Please choose a smaller photo.');
-            var anonymous=(ent.visibility==='anonymous');
+            var anonymous=(ent.anonymousChoice===true);
             var anonymousOptIn=anonymous;
             for(var unit=0;unit<remaining;unit++){
               var id='REV-'+Date.now()+'-'+Math.floor(Math.random()*100000)+'-'+count;
               var privateCustomerName=String(odb.customerName||odb.fullName||'Customer');
-              batch.set(f.doc(f.db,'reviews',id),{reviewId:id,orderId:String(params.orderId||''),customerId:String(u.uid),productId:pid,productName:String(target.productName||target.name||'Ramen item'),rating:rating,review:review,unitIndex:already+unit+1,reviewedUnit:already+unit+1,quantityRepresented:qty,anonymous:anonymous,anonymousExplicit:anonymous,anonymousOptIn:anonymous,isAnonymous:anonymous,postAnonymously:anonymous,anonymousReview:anonymous,visibility:anonymous?'anonymous':'public',publicName:anonymous?'Anonymous':privateCustomerName,customerName:privateCustomerName,customerEmail:String(odb.email||u.email||''),image:image,submittedAt:new Date().toISOString(),status:'Published'});
+              batch.set(f.doc(f.db,'reviews',id),{reviewId:id,orderId:String(params.orderId||''),customerId:String(u.uid),productId:pid,productName:String(target.productName||target.name||'Ramen item'),rating:rating,review:review,unitIndex:already+unit+1,reviewedUnit:already+unit+1,quantityRepresented:qty,anonymousChoice:anonymous,anonymousChoiceVersion:'v75',anonymous:anonymous,anonymousExplicit:anonymous,anonymousOptIn:anonymous,isAnonymous:anonymous,postAnonymously:anonymous,anonymousReview:anonymous,visibility:anonymous?'anonymous':'public',publicName:anonymous?'Anonymous':privateCustomerName,customerName:privateCustomerName,customerEmail:String(odb.email||u.email||''),image:image,submittedAt:new Date().toISOString(),status:'Published'});
               count++;
             }
           });
@@ -9552,7 +9577,7 @@ if (window.MckenzieFirebaseReady && typeof window.MckenzieFirebaseReady.then ===
           await f.setDoc(f.doc(f.db,'reviews',id),{
             reviewId:id,orderId:String(params.orderId||''),customerId:String(u.uid),productId:String(params.productId||''),
             productName:String(target.productName||target.name||'Ramen item'),rating:rating,review:review,
-            customerName:String(od.customerName||od.fullName||'Customer'),anonymous:params.anonymous===true,anonymousExplicit:params.anonymous===true,anonymousOptIn:params.anonymous===true,isAnonymous:params.anonymous===true,postAnonymously:params.anonymous===true,anonymousReview:params.anonymous===true,visibility:params.anonymous===true?'anonymous':'public',publicName:params.anonymous===true?'Anonymous':String(od.customerName||od.fullName||'Customer'),submittedAt:new Date().toISOString(),status:'Published'
+            customerName:String(od.customerName||od.fullName||'Customer'),anonymousChoice:params.anonymousChoice===true,anonymousChoiceVersion:'v75',anonymous:params.anonymousChoice===true,anonymousExplicit:params.anonymousChoice===true,anonymousOptIn:params.anonymousChoice===true,isAnonymous:params.anonymousChoice===true,postAnonymously:params.anonymousChoice===true,anonymousReview:params.anonymousChoice===true,visibility:params.anonymousChoice===true?'anonymous':'public',publicName:params.anonymousChoice===true?'Anonymous':String(od.customerName||od.fullName||'Customer'),submittedAt:new Date().toISOString(),status:'Published'
           });
           done({success:true,message:'Your review has been submitted.',reviewId:id});
           return;
@@ -9616,7 +9641,7 @@ if (window.MckenzieFirebaseReady && typeof window.MckenzieFirebaseReady.then ===
     try{for(var idx=0;idx<(items||[]).length;idx++){var item=items[idx],rating=Number(document.getElementById('mckSurveyRating_'+idx).value||0),review=document.getElementById('mckSurveyReview_'+idx).value||'',photo=document.getElementById('mckSurveyPhoto_'+idx),anonymous=document.getElementById('mckSurveyAnonymous_'+idx);var anonymousChecked=!!(anonymous&&anonymous.checked);
       /* The checkbox is the sole source of truth for this submission. */
       var visibility=anonymousChecked?'anonymous':'public';
-      entries.push({productId:item.productId,rating:rating,review:review,anonymous:anonymousChecked,anonymousOptIn:anonymousChecked,anonymousExplicit:anonymousChecked,visibility:visibility,image:await readReviewPhoto_(photo&&photo.files&&photo.files[0]?photo.files[0]:null)});}}catch(err){alert(err&&err.message?err.message:'Unable to process the review photo.');return;}
+      entries.push({productId:item.productId,rating:rating,review:review,anonymousChoice:anonymousChecked,anonymous:anonymousChecked,anonymousOptIn:anonymousChecked,anonymousExplicit:anonymousChecked,visibility:visibility,image:await readReviewPhoto_(photo&&photo.files&&photo.files[0]?photo.files[0]:null)});}}catch(err){alert(err&&err.message?err.message:'Unable to process the review photo.');return;}
     if(entries.some(function(e){return e.rating<1||e.rating>5;})){alert('Please select a rating from 1 to 5 stars for every menu item.');return;}
     surveyBusy=true;var btn=document.getElementById('mckSurveySubmitAll');if(btn){btn.disabled=true;btn.textContent='Submitting All Feedback…';}
     surveyCall('submitCustomerReviewsBatch',{userId:u.userId,orderId:surveyOrderId,entries:entries},function(v){surveyBusy=false;if(!v||!v.success){if(btn){btn.disabled=false;btn.textContent='Submit All Feedback';}alert(v&&v.error?v.error:'Unable to submit your feedback.');return;}if(btn){btn.textContent='✓ Feedback Submitted';}var c=document.getElementById('mckSurveyContent');if(c)c.innerHTML='<div class="mck-survey-wrap"><div class="mck-survey-success">✓ Thank you for supporting McKenzie Ramen House!<br><span style="font-weight:600;opacity:.8">Your feedback has been submitted successfully.</span></div></div>';setTimeout(function(){closeSurveyModal_();},1700);});
@@ -11607,8 +11632,7 @@ body:not(.mck-customer-chat-open) .account-menu-wrap,body:not(.mck-customer-chat
       'paymentHistoryModal':function(){closeAccountSubmodal_('paymentHistoryModal');},
       'couponsModal':function(){closeAccountSubmodal_('couponsModal');},
       'forgotPasswordModal':function(){if(typeof closeForgotPassword_==='function')closeForgotPassword_();},
-      'passwordResetSentModal':function(){if(typeof closePasswordResetSent_==='function')closePasswordResetSent_();},
-      'passwordResetModal':function(){if(typeof closePasswordReset_==='function')closePasswordReset_();},
+      'passwordOtpModal':function(){if(typeof closePasswordOtp_==='function')closePasswordOtp_();},
       'changePasswordModal':function(){if(typeof closeChangePassword_==='function')closeChangePassword_();},
       'emailVerificationModal':function(){if(typeof closeEmailVerificationModal==='function')closeEmailVerificationModal();},
       'mckSurveyModal':function(){if(typeof closeSurveyModal_==='function')closeSurveyModal_();},
@@ -12122,7 +12146,7 @@ document.addEventListener('DOMContentLoaded',function(){addSakura();addSteam();b
   }
   window.mckV69ScrubPublicReviewNames=scrub;
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',scrub,{once:true});else scrub();
-  setInterval(scrub,1200);
+  /* V75: no recurring DOM scrub; renderer stamps the canonical state. */
 })();
 </script>
 <style id="mck-v71-anonymous-exact-only">
@@ -12150,6 +12174,25 @@ document.addEventListener('DOMContentLoaded',function(){addSakura();addSteam();b
 })();
 </script>
 
+<style id="mck-v75-anonymous-canonical">
+/* V75: anonymous is opt-in and versioned. Legacy review records are public unless
+   they carry the canonical v75 checkbox choice. */
+</style>
+<script id="mck-v75-anonymous-canonical-js">
+(function(){
+  'use strict';
+  function canonicalScrub(){
+    document.querySelectorAll('.customer-review-card').forEach(function(card){
+      var name=card.querySelector('.customer-review-name');
+      if(!name)return;
+      if(card.getAttribute('data-review-anonymous')==='1'){name.textContent='— Anonymous';}
+    });
+  }
+  window.mckV75CanonicalAnonymous=canonicalScrub;
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',canonicalScrub,{once:true});
+  else canonicalScrub();
+})();
+</script>
 
 <style id="mck-v72-anonymous-review-exact-ui">
 .mck-review-public-name{margin-top:7px;font-size:10px;color:#8a756d;transition:color .18s ease}.mck-review-public-name b{color:#5f201f}.mck-review-public-name.is-anonymous{color:#a51620}.mck-review-public-name.is-anonymous b{color:#a51620}
