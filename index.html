@@ -5201,7 +5201,20 @@ async function changeVerificationEmail_(){
   }
 }
 
+
+async function closeVerificationNotifications_(){
+  try{
+    var f=await Promise.resolve(window.MckenzieFirebaseReady);
+    var u=f&&f.auth&&f.auth.currentUser; if(!u||!f.getDocs||!f.query)return;
+    var q=f.query(f.collection(f.db,"notifications"),f.where("userId","==",String(u.uid)));
+    var snap=await f.getDocs(q),updates=[],now=new Date().toISOString();
+    snap.docs.forEach(function(ds){var d=ds.data()||{},raw=String(d.type||"")+" "+String(d.title||"")+" "+String(d.message||d.text||"");if(/verification|verify|email verification/i.test(raw)&&!d.readAt)updates.push(f.updateDoc(ds.ref,{readAt:now}));});
+    await Promise.all(updates);
+    if(typeof window.renderCustomerNotifications_==='function')window.renderCustomerNotifications_();
+  }catch(e){}
+}
 function showEmailVerifiedSuccess_(user, profile) {
+  try { if (typeof closeVerificationNotifications_ === "function") closeVerificationNotifications_(); } catch(e) {}
   const modal=document.getElementById("mckEmailVerifiedModal");
   const message=document.getElementById("mckEmailVerifiedMessage");
   const proceed=document.getElementById("mckEmailVerifiedOrderButton");
@@ -12341,6 +12354,7 @@ document.addEventListener('DOMContentLoaded',function(){addSakura();addSteam();b
   --------------------------------------------------------- */
   async function deleteSavedAddress_(addressId){
     var uid=typeof customerCurrentUserId_==='function'?String(customerCurrentUserId_()||''):'';
+    if(!uid){try{var su=JSON.parse(localStorage.getItem('mckenzieUser')||'null')||{};uid=String(su.userId||su.uid||'');}catch(e){}}
     addressId=String(addressId||'').trim();
     if(!uid||!addressId)return;
     if(!window.confirm('Delete this saved delivery address?'))return;
@@ -12392,4 +12406,137 @@ document.addEventListener('DOMContentLoaded',function(){addSakura();addSteam();b
 <style id="mck-v84-address-delete-style">
 .jp-address-card .jp-address-delete{border:1px solid #c5162b;background:#fff4f2;color:#a51620;border-radius:9px;padding:6px 10px;font-size:10px;font-weight:900;cursor:pointer}
 .jp-address-card .jp-address-delete:hover{background:#a51620;color:#fff}
+</style>\n<!-- V86 ACTUAL CHECKLIST FIXES -->
+<style id="mck-v86-actual-fixes">
+/* 1. Hero/logo: remove any visual frame around transparent logo assets. */
+.hero-logo,.site-sticky-logo,.footer-logo,#adminLoginLogo,.brand-preview{background:transparent!important;border:0!important;box-shadow:none!important;outline:0!important;}
+.hero-logo{mix-blend-mode:normal!important;}
+
+/* 2. Review stream: user can manually scroll; auto-scroll stays deliberately slow. */
+.customer-review-stream{overflow-y:auto!important;overflow-x:hidden!important;scroll-behavior:smooth!important;-webkit-overflow-scrolling:touch!important;}
+.customer-review-stream::-webkit-scrollbar{width:6px}.customer-review-stream::-webkit-scrollbar-thumb{background:rgba(122,21,28,.28);border-radius:999px}
+.customer-review-stream-track{animation-timing-function:linear!important;}
+.customer-review-stream.is-manual .customer-review-stream-track{animation-play-state:paused!important;}
+
+/* 3. Notification items are unmistakably interactive. */
+.mck-notification-item{position:relative;transition:transform .12s ease,box-shadow .12s ease;}
+.mck-notification-item:hover{transform:translateY(-1px);box-shadow:0 5px 16px rgba(90,20,15,.10)}
+.mck-notification-item:active{transform:scale(.995)}
+
+/* 4. Saved-address delete action must remain visible. */
+.jp-address-actions{display:flex!important;justify-content:flex-end!important;gap:7px!important;flex-wrap:wrap!important;}
+.jp-address-delete{display:inline-flex!important;align-items:center!important;justify-content:center!important;visibility:visible!important;opacity:1!important;}
+
+/* 5. iPhone Safari: keep the chat frame and inner content at the same viewport width. */
+@media(max-width:700px){
+  #mckCustomerChatModal.show{width:100vw!important;max-width:100vw!important;overflow:hidden!important;padding:0!important;}
+  #mckCustomerChatBox{width:100vw!important;max-width:100vw!important;min-width:0!important;height:100dvh!important;max-height:100dvh!important;margin:0!important;box-sizing:border-box!important;overflow:hidden!important;}
+  #mckCustomerChatHead,#mckCustomerChatMessages,#mckCustomerChatTyping,#mckCustomerChatComposer{width:100%!important;max-width:100%!important;min-width:0!important;box-sizing:border-box!important;}
+  #mckCustomerChatMessages{overflow-x:hidden!important;}
+  #mckCustomerChatInput{width:100%!important;max-width:100%!important;box-sizing:border-box!important;font-size:16px!important;}
+}
 </style>
+<script id="mck-v86-actual-fixes-js">
+(function(){
+  'use strict';
+
+  /* ---------------- Review speed + manual scrolling ---------------- */
+  function tuneReviewStream_(){
+    var streams=document.querySelectorAll('.customer-review-stream');
+    streams.forEach(function(stream){
+      var track=stream.querySelector('.customer-review-stream-track');
+      if(!track || stream.dataset.v86Tuned==='1') return;
+      var cards=track.querySelectorAll('.customer-review-card');
+      var originalCount=Math.max(1,Math.floor(cards.length/2));
+      /* Longer review sets get proportionally longer animation time, so the
+         physical scroll speed does not suddenly become fast as reviews grow. */
+      var duration=Math.max(75,Math.min(360,originalCount*12));
+      track.style.animationDuration=duration+'s';
+      stream.dataset.v86Tuned='1';
+      var pauseTimer=null;
+      function pauseForManual_(){
+        stream.classList.add('is-manual');
+        clearTimeout(pauseTimer);
+        pauseTimer=setTimeout(function(){stream.classList.remove('is-manual');},5500);
+      }
+      stream.addEventListener('wheel',pauseForManual_,{passive:true});
+      stream.addEventListener('touchstart',pauseForManual_,{passive:true});
+      stream.addEventListener('pointerdown',pauseForManual_,{passive:true});
+    });
+  }
+  function retuneReviews_(){setTimeout(tuneReviewStream_,80);setTimeout(tuneReviewStream_,600);setTimeout(tuneReviewStream_,1400);}
+  document.addEventListener('DOMContentLoaded',retuneReviews_);
+  var oldLoadReviews=window.loadPublishedMenuRatings_;
+  if(typeof oldLoadReviews==='function' && !oldLoadReviews.__v86){
+    var wrappedReviews=function(){return Promise.resolve(oldLoadReviews.apply(this,arguments)).then(function(v){retuneReviews_();return v;});};
+    wrappedReviews.__v86=true;
+    window.loadPublishedMenuRatings_=wrappedReviews;
+  }
+
+  /* ---------------- Receipt popup: server flags + local fallback are final ---------------- */
+  function receiptAlreadyClosed_(order){
+    if(!order)return false;
+    if(order.customerConfirmed===true || order.closed===true || order.receiptPromptDismissed===true || order.receiptAutoConfirmed===true || order.autoConfirmedAt) return true;
+    try{var s=localStorage.getItem('mckenzie_receipt_local_'+String(order.orderId||''));if(s==='received'||s==='dismissed'||s==='not-received')return true;}catch(e){}
+    return false;
+  }
+  var oldHandleDelivered=window.handleDeliveredOrder;
+  if(typeof oldHandleDelivered==='function' && !oldHandleDelivered.__v86){
+    window.handleDeliveredOrder=function(order){if(receiptAlreadyClosed_(order))return;return oldHandleDelivered.apply(this,arguments);};
+    window.handleDeliveredOrder.__v86=true;
+  }
+
+  /* ---------------- Customer notification routing ---------------- */
+  var originalNotificationRenderer=window.renderCustomerNotifications_;
+  if(typeof originalNotificationRenderer==='function' && !originalNotificationRenderer.__v86){
+    window.renderCustomerNotifications_=function(){
+      var result=originalNotificationRenderer.apply(this,arguments);
+      setTimeout(function(){
+        var list=document.getElementById('mckCustomerNotificationList'); if(!list)return;
+        list.querySelectorAll('.mck-notification-item').forEach(function(el){
+          if(el.dataset.v86Route==='1')return;
+          el.dataset.v86Route='1';
+          el.addEventListener('click',function(e){
+            e.preventDefault();e.stopImmediatePropagation();
+            var nid=el.getAttribute('data-notification-id')||'';
+            var oid=el.getAttribute('data-order-id')||'';
+            var type=el.getAttribute('data-type')||'';
+            var chatId=el.getAttribute('data-chat-id')||'';
+            try{
+              var a=JSON.parse(localStorage.getItem('mckCustomerNotifications_v1_'+encodeURIComponent(String(customerCurrentUserId_&&customerCurrentUserId_()||'')))||'[]');
+              a.forEach(function(n){if(String(n.id)===String(nid))n.unread=false;});
+              localStorage.setItem('mckCustomerNotifications_v1_'+encodeURIComponent(String(customerCurrentUserId_&&customerCurrentUserId_()||'')),JSON.stringify(a.slice(0,50)));
+            }catch(x){}
+            try{if(typeof window.closeCustomerNotifications_==='function')window.closeCustomerNotifications_();}catch(x){}
+            setTimeout(function(){
+              if((type==='support'||type==='support_closed') && chatId){
+                if(typeof window.openExistingCustomerSupportChat_==='function'){window.openExistingCustomerSupportChat_(chatId);return;}
+                if(typeof window.openCustomerSupportChat_==='function'){window.openCustomerSupportChat_(oid);return;}
+              }
+              if(type==='review' && oid && typeof window.openRatingPage_==='function'){window.openRatingPage_(oid);return;}
+              if(oid && typeof window.openOrderDetailByKey_==='function'){window.openOrderDetailByKey_(encodeURIComponent(oid));return;}
+            },80);
+          },true);
+        });
+      },0);
+      return result;
+    };
+    window.renderCustomerNotifications_.__v86=true;
+  }
+
+  /* ---------------- Cart account isolation safety ---------------- */
+  function enforceCustomerCart_(){
+    try{
+      if(typeof isLoggedIn_!=='function' || !isLoggedIn_())return;
+      var uid=typeof getCurrentCustomerId_==='function'?String(getCurrentCustomerId_()||''):'';
+      if(!uid)return;
+      var key=typeof getCustomerStorageKey_==='function'?getCustomerStorageKey_('mckenzieCart',uid):'mckenzieCart_'+encodeURIComponent(uid);
+      if(!key)return;
+      var current=localStorage.getItem(key);
+      if(current===null && typeof cartItems!=='undefined' && Array.isArray(cartItems) && cartItems.length){localStorage.setItem(key,JSON.stringify(cartItems));}
+    }catch(e){}
+  }
+  document.addEventListener('DOMContentLoaded',function(){setTimeout(enforceCustomerCart_,1200);});
+})();
+</script>
+
