@@ -7412,9 +7412,11 @@ async function sendForgotPasswordLink_() {
   if(!email || !email.includes("@")){ if(msg)msg.textContent="Please enter your registered email address."; return; }
   if(btn){btn.disabled=true;btn.textContent="Sending...";}
   try{
-    const f=await getMcKenzieCustomerAuthDirect_();
-    const actionCodeSettings={url:window.location.origin+window.location.pathname,handleCodeInApp:false};
-    await f.sendPasswordResetEmail(f.auth,email,actionCodeSettings);
+    const endpoint="https://us-central1-mckenzie-ramen-house.cloudfunctions.net/sendCustomPasswordResetEmail";
+    const continueUrl=window.location.origin+window.location.pathname;
+    const response=await fetch(endpoint,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email,continueUrl})});
+    const data=await response.json().catch(function(){return {};});
+    if(!response.ok || data.success===false) throw new Error(data.message||"Unable to send reset link.");
     closeForgotPassword_();
     showPasswordResetSent_(email);
   }catch(error){
@@ -7436,9 +7438,11 @@ async function useForgotPasswordFromChange_(event) {
   closeChangePassword_();
   if(!email){ openForgotPassword_(); return; }
   try{
-    const f=await getMcKenzieCustomerAuthDirect_();
-    const actionCodeSettings={url:window.location.origin+window.location.pathname,handleCodeInApp:false};
-    await f.sendPasswordResetEmail(f.auth,email,actionCodeSettings);
+    const endpoint="https://us-central1-mckenzie-ramen-house.cloudfunctions.net/sendCustomPasswordResetEmail";
+    const continueUrl=window.location.origin+window.location.pathname;
+    const response=await fetch(endpoint,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email,continueUrl})});
+    const data=await response.json().catch(function(){return {};});
+    if(!response.ok || data.success===false) throw new Error(data.message||"Unable to send reset link.");
     showPasswordResetSent_(email);
   }catch(error){
     console.error("Logged-in password reset failed:",error);
