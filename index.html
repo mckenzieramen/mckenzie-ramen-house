@@ -12656,3 +12656,99 @@ document.addEventListener('DOMContentLoaded',function(){addSakura();addSteam();b
   document.addEventListener('DOMContentLoaded',start_);
 })();
 </script>
+
+<style id="mck-v90-mobile-keyboard-chat-fix">
+@media (max-width:700px){
+  /* Keep the chat conversation and composer inside the currently visible viewport when the virtual keyboard opens. */
+  #mckCustomerChatModal.mck-keyboard-open{align-items:flex-start!important;justify-content:stretch!important;}
+  #mckCustomerChatModal.mck-keyboard-open #mckCustomerChatBox{
+    height:var(--mck-chat-visible-height,100dvh)!important;
+    max-height:var(--mck-chat-visible-height,100dvh)!important;
+    min-height:0!important;
+    border-radius:0!important;
+  }
+  #mckCustomerChatModal.mck-keyboard-open #mckCustomerChatMessages{
+    min-height:0!important;
+    overflow-y:auto!important;
+    scroll-behavior:auto!important;
+  }
+  #mckCustomerChatModal.mck-keyboard-open #mckCustomerChatComposer{
+    position:relative!important;
+    flex:0 0 auto!important;
+    padding-bottom:max(10px,env(safe-area-inset-bottom))!important;
+  }
+  #mckCustomerChatInput{scroll-margin-bottom:24px!important;}
+}
+</style>
+<script id="mck-v90-mobile-keyboard-chat-fix-js">
+(function(){
+  'use strict';
+  var modal, box, input, raf=0, lastKeyboard=false;
+  function isMobile(){return window.matchMedia && window.matchMedia('(max-width:700px)').matches;}
+  function visibleHeight(){
+    var vv=window.visualViewport;
+    if(!vv) return window.innerHeight||document.documentElement.clientHeight||0;
+    return Math.max(0,Math.round(vv.height));
+  }
+  function keyboardOpen(){
+    if(!isMobile()) return false;
+    var vv=window.visualViewport;
+    if(!vv) return false;
+    var layoutH=window.innerHeight||document.documentElement.clientHeight||0;
+    return (layoutH - vv.height) > 120;
+  }
+  function apply(){
+    raf=0;
+    if(!modal||!box) return;
+    var open=modal.classList.contains('show');
+    var kb=open && keyboardOpen();
+    modal.classList.toggle('mck-keyboard-open',kb);
+    if(kb){
+      var h=visibleHeight();
+      modal.style.setProperty('--mck-chat-visible-height',h+'px');
+      box.style.height=h+'px';
+      box.style.maxHeight=h+'px';
+      box.style.minHeight='0';
+      if(input && document.activeElement===input){
+        setTimeout(function(){
+          try{input.scrollIntoView({block:'nearest',inline:'nearest'});}catch(e){}
+          var messages=document.getElementById('mckCustomerChatMessages');
+          if(messages) messages.scrollTop=messages.scrollHeight;
+        },40);
+      }
+    }else if(open){
+      modal.style.removeProperty('--mck-chat-visible-height');
+      box.style.height='100dvh';
+      box.style.maxHeight='100dvh';
+    }
+    lastKeyboard=kb;
+  }
+  function schedule(){if(raf)return;raf=requestAnimationFrame(apply);}
+  function bind(){
+    modal=document.getElementById('mckCustomerChatModal');
+    box=document.getElementById('mckCustomerChatBox');
+    input=document.getElementById('mckCustomerChatInput');
+    if(!modal||!box||!input)return;
+    if(input.dataset.v90KeyboardBound!=='1'){
+      input.dataset.v90KeyboardBound='1';
+      ['focus','click','touchstart'].forEach(function(ev){input.addEventListener(ev,function(){setTimeout(schedule,30);setTimeout(schedule,180);setTimeout(schedule,450);},{passive:true});});
+    }
+    if(window.visualViewport && window.visualViewport.__mckV90Bound!=='1'){
+      window.visualViewport.__mckV90Bound='1';
+      window.visualViewport.addEventListener('resize',schedule,{passive:true});
+      window.visualViewport.addEventListener('scroll',schedule,{passive:true});
+    }
+    window.addEventListener('resize',schedule,{passive:true});
+    window.addEventListener('orientationchange',function(){setTimeout(schedule,250);},{passive:true});
+    schedule();
+  }
+  document.addEventListener('DOMContentLoaded',bind);
+  setTimeout(bind,500);
+  var observer=new MutationObserver(function(muts){
+    var relevant=false;
+    muts.forEach(function(m){if(m.type==='attributes'&&m.attributeName==='class')relevant=true;});
+    if(relevant)schedule();
+  });
+  setTimeout(function(){if(modal)observer.observe(modal,{attributes:true});},700);
+})();
+</script>
