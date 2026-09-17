@@ -223,8 +223,19 @@
     if (!email || !email.includes("@")) {
       throw makeError("Please enter your registered email address.");
     }
-    await f.sendPasswordResetEmail(f.auth, email, { url: (typeof window !== "undefined" ? window.location.origin + window.location.pathname : ""), handleCodeInApp: false });
+    await f.sendPasswordResetEmail(f.auth, email, {
+      url: (typeof window !== "undefined" ? window.location.origin + window.location.pathname : ""),
+      handleCodeInApp: false
+    });
     return { success: true, email, message: "Password reset email sent." };
+  }
+
+  // Expose only the Firebase password-reset sender needed by the UI fallback.
+  // No credentials or secrets are exposed here.
+  if (typeof window !== "undefined") {
+    READY.then(function(f){
+      window.MCKENZIE_FIREBASE_AUTH_API = { auth:f.auth, sendPasswordResetEmail:f.sendPasswordResetEmail };
+    }).catch(function(err){ console.error("Unable to expose Firebase password-reset API:", err); });
   }
 
   async function changePassword(userId, oldPassword, newPassword) {
