@@ -8386,12 +8386,12 @@ async function loadPublishedMenuRatings_(reviewsOverride){
           /* Public privacy must be based on an explicit anonymous flag, regardless
              of whether older/newer records store it as boolean or string. */
           var anonRaw=(r.anonymous!=null?r.anonymous:(r.isAnonymous!=null?r.isAnonymous:(r.postAnonymously!=null?r.postAnonymously:r.anonymousReview)));
-          var isAnon=(anonRaw===true || String(anonRaw||'').trim().toLowerCase()==='true' || String(anonRaw||'').trim()==='1' || String(anonRaw||'').trim().toLowerCase()==='yes' || String(r.publicName||'').trim().toLowerCase()==='anonymous' || String(r.displayName||'').trim().toLowerCase()==='anonymous');
-          /* Public reviews must never fall back to the private customerName field.
-             New reviews carry publicName; legacy records without a publicName are
-             shown as Anonymous rather than exposing the customer's private name. */
-          var storedPublicName=String(r.publicName||r.displayName||'').trim();
-          var publicName=isAnon?'Anonymous':(storedPublicName||'Anonymous');
+          var isAnon=(anonRaw===true || String(anonRaw||'').trim().toLowerCase()==='true' || String(anonRaw||'').trim()==='1' || String(anonRaw||'').trim().toLowerCase()==='yes');
+          /* Only the customer's explicit Anonymous checkbox controls public privacy.
+             If the checkbox was not selected, the review remains public under the
+             customer's saved public name (or customer name for older records). */
+          var storedPublicName=String(r.publicName||r.displayName||r.customerName||'Customer').trim();
+          var publicName=isAnon?'Anonymous':(storedPublicName||'Customer');
           var category=String(r.category||'');
           if(!category){var pm=Object.keys(window.mckenzieProducts||{}).map(function(k){return window.mckenzieProducts[k]}).find(function(p){return String(p.name||'')===String(r.productName||'')});category=pm&&pm.category?String(pm.category):'';}
           var reviewIconKey=/ramen|noodle|soup|tonkatsu|spicy/i.test(category+' '+String(r.productName||''))?'ramen':/side|gyoza|dumpling|karaage|fries|takoyaki|appetizer/i.test(category+' '+String(r.productName||''))?'side':/drink|beverage|tea|coke|soda/i.test(category+' '+String(r.productName||''))?'drink':'dish';
@@ -11915,8 +11915,8 @@ document.addEventListener('DOMContentLoaded',function(){addSakura();addSteam();b
     });
   }
   window.mckV68ProtectPublicReviewPrivacy=protect;
-  /* Also scrub any legacy public card that accidentally contains a private
-     customer name when the review did not provide a safe publicName. */
+  /* Only cards explicitly marked anonymous are scrubbed. Non-anonymous reviews
+     keep the customer's chosen/public display name. */
   window.mckV69ProtectPublicReviewPrivacy=function(){
     document.querySelectorAll('.customer-review-card[data-review-anonymous="1"]').forEach(function(card){
       var name=card.querySelector('.customer-review-name');
