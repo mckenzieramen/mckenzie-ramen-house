@@ -73,7 +73,10 @@
       if(!rows.length){host.innerHTML='<div class="jp-address-empty">No saved addresses yet. Your checkout address will be saved here automatically.</div>';return;}
       host.innerHTML=rows.map(function(a){
         var line=[a.houseUnit,a.street,a.barangay,a.city,a.province].filter(Boolean).join(', ');
-        return '<div class="jp-address-card '+(a.isDefault?'is-default':'')+'"><div class="jp-address-top"><strong>'+esc(String(a.label||'Delivery Address'))+'</strong>'+(a.isDefault?'<span class="jp-default-pill">DEFAULT</span>':'')+'</div><div class="jp-address-line">'+esc(line||'Address details saved')+'</div><div class="jp-address-sub">'+esc([a.region,a.postalCode].filter(Boolean).join(' · '))+'</div>'+(a.additionalInstruction?'<div class="jp-address-note">📍 '+esc(a.additionalInstruction)+'</div>':'')+'</div>';
+        var city=String(a.city||a.barangay||a.province||'');
+        var mapQuery=[a.houseUnit,a.street,a.barangay,a.city,a.province,a.region,a.postalCode,'Philippines'].filter(Boolean).join(', ');
+        var mapSrc='https://www.google.com/maps?q='+encodeURIComponent(mapQuery)+'&output=embed';
+        return '<div class="jp-address-card '+(a.isDefault?'is-default':'')+'"><div class="jp-address-top"><strong>🏠 '+esc(String(a.label||'Delivery Address'))+'</strong>'+(a.isDefault?'<span class="jp-default-pill">DEFAULT</span>':'')+'</div><div class="jp-address-line">'+esc(city||line||'Address details saved')+'</div><div class="jp-address-sub">'+esc(line||'')+' · '+esc([a.region,a.postalCode].filter(Boolean).join(' · '))+'</div><div class="jp-address-map"><iframe title="Map preview" loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="'+esc(mapSrc)+'"></iframe></div><div class="jp-address-actions"><button type="button" class="jp-address-change" onclick="openAddAddressModal_();return false;">Change</button></div>'+(a.additionalInstruction?'<div class="jp-address-note">📍 '+esc(a.additionalInstruction)+'</div>':'')+'</div>';
       }).join('');
     }).catch(function(e){host.innerHTML='<div class="jp-address-empty">Unable to load saved addresses right now.</div>';});
   }
