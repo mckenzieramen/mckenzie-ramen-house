@@ -8390,8 +8390,12 @@ async function loadPublishedMenuRatings_(reviewsOverride){
           /* Only the customer's explicit Anonymous checkbox controls public privacy.
              If the checkbox was not selected, the review remains public under the
              customer's saved public name (or customer name for older records). */
-          var storedPublicName=String(r.publicName||r.displayName||r.customerName||'Customer').trim();
-          var publicName=isAnon?'Anonymous':(storedPublicName||'Customer');
+          var storedPublicName=String(r.publicName||r.displayName||'').trim();
+          var privateCustomerName=String(r.customerName||'Customer').trim();
+          /* A legacy record may contain publicName:'Anonymous' from an older buggy build.
+             That value must NEVER make a non-anonymous review anonymous. Only the explicit
+             anonymous flag controls privacy. */
+          var publicName=isAnon?'Anonymous':((storedPublicName && !/^anonymous$/i.test(storedPublicName))?storedPublicName:(privateCustomerName||'Customer'));
           var category=String(r.category||'');
           if(!category){var pm=Object.keys(window.mckenzieProducts||{}).map(function(k){return window.mckenzieProducts[k]}).find(function(p){return String(p.name||'')===String(r.productName||'')});category=pm&&pm.category?String(pm.category):'';}
           var reviewIconKey=/ramen|noodle|soup|tonkatsu|spicy/i.test(category+' '+String(r.productName||''))?'ramen':/side|gyoza|dumpling|karaage|fries|takoyaki|appetizer/i.test(category+' '+String(r.productName||''))?'side':/drink|beverage|tea|coke|soda/i.test(category+' '+String(r.productName||''))?'drink':'dish';
@@ -12003,3 +12007,28 @@ document.addEventListener('DOMContentLoaded',function(){addSakura();addSteam();b
   setInterval(scrub,1200);
 })();
 </script>
+<style id="mck-v71-anonymous-exact-only">
+/* V71: Anonymous is opt-in only. A public review becomes Anonymous only when its
+   stored anonymous flag is explicitly true/1/yes. */
+</style>
+<script id="mck-v71-anonymous-exact-only-js">
+(function(){
+  'use strict';
+  /* Prevent old privacy guards from treating every review as anonymous. The renderer
+     already stamps data-review-anonymous=1 only for an explicit anonymous flag. */
+  function repair(){
+    document.querySelectorAll('.customer-review-card').forEach(function(card){
+      var marker=card.getAttribute('data-review-anonymous');
+      var name=card.querySelector('.customer-review-name');
+      if(!name)return;
+      if(marker==='1'){
+        name.textContent='— Anonymous';
+      }
+    });
+  }
+  window.mckV71RepairAnonymous=repair;
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',repair,{once:true});
+  else repair();
+})();
+</script>
+
