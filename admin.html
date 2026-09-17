@@ -178,7 +178,7 @@ button,input,select,textarea{font:inherit}
   border-radius:0 0 16px 16px;
 }
 @keyframes adminToastProgress{from{transform:scaleX(1)}to{transform:scaleX(0)}}
-.review-notify-btn{position:relative;overflow:hidden;transition:transform .18s ease,box-shadow .22s ease,background .22s ease,opacity .22s ease}
+.review-notify-btn.review-ready-auto{box-shadow:0 0 0 3px rgba(229,173,53,.18),0 8px 24px rgba(177,19,31,.18);animation:mckReviewReadyPulse 1.8s ease-in-out infinite;}@keyframes mckReviewReadyPulse{0%,100%{filter:brightness(1)}50%{filter:brightness(1.10)}}.review-notify-btn{position:relative;overflow:hidden;transition:transform .18s ease,box-shadow .22s ease,background .22s ease,opacity .22s ease}
 .review-notify-btn:not(:disabled):hover{transform:translateY(-1px);box-shadow:0 7px 18px rgba(185,30,53,.18)}
 .review-notify-btn.review-sending{min-width:176px;background:#8e1528 !important;color:#fff !important;border-color:#8e1528 !important;cursor:wait !important;transform:scale(.98);box-shadow:none !important}
 .review-notify-btn.review-sending::before{content:"";display:inline-block;width:13px;height:13px;margin-right:8px;border:2px solid rgba(255,255,255,.38);border-top-color:#fff;border-radius:50%;vertical-align:-2px;animation:reviewSpin .65s linear infinite}
@@ -383,6 +383,15 @@ html{-webkit-text-size-adjust:100%;scroll-behavior:auto!important;}
 
 
 <div id="centeredUpdateOverlay" aria-hidden="true"><div class="centered-update-card" role="status"><div class="centered-update-check">✓</div><h3 id="centeredUpdateTitle">Updated</h3><p id="centeredUpdateMessage">Your changes were saved successfully.</p><button type="button" class="update-ok" onclick="hideCenteredUpdate()">OK</button></div></div>
+<aside id="orderDetailDrawer" class="mck-v80-order-drawer" aria-hidden="true" aria-labelledby="orderDetailTitle">
+  <div class="mck-v80-drawer-head">
+    <div><span class="admin-kicker">✦ ORDER DETAILS</span><h2 id="orderDetailTitle">Order</h2><div id="orderDetailMeta" class="mck-v80-drawer-meta"></div></div>
+    <button type="button" class="mck-v80-drawer-close" onclick="closeOrderDetail_()" aria-label="Close order details">×</button>
+  </div>
+  <div id="orderDetailBody" class="mck-v80-drawer-body"></div>
+</aside>
+<div id="orderDetailBackdrop" class="mck-v80-order-backdrop" onclick="closeOrderDetail_()" aria-hidden="true"></div>
+
 <div id="deliveryConfirmModal" class="custom-confirm-overlay" aria-hidden="true">
   <div class="custom-confirm-card" role="dialog" aria-modal="true" aria-labelledby="deliveryConfirmTitle">
     <div class="custom-confirm-icon">🍜</div>
@@ -486,7 +495,7 @@ html{-webkit-text-size-adjust:100%;scroll-behavior:auto!important;}
         <div class="search-wrap"><span class="search-icon">🔎</span><input class="search" id="orderSearch" type="search" autocomplete="off" placeholder="Search order / customer..." oninput="renderOrders()" onkeydown="if(event.key==='Enter'){renderOrders();}"><button type="button" class="search-btn" onclick="renderOrders()">Search</button></div>
         <select class="status-filter" id="orderStatusFilter" onchange="renderOrders()">
           <option value="">All statuses</option>
-          <option>Preparing</option><option>Ready</option><option>Delivered</option><option>Cancelled</option>
+          <option>Preparing</option><option>Ready</option><option>On the Way</option><option>Delivered</option><option>Cancelled</option>
         </select>
         <button class="add" id="refreshOrdersBtn" type="button" onclick="refreshOrders()">↻ Refresh</button>
       </div>
@@ -1013,7 +1022,7 @@ html{-webkit-text-size-adjust:100%;scroll-behavior:auto!important;}
       address:o.address || "", instruction:o.instruction || o.additionalInstruction || "",
       orderedAt:cleanTimestamp(o.orderedAt), customerConfirmed:!!o.customerConfirmed,
       confirmedAt:cleanTimestamp(o.confirmedAt), deliveredAt:cleanTimestamp(o.deliveredAt),
-      closed:!!o.closed, receiptPromptDismissed:!!o.receiptPromptDismissed, reviewPromptDismissed:!!o.reviewPromptDismissed, canRate:(o.orderStatus === "Delivered" && !!o.customerConfirmed)
+      closed:!!o.closed, receiptPromptDismissed:!!o.receiptPromptDismissed, reviewPromptDismissed:!!o.reviewPromptDismissed, receiptAutoConfirmed:!!o.receiptAutoConfirmed, autoConfirmedAt:cleanTimestamp(o.autoConfirmedAt), canRate:(o.orderStatus === "Delivered" && !!o.customerConfirmed)
     };
   }
 
@@ -2211,7 +2220,7 @@ function renderOrders(){
   const q=String(document.getElementById('orderSearch')?.value||'').toLowerCase();
   const filter=String(document.getElementById('orderStatusFilter')?.value||'');
   const list=orders.filter(o=>{
-    const hay=[o.orderId,o.customerName,o.email,o.mobile,o.address].join(' ').toLowerCase();
+    const itemSearch=Array.isArray(o.items)?o.items.map(function(i){return i.productName||i.name||''}).join(' '):''; const hay=[o.orderId,o.customerName,o.email,o.mobile,o.address,o.paymentMethod,itemSearch].join(' ').toLowerCase();
     const uiStatus=(String(o.orderStatus||'Preparing').trim()==='Pending'?'Preparing':String(o.orderStatus||'Preparing').trim()||'Preparing');
     return (!q||hay.includes(q))&&(!filter||uiStatus===filter);
   });
@@ -2238,7 +2247,7 @@ function renderOrders(){
     // Ready becomes clickable only after every purchased menu item is Ready.
     const canMarkReady=status==='Preparing' && allItemsReady;
     const canDeliver=status==='On the Way';
-    return '<article class="order-card '+(deliveredLocked?'order-delivered-locked ':'')+(closed?'order-closed ':'')+(status==='Preparing'&&!closed?'order-preparing-active':'')+'>'+
+    return '<article class="order-card '+(deliveredLocked?'order-delivered-locked ':'')+(closed?'order-closed ':'')+(status==='Preparing'&&!closed?'order-preparing-active':'')+'" data-order-id="'+escAttr(o.orderId)+'" tabindex="0" role="button">'+
       '<div class="order-head"><div><div class="order-id">#'+esc(o.orderId)+'</div><div class="order-meta">'+esc(o.customerName||'Guest')+' · '+esc(o.mobile||'')+'</div><div class="order-meta">'+(o.orderedAt?new Date(o.orderedAt).toLocaleString():'')+'</div></div>'+
       '<span class="status-pill '+orderStatusClass(status)+'">'+esc(status)+(closed?' · Closed':'')+'</span></div>'+
       '<div class="order-grid">'+
@@ -2248,17 +2257,23 @@ function renderOrders(){
       '</div>'+
       '<div class="order-workflow-note">Workflow: <b>Preparing</b> → <b>Ready</b> → <b>On the Way</b> → <b>Delivered</b><br><span style="font-size:11px">Admin uses only Preparing, Ready, and Delivered buttons. Ready automatically advances to On the Way.</span></div>'+
       '<div class="order-actions">'+
+      '<button type="button" class="mck-v80-view-detail" data-order-id="'+escAttr(o.orderId)+'">View Details</button>'+
       '<button class="'+(status==='Preparing' && !allItemsReady ? 'active':'')+'" disabled title="Order is being prepared">Preparing</button>'+
       '<button class="'+(canMarkReady?'active':'')+'" '+(deliveredLocked||closed||!canMarkReady?'disabled':'')+' onclick="updateOrderStatus(\''+escAttr(o.orderId)+'\',\'Ready\')" title="Click when every item is Ready. The order will move directly to On the Way.">Ready</button>'+
       '<button class="'+(canDeliver?'active':'')+'" '+(deliveredLocked||closed||!canDeliver?'disabled':'')+' onclick="updateOrderStatus(\''+escAttr(o.orderId)+'\',\'Delivered\')">Delivered</button>'+
       '</div>'+
       '<div class="review-notify-row">'+
-      '<button type="button" class="review-notify-btn '+(o.reviewCompleted?'review-done':'')+'" '+((status!=='Delivered'||!o.customerConfirmed||o.reviewCompleted)?'disabled':'')+' onclick="notifyCustomerReview(\''+escAttr(o.orderId)+'\',this,'+(o.reviewRequested?'true':'false')+')">'+(o.reviewCompleted?'✓ Review Completed':(o.reviewRequested?'🔔 Notify Again':'🔔 Notify Customer to Review'))+'</button>'+
-      '<span class="review-progress">'+(status!=='Delivered'?'Available after Delivered':(!o.customerConfirmed?'Waiting for customer to confirm receipt':(o.reviewCompleted?'Customer has reviewed this order':(o.reviewPromptDismissed?'Customer closed the survey — not yet reviewed':(o.reviewRequested?'Waiting for customer to open the review notification':'Customer can now review')))))+'</span>'+
+      '<button type="button" class="review-notify-btn '+(o.reviewCompleted?'review-done':(o.receiptAutoConfirmed?'review-ready-auto':''))+'" '+((status!=='Delivered'||!o.customerConfirmed||o.reviewCompleted)?'disabled':'')+' title="'+(o.receiptAutoConfirmed?'Customer auto-confirmed receipt after 3 hours. Send the review survey when ready.':'')+'" onclick="notifyCustomerReview(\''+escAttr(o.orderId)+'\',this,'+(o.reviewRequested?'true':'false')+')">'+(o.reviewCompleted?'✓ Review Completed':(o.reviewRequested?'🔔 Notify Again':(o.receiptAutoConfirmed?'🔔 Notify Customer to Send Survey':'🔔 Notify Customer to Review')))+'</button>'+
+      '<span class="review-progress">'+(status!=='Delivered'?'Available after Delivered':(!o.customerConfirmed?'Waiting for customer to confirm receipt':(o.reviewCompleted?'Customer has reviewed this order':(o.receiptAutoConfirmed?'3-hour auto-received • Ready to send survey':(o.reviewPromptDismissed?'Customer closed the survey — not yet reviewed':(o.reviewRequested?'Waiting for customer to open the review notification':'Customer can now review'))))))+'</span>'+
       '</div>'+
       (closed?'<div class="order-closed-note">✓ Customer confirmed receipt. Order is closed. You can notify the customer to review below.</div>':'')+
       '</article>';
   }).join('');
+  container.querySelectorAll('.order-card[data-order-id]').forEach(function(card){
+    card.addEventListener('click',function(e){openOrderDetail_(card.getAttribute('data-order-id'),e);});
+    card.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();openOrderDetail_(card.getAttribute('data-order-id'),e);}});
+  });
+  container.querySelectorAll('.mck-v80-view-detail').forEach(function(btn){btn.addEventListener('click',function(e){e.stopPropagation();openOrderDetail_(btn.getAttribute('data-order-id'),e);});});
 }
 function escAttr(s){return String(s??'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");}
 function updateOrderItemStatus(orderId,itemIndex,status){
