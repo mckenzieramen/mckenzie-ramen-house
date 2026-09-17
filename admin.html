@@ -2814,3 +2814,63 @@ document.addEventListener('click',function(e){
   window.addEventListener('beforeunload',function(){if(liveUnsub)try{liveUnsub();}catch(e){}});
 })();
 </script>
+
+<style id="mck-v65-admin-live-ops-style">
+  .mck-v65-live-panel{grid-column:1/-1;margin-top:2px;border:1px solid rgba(153,117,77,.22);background:linear-gradient(180deg,#fffdf9,#fff8ef);border-radius:18px;padding:18px;box-shadow:0 10px 28px rgba(73,39,24,.07)}
+  .mck-v65-live-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px}.mck-v65-live-head strong{font-size:15px;color:#4d2420}.mck-v65-live-head small{display:block;margin-top:3px;color:#8b756c;font-size:11px}.mck-v65-live-pill{display:inline-flex;align-items:center;gap:6px;padding:5px 9px;border-radius:999px;background:#f4eee5;color:#6b5b52;font-size:10px;font-weight:800}.mck-v65-live-pill i{width:7px;height:7px;border-radius:50%;background:#4d8d61;box-shadow:0 0 0 4px rgba(77,141,97,.12)}
+  .mck-v65-chart{width:100%;height:190px;display:block;overflow:visible}.mck-v65-chart text{font-family:inherit;fill:#8b756c;font-size:9px}.mck-v65-chart .grid{stroke:#eadfd5;stroke-width:1}.mck-v65-chart .area{fill:rgba(145,33,43,.08)}.mck-v65-chart .line{fill:none;stroke:#8f1825;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}.mck-v65-chart .dot{fill:#fffdf9;stroke:#8f1825;stroke-width:2}.mck-v65-chart .today{fill:#8f1825}.mck-v65-chart .value{fill:#5b2b24;font-size:9px;font-weight:800}
+  .mck-v65-attention-row{cursor:pointer;transition:transform .16s ease,background .16s ease}.mck-v65-attention-row:hover{transform:translateY(-1px);background:rgba(143,24,37,.035);border-radius:10px}.mck-v65-attention-row button{border:0;background:transparent;color:#8f1825;font-size:10px;font-weight:800;cursor:pointer;margin-left:auto;padding:7px}.mck-v65-empty{font-size:11px;color:#81736d;padding:8px 0}
+  @media(max-width:700px){.mck-v65-live-panel{padding:14px;border-radius:15px}.mck-v65-chart{height:170px}.mck-v65-live-head{align-items:center}}
+  @media(prefers-reduced-motion:reduce){.mck-v65-attention-row{transition:none}}
+</style>
+<script id="mck-v65-admin-live-ops-js">
+(function(){
+  'use strict';
+  function esc_(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));}
+  function money_(n){return '₱'+Number(n||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});}
+  function orderDate_(o){var d=o&&o.orderedAt?new Date(o.orderedAt):null;return d&&!isNaN(d)?d:null;}
+  function delivered_(o){return String(o&&o.orderStatus||'').toLowerCase()==='delivered';}
+  function items_(o){return Array.isArray(o&&o.items)?o.items:[];}
+  function ensureLivePanel_(){
+    var section=document.getElementById('dashboardSection'), grid=section&&section.querySelector('.dash-grid');
+    if(!grid||document.getElementById('mckV65LiveSalesPanel'))return;
+    var p=document.createElement('div');p.id='mckV65LiveSalesPanel';p.className='mck-v65-live-panel';
+    p.innerHTML='<div class="mck-v65-live-head"><div><strong>Live Sales Pulse</strong><small>Delivered sales for today — updates automatically when orders change.</small></div><span class="mck-v65-live-pill"><i aria-hidden="true"></i>Live</span></div><div id="mckV65SalesChart"></div>';
+    grid.appendChild(p);
+  }
+  function renderChart_(){
+    var box=document.getElementById('mckV65SalesChart');if(!box)return;
+    var now=new Date(), start=new Date(now);start.setHours(0,0,0,0);
+    var vals=[];
+    for(var h=0;h<=now.getHours();h++){
+      var total=(orders||[]).filter(function(o){var d=orderDate_(o);return d&&delivered_(o)&&d>=start&&d.getHours()===h;}).reduce(function(s,o){return s+Number(o.total||0);},0);
+      vals.push(total);
+    }
+    var max=Math.max(100,...vals), W=900,H=190,L=42,R=16,T=14,B=30, innerW=W-L-R, innerH=H-T-B;
+    var pts=vals.map(function(v,i){var x=L+(vals.length===1?0:i/(vals.length-1))*innerW;var y=T+innerH-(v/max)*innerH;return {x:x,y:y,v:v,h:i};});
+    var path=pts.map(function(p,i){return (i?'L':'M')+p.x.toFixed(1)+' '+p.y.toFixed(1);}).join(' ');
+    var area=path+' L '+pts[pts.length-1].x.toFixed(1)+' '+(T+innerH)+' L '+pts[0].x.toFixed(1)+' '+(T+innerH)+' Z';
+    var grid='';[0,.5,1].forEach(function(r){var y=T+innerH-(r*innerH);grid+='<line class="grid" x1="'+L+'" y1="'+y+'" x2="'+(W-R)+'" y2="'+y+'"/>';});
+    var labels=pts.map(function(p){return '<text x="'+p.x+'" y="'+(H-10)+'" text-anchor="middle">'+p.h+':00</text>';}).join('');
+    var dots=pts.map(function(p){return '<circle class="dot" cx="'+p.x+'" cy="'+p.y+'" r="3.2"><title>'+p.h+':00 — '+money_(p.v)+'</title></circle>';}).join('');
+    var total=vals.reduce(function(a,b){return a+b;},0);
+    box.innerHTML='<div style="display:flex;justify-content:space-between;align-items:end;gap:12px;margin-bottom:4px"><div><strong style="font-size:22px;color:#4d2420">'+money_(total)+'</strong><span style="font-size:10px;color:#8b756c;margin-left:7px">today</span></div><span style="font-size:10px;color:#8b756c">Delivered only</span></div><svg class="mck-v65-chart" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none" role="img" aria-label="Live delivered sales by hour"><g>'+grid+'</g><path class="area" d="'+area+'"></path><path class="line" d="'+path+'"></path>'+dots+labels+'</svg>';
+  }
+  function enhanceAttention_(){
+    var box=document.getElementById('dashboardAttention');if(!box)return;
+    var open=(customerChatsData||[]).filter(function(c){return String(c.status||'Open')==='Open';}).length;
+    var waiting=(orders||[]).filter(function(o){return delivered_(o)&&o.customerConfirmed&&!o.reviewCompleted;}).length;
+    var unavailable=(products||[]).filter(function(p){return String(p.status||'').toLowerCase()!=='available';}).length;
+    var rows=[];
+    if(open)rows.push({icon:'💬',text:open+' open support ticket'+(open===1?'':'s'),target:'chat'});
+    if(waiting)rows.push({icon:'⭐',text:waiting+' delivered order'+(waiting===1?'':'s')+' waiting for review',target:'reviews'});
+    if(unavailable)rows.push({icon:'🍜',text:unavailable+' menu item'+(unavailable===1?'':'s')+' unavailable',target:'products'});
+    if(!rows.length){box.innerHTML='<div class="mck-v65-empty">Everything looks clear. ✦</div>';return;}
+    box.innerHTML=rows.map(function(x){return '<div class="attention-row mck-v65-attention-row" data-target="'+x.target+'"><div class="attention-copy"><div class="attention-icon">'+x.icon+'</div><span>'+esc_(x.text)+'</span></div><button type="button" aria-label="Open '+esc_(x.text)+'">View →</button></div>';}).join('');
+    box.querySelectorAll('.mck-v65-attention-row').forEach(function(row){row.addEventListener('click',function(){if(typeof showSection==='function')showSection(row.getAttribute('data-target'));});});
+  }
+  function refresh_(){ensureLivePanel_();renderChart_();enhanceAttention_();}
+  function boot(){refresh_();setInterval(refresh_,5000);}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){setTimeout(boot,1100);},{once:true});else setTimeout(boot,1100);
+})();
+</script>
