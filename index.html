@@ -12267,7 +12267,7 @@ document.addEventListener('DOMContentLoaded',function(){addSakura();addSteam();b
 
 <!-- V84 PATCH: checklist fixes — realtime review privacy, verification auto-detect,
      receipt persistence/navigation, customer notifications, mobile chat layout. -->
-<style id="mck-v84-checklist-polish">
+<style id="mck-v85-checklist-polish">
 /* Logo: prevent an opaque rectangular upload/background from reading as a box. */
 .hero-logo,.site-sticky-logo,.footer-logo,#adminLoginLogo,.brand-preview{background:transparent!important;}
 /* Review photos remain visible in the public scrolling review cards. */
@@ -12280,7 +12280,7 @@ document.addEventListener('DOMContentLoaded',function(){addSakura();addSteam();b
   #mckCustomerChatInput{font-size:16px!important;min-height:46px!important;max-height:120px!important;}
 }
 </style>
-<script id="mck-v84-checklist-fixes">
+<script id="mck-v85-checklist-fixes">
 (function(){
   'use strict';
 
@@ -12288,30 +12288,14 @@ document.addEventListener('DOMContentLoaded',function(){addSakura();addSteam();b
      1) Anonymous review: realtime renderer previously omitted
         anonymousChoice, so a realtime refresh could lose privacy.
   --------------------------------------------------------- */
-  function patchRealtimeReviewRows_(){
-    try{
-      var scripts=[].slice.call(document.scripts||[]);
-      scripts.forEach(function(s){
-        if(!s.textContent || s.textContent.indexOf('mckPublishedReviewListenerStarted_')<0) return;
-        /* No DOM rewrite here; the canonical fix below re-renders privacy from
-           Firestore rows whenever the existing realtime renderer completes. */
-      });
-    }catch(e){}
-  }
-  patchRealtimeReviewRows_();
-
-  /* Existing review cards are already stamped with data-review-anonymous.
-     Keep them scrubbed even after asynchronous/realtime rendering. */
+  /* V85 stability fix: the realtime renderer now carries anonymousChoice
+     itself, so no DOM MutationObserver is needed here. The previous observer
+     rewrote the review name inside the same subtree it was observing, which
+     could create a continuous mutation loop and make the page unresponsive. */
   function scrubAnon_(){
     document.querySelectorAll('.customer-review-card[data-review-anonymous="1"] .customer-review-name').forEach(function(el){
-      el.textContent='— Anonymous';
+      if(el.textContent !== '— Anonymous') el.textContent='— Anonymous';
     });
-  }
-  if(window.MutationObserver){
-    var reviewHost=document.getElementById('customerReviewGrid');
-    if(reviewHost){
-      new MutationObserver(function(){scrubAnon_();}).observe(reviewHost,{childList:true,subtree:true});
-    }
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',scrubAnon_);else scrubAnon_();
 
