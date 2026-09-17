@@ -8383,17 +8383,22 @@ async function loadPublishedMenuRatings_(reviewsOverride){
           const rating=Math.max(1,Math.min(5,Number(r.rating||0)));
           const stars=Array.from({length:5},function(_,i){return i<Math.round(rating)?'★':'☆';}).join(' ');
           const when=r.submittedAt?new Date(r.submittedAt).toLocaleDateString() : '';
-          var publicName=r.anonymous?'Anonymous':String(r.customerName||'Customer');
+          /* Public privacy must be based on an explicit anonymous flag, regardless
+             of whether older/newer records store it as boolean or string. */
+          var anonRaw=(r.anonymous!=null?r.anonymous:(r.isAnonymous!=null?r.isAnonymous:(r.postAnonymously!=null?r.postAnonymously:r.anonymousReview)));
+          var isAnon=(anonRaw===true || String(anonRaw||'').trim().toLowerCase()==='true' || String(anonRaw||'').trim()==='1' || String(anonRaw||'').trim().toLowerCase()==='yes' || String(r.publicName||'').trim().toLowerCase()==='anonymous' || String(r.displayName||'').trim().toLowerCase()==='anonymous');
+          var publicName=isAnon?'Anonymous':String(r.customerName||'Customer');
           var category=String(r.category||'');
           if(!category){var pm=Object.keys(window.mckenzieProducts||{}).map(function(k){return window.mckenzieProducts[k]}).find(function(p){return String(p.name||'')===String(r.productName||'')});category=pm&&pm.category?String(pm.category):'';}
           var reviewIconKey=/ramen|noodle|soup|tonkatsu|spicy/i.test(category+' '+String(r.productName||''))?'ramen':/side|gyoza|dumpling|karaage|fries|takoyaki|appetizer/i.test(category+' '+String(r.productName||''))?'side':/drink|beverage|tea|coke|soda/i.test(category+' '+String(r.productName||''))?'drink':'dish';
-          return '<article class="customer-review-card" data-review-menu="'+escapeHtml(String(r.productName||'Menu item'))+'" data-review-category="'+escapeHtml(category)+'"><div class="customer-review-menu"><span class="mck-review-menu-icon" data-review-icon="'+reviewIconKey+'" aria-hidden="true"></span> '+escapeHtml(String(r.productName||'Menu item'))+'<span class="mck-customer-review-verified">✓ Verified Purchase</span></div>'+(r.image?'<img class="mck-public-review-photo" src="'+escapeHtml(String(r.image))+'" alt="Customer review photo" loading="lazy">':'')+'<div class="customer-review-stars">'+stars+'</div><p class="customer-review-text">“'+escapeHtml(String(r.review).trim())+'”</p><div class="customer-review-name">— '+escapeHtml(publicName)+'</div>'+(when?'<div class="customer-review-date">'+escapeHtml(when)+'</div>':'')+'</article>';
+          return '<article class="customer-review-card" data-review-anonymous="'+(isAnon?'1':'0')+'" data-review-menu="'+escapeHtml(String(r.productName||'Menu item'))+'" data-review-category="'+escapeHtml(category)+'"><div class="customer-review-menu"><span class="mck-review-menu-icon" data-review-icon="'+reviewIconKey+'" aria-hidden="true"></span> '+escapeHtml(String(r.productName||'Menu item'))+'<span class="mck-customer-review-verified">✓ Verified Purchase</span></div>'+(r.image?'<img class="mck-public-review-photo" src="'+escapeHtml(String(r.image))+'" alt="Customer review photo" loading="lazy">':'')+'<div class="customer-review-stars">'+stars+'</div><p class="customer-review-text">“'+escapeHtml(String(r.review).trim())+'”</p><div class="customer-review-name">— '+escapeHtml(publicName)+'</div>'+(when?'<div class="customer-review-date">'+escapeHtml(when)+'</div>':'')+'</article>';
         }).join('');
         /* Duplicate the exact comment set so the CSS animation can loop
            continuously without a visible jump. The viewport shows five
            comment slots at a time. */
         const trackClass='customer-review-stream-track';
         grid.innerHTML='<div class="customer-review-stream"><div class="'+trackClass+'">'+cards+cards+'</div></div>';
+        if(typeof window.mckV68ProtectPublicReviewPrivacy==='function') window.mckV68ProtectPublicReviewPrivacy();
       }
     }
 
@@ -8413,7 +8418,7 @@ function startPublishedReviewRealtime_(){
       mckPublishedReviewUnsub_=f.onSnapshot(q,function(snap){
         const rows=(snap.docs||[]).map(function(d){
           const r=d.data()||{};
-          return {reviewId:r.reviewId||d.id,orderId:r.orderId,productId:r.productId,productName:r.productName,rating:r.rating,review:r.review,customerName:r.customerName,anonymous:!!r.anonymous,image:r.image||'',category:r.category||'',submittedAt:r.submittedAt,status:r.status};
+          return {reviewId:r.reviewId||d.id,orderId:r.orderId,productId:r.productId,productName:r.productName,rating:r.rating,review:r.review,customerName:r.customerName,customerEmail:r.customerEmail,anonymous:r.anonymous,isAnonymous:r.isAnonymous,postAnonymously:r.postAnonymously,anonymousReview:r.anonymousReview,publicName:r.publicName,displayName:r.displayName,image:r.image||'',category:r.category||'',submittedAt:r.submittedAt,status:r.status};
         });
         loadPublishedMenuRatings_(rows).catch(function(e){console.warn('Realtime review render:',e);});
       },function(e){
@@ -9420,7 +9425,8 @@ if (window.MckenzieFirebaseReady && typeof window.MckenzieFirebaseReady.then ===
             var anonymous=!!ent.anonymous;
             for(var unit=0;unit<remaining;unit++){
               var id='REV-'+Date.now()+'-'+Math.floor(Math.random()*100000)+'-'+count;
-              batch.set(f.doc(f.db,'reviews',id),{reviewId:id,orderId:String(params.orderId||''),customerId:String(u.uid),productId:pid,productName:String(target.productName||target.name||'Ramen item'),rating:rating,review:review,unitIndex:already+unit+1,reviewedUnit:already+unit+1,quantityRepresented:qty,anonymous:anonymous,customerName:String(odb.customerName||odb.fullName||'Customer'),customerEmail:String(odb.email||u.email||''),image:image,submittedAt:new Date().toISOString(),status:'Published'});
+              var privateCustomerName=String(odb.customerName||odb.fullName||'Customer');
+              batch.set(f.doc(f.db,'reviews',id),{reviewId:id,orderId:String(params.orderId||''),customerId:String(u.uid),productId:pid,productName:String(target.productName||target.name||'Ramen item'),rating:rating,review:review,unitIndex:already+unit+1,reviewedUnit:already+unit+1,quantityRepresented:qty,anonymous:anonymous,isAnonymous:anonymous,postAnonymously:anonymous,anonymousReview:anonymous,publicName:anonymous?'Anonymous':privateCustomerName,customerName:privateCustomerName,customerEmail:String(odb.email||u.email||''),image:image,submittedAt:new Date().toISOString(),status:'Published'});
               count++;
             }
           });
@@ -9449,7 +9455,7 @@ if (window.MckenzieFirebaseReady && typeof window.MckenzieFirebaseReady.then ===
           await f.setDoc(f.doc(f.db,'reviews',id),{
             reviewId:id,orderId:String(params.orderId||''),customerId:String(u.uid),productId:String(params.productId||''),
             productName:String(target.productName||target.name||'Ramen item'),rating:rating,review:review,
-            customerName:String(od.customerName||od.fullName||'Customer'),submittedAt:new Date().toISOString(),status:'Published'
+            customerName:String(od.customerName||od.fullName||'Customer'),anonymous:!!params.anonymous,isAnonymous:!!params.anonymous,postAnonymously:!!params.anonymous,anonymousReview:!!params.anonymous,publicName:params.anonymous?'Anonymous':String(od.customerName||od.fullName||'Customer'),submittedAt:new Date().toISOString(),status:'Published'
           });
           done({success:true,message:'Your review has been submitted.',reviewId:id});
           return;
@@ -11891,6 +11897,22 @@ document.addEventListener('DOMContentLoaded',function(){addSakura();addSteam();b
 })();
 </script>
 
+
+<script id="mck-v68-public-anonymous-privacy-guard">
+(function(){
+  'use strict';
+  function protect(){
+    var cards=document.querySelectorAll('.customer-review-card');
+    cards.forEach(function(card){
+      var name=card.querySelector('.customer-review-name');
+      if(!name)return;
+      var marker=card.getAttribute('data-review-anonymous');
+      if(marker==='1'){name.textContent='— Anonymous';}
+    });
+  }
+  window.mckV68ProtectPublicReviewPrivacy=protect;
+})();
+</script>
 
 <style id="mck-v64-review-notification-icons">
 /* V64: public anonymous privacy + category-aware review icons + guaranteed notification icons. */
