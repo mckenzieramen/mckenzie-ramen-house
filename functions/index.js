@@ -82,8 +82,6 @@ async function sendVerificationEmail({ to, code }) {
   }
 }
 
-
-
 async function sendCustomPasswordResetEmail(req, res) {
   const email = normalizeEmail(req.body?.email);
   const continueUrl = String(req.body?.continueUrl || "").trim();
@@ -523,26 +521,17 @@ async function customerReceiptAction(req, res) {
   return res.json({success:true,received:action==="received",dismissed:action==="dismiss"});
 }
 
-
-
 exports.sendCustomPasswordResetEmail = onRequest(
-  {
-    region: "us-central1",
-    secrets: [RESEND_API_KEY, RESEND_FROM_EMAIL],
-    invoker: "public"
-  },
+  { region: "us-central1", secrets: [RESEND_API_KEY, RESEND_FROM_EMAIL], invoker: "public" },
   async (req, res) => {
     setCors(res);
     if (req.method === "OPTIONS") return res.status(204).send("");
     if (req.method !== "POST") return jsonError(res, 405, "Method not allowed.");
-    try {
-      return await sendCustomPasswordResetEmail(req, res);
-    } catch (error) {
-      console.error(error);
-      return jsonError(res, 500, "Unable to process the password-reset request.");
-    }
+    try { return await sendCustomPasswordResetEmail(req, res); }
+    catch (error) { console.error(error); return jsonError(res, 500, "Unable to process the password-reset request."); }
   }
 );
+
 
 exports.requestEmailVerification = onRequest(
   {
