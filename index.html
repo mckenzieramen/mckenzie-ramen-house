@@ -7,6 +7,9 @@
   <base target="_top">
 
   <title>Mckenzie Ramen House</title>
+  <link rel="icon" type="image/png" sizes="64x64" href="favicon.png">
+  <link rel="shortcut icon" type="image/png" href="favicon.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="favicon.png">
 
   <!-- Firebase standalone bridge for GitHub Pages. This creates the
        google.script.run compatibility layer used by the existing customer UI. -->
@@ -196,7 +199,7 @@
 .checkout-payment-option { display:flex; align-items:center; gap:9px; padding:11px 12px; border:1px solid #e6c5b7; border-radius:10px; background:#fff; cursor:pointer; font-size:13px; font-weight:800; color:#3a0709; }
 .checkout-payment-option input { accent-color:#a51620; }
 .checkout-payment-option:has(input:checked) { border-color:#a51620; box-shadow:0 0 0 2px rgba(165,22,32,.08); }
-.checkout-payment-details{margin-top:10px;padding:10px 12px;border:1px dashed #e6c5b7;border-radius:10px;background:#fff;display:none;color:#5b4038;font-size:11px;line-height:1.5}.checkout-payment-details.show{display:block}.checkout-payment-details strong{color:#7b1520}.checkout-payment-qr{display:block;width:min(220px,100%);max-height:220px;object-fit:contain;margin:8px auto 2px;border:1px solid #ead4c9;border-radius:10px;background:#fff;padding:5px}.checkout-payment-unavailable{opacity:.58;cursor:not-allowed}.checkout-payment-option small{display:block;margin-left:25px;color:#9a7770;font-size:9px;font-weight:700}
+.checkout-payment-details{margin-top:10px;padding:10px 12px;border:1px dashed #e6c5b7;border-radius:10px;background:#fff;display:none;color:#5b4038;font-size:11px;line-height:1.5}.checkout-payment-details.show{display:block}.checkout-payment-details strong{color:#7b1520}.checkout-payment-qr{display:block;width:min(220px,100%);max-height:220px;object-fit:contain;margin:8px auto 2px;border:1px solid #ead4c9;border-radius:10px;background:#fff;padding:5px}.checkout-payment-unavailable{opacity:.58;cursor:not-allowed}.checkout-payment-option small{display:block;margin-left:25px;color:#9a7770;font-size:9px;font-weight:700}.mck-payment-brand{display:inline-flex;align-items:center;justify-content:center;gap:5px;min-width:58px;height:27px;flex:none;border-radius:7px;padding:0 7px;box-sizing:border-box;font-size:9px;font-weight:950;line-height:1;letter-spacing:.15px;overflow:hidden}.mck-payment-brand svg{display:block;width:100%;height:100%;max-width:74px}.mck-payment-label{display:flex;flex-direction:column;min-width:0;gap:2px}.mck-payment-label>strong{font-size:12px;line-height:1.1}.mck-payment-sub{font-size:9px!important;margin:0!important;color:#9a7770!important;font-weight:700!important;line-height:1.1}.mck-card-networks{display:flex;align-items:center;gap:5px;margin-left:auto;flex:none}.mck-card-networks .mck-card-mini{display:inline-flex;align-items:center;justify-content:center;height:20px;min-width:34px;padding:0 4px;border:1px solid #e3d5ce;border-radius:4px;background:#fff;font-size:7px;font-weight:950;line-height:1;box-sizing:border-box}.mck-card-mini.visa{font-size:8px;font-style:italic;letter-spacing:-.3px}.mck-card-mini.mc{position:relative;min-width:29px;padding:0}.mck-card-mini.mc:before,.mck-card-mini.mc:after{content:"";position:absolute;width:12px;height:12px;border-radius:50%;top:3px}.mck-card-mini.mc:before{left:4px;background:#ea001b}.mck-card-mini.mc:after{right:4px;background:#ff9900}.mck-card-mini.mc span{position:relative;z-index:2;color:#222;font-size:5px;letter-spacing:-.2px}.mck-payment-option-card{grid-column:1 / -1}.mck-payment-option-card .mck-payment-brand{min-width:68px;background:#3a0709;color:#fff}.mck-payment-option-card .mck-payment-brand svg{width:64px}.mck-payment-option-card .mck-payment-label{flex:1}.mck-payment-option-card .mck-card-networks{margin-left:auto}.mck-payment-option-cod .mck-payment-brand{background:#fff3e7;color:#7b1520;border:1px solid #ead4c9}.mck-payment-option-gcash .mck-payment-brand{background:#007dff;color:#fff}.mck-payment-option-maya .mck-payment-brand{background:#00b96b;color:#fff}
 
 .checkout-loading {
   padding:14px;
@@ -5699,17 +5702,28 @@ async function loadCheckoutPaymentMethods_(){
     docs.forEach(function(d,i){if(d) methods[keys[i]]=Object.assign({},methods[keys[i]],d);});
   }catch(e){console.warn("Unable to load payment settings:",e);}
   const entries=[
-    {key:"GCash",label:"GCash"},
-    {key:"Maya",label:"Maya"},
-    {key:"QR BANK",label:(methods["QR BANK"].name||"QR BANK")},
-    {key:"Cash on Delivery",label:"Cash on Delivery",always:true}
+    {key:"GCash",label:"GCash",brand:"gcash"},
+    {key:"Maya",label:"Maya",brand:"maya"},
+    {key:"Card",label:"Credit / Debit Card",brand:"card",sub:"Visa or Mastercard",card:true},
+    {key:"QR BANK",label:(methods["QR BANK"].name||"QR BANK"),brand:"qr"},
+    {key:"Cash on Delivery",label:"Cash on Delivery",always:true,brand:"cod",cod:true}
   ];
+  function paymentBrand_(brand){
+    if(brand==="gcash") return '<span class="mck-payment-brand" aria-hidden="true"><svg viewBox="0 0 90 30" role="img"><text x="45" y="21" text-anchor="middle" font-family="Arial,sans-serif" font-size="18" font-weight="900" fill="white">GCash</text></svg></span>';
+    if(brand==="maya") return '<span class="mck-payment-brand" aria-hidden="true"><svg viewBox="0 0 90 30" role="img"><text x="45" y="21" text-anchor="middle" font-family="Arial,sans-serif" font-size="17" font-weight="900" fill="white">MAYA</text></svg></span>';
+    if(brand==="card") return '<span class="mck-payment-brand" aria-hidden="true"><svg viewBox="0 0 78 30" role="img"><rect x="4" y="5" width="70" height="20" rx="4" fill="none" stroke="white" stroke-width="2"/><rect x="8" y="10" width="18" height="3" rx="1.5" fill="white"/><rect x="8" y="16" width="28" height="3" rx="1.5" fill="white" opacity=".7"/></svg></span>';
+    if(brand==="qr") return '<span class="mck-payment-brand" style="background:#fff3e7;color:#7b1520;border:1px solid #ead4c9" aria-hidden="true">▦ QR</span>';
+    return '<span class="mck-payment-brand" aria-hidden="true">💵</span>';
+  }
+  function cardNetworks_(){return '<span class="mck-card-networks" aria-label="Visa and Mastercard"><span class="mck-card-mini visa">VISA</span><span class="mck-card-mini mc"><span>MC</span></span></span>';}
   options.innerHTML=entries.map(function(item){
-    const d=item.always?{available:true}:methods[item.key];
+    const d=item.always?{available:true}:((item.key==="Card")?{available:true}:methods[item.key]);
     const available=d.available!==false;
     const safeLabel=escapeHtml(item.label||item.key);
-    const sub=item.always?"Pay upon delivery":(d.displayName||d.details||"");
-    return '<label class="checkout-payment-option '+(!available?'checkout-payment-unavailable':'')+'"><input type="radio" name="checkoutPaymentMethod" value="'+escapeHtml(item.key)+'" '+(!available?'disabled':'')+'><span>'+safeLabel+(available?'':' <small>Currently unavailable</small>')+'</span>'+(sub&&available?'<small>'+escapeHtml(sub)+'</small>':'')+'</label>';
+    const sub=item.always?"Pay upon delivery":(item.sub||d.displayName||d.details||"");
+    const extraClass=item.card?' mck-payment-option-card':(item.brand==='gcash'?' mck-payment-option-gcash':item.brand==='maya'?' mck-payment-option-maya':item.cod?' mck-payment-option-cod':'');
+    const unavailable=available?'':' <small class="mck-payment-sub">Currently unavailable</small>';
+    return '<label class="checkout-payment-option'+extraClass+' '+(!available?'checkout-payment-unavailable':'')+'"><input type="radio" name="checkoutPaymentMethod" value="'+escapeHtml(item.key)+'" '+(!available?'disabled':'')+'>'+paymentBrand_(item.brand)+'<span class="mck-payment-label"><strong>'+safeLabel+'</strong>'+(sub&&available?'<small class="mck-payment-sub">'+escapeHtml(sub)+'</small>':'')+unavailable+'</span>'+(item.card&&available?cardNetworks_():'')+'</label>';
   }).join("");
   function updateDetails(){
     const checked=document.querySelector('input[name="checkoutPaymentMethod"]:checked');
@@ -12790,3 +12804,62 @@ document.addEventListener('DOMContentLoaded',function(){addSakura();addSteam();b
   var t=setInterval(function(){init();if(bound.mckMenuSearch&&bound.stickyMenuSearchInput)clearInterval(t);},800);
 })();
 </script>
+
+<style id="mck-v92-checkout-recommendation-compact">
+/* V92: compact checkout recommendations on small screens so they do not crowd
+   or visually cover the cart content. Desktop sizing remains unchanged. */
+@media (max-width: 600px){
+  #mckCartRecommendations{
+    margin-top:10px !important;
+    padding-top:9px !important;
+  }
+  #mckCartRecommendations h3{
+    margin:0 0 6px !important;
+    font-size:16px !important;
+    line-height:1.15 !important;
+  }
+  #mckCartRecommendations .mck-cart-rec-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+    gap:6px !important;
+  }
+  #mckCartRecommendations .mck-cart-rec{
+    min-width:0 !important;
+    gap:5px !important;
+    padding:5px !important;
+    border-radius:9px !important;
+  }
+  #mckCartRecommendations .mck-cart-rec img{
+    width:34px !important;
+    height:34px !important;
+    flex:0 0 34px !important;
+    border-radius:7px !important;
+  }
+  #mckCartRecommendations .mck-cart-rec strong{
+    display:block !important;
+    max-width:70px !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
+    white-space:nowrap !important;
+    font-size:9px !important;
+  }
+  #mckCartRecommendations .mck-cart-rec small{
+    font-size:8px !important;
+    margin-top:1px !important;
+  }
+  #mckCartRecommendations .mck-cart-rec button{
+    width:23px !important;
+    height:23px !important;
+    min-width:23px !important;
+    font-size:15px !important;
+    line-height:23px !important;
+    padding:0 !important;
+  }
+}
+@media (max-width:380px){
+  #mckCartRecommendations .mck-cart-rec{padding:4px !important;gap:4px !important}
+  #mckCartRecommendations .mck-cart-rec img{width:31px !important;height:31px !important;flex-basis:31px !important}
+  #mckCartRecommendations .mck-cart-rec strong{max-width:58px !important;font-size:8.5px !important}
+  #mckCartRecommendations .mck-cart-rec small{font-size:7.5px !important}
+  #mckCartRecommendations .mck-cart-rec button{width:21px !important;height:21px !important;min-width:21px !important;font-size:14px !important;line-height:21px !important}
+}
+</style>
