@@ -3229,9 +3229,9 @@ body.quick-loading {
 </style>
 <style id="mckenzie-requested-mobile-header-and-chat-fix">
 @media(max-width:700px){
-  .site-sticky-nav{transform:translateY(-100%) !important;opacity:0 !important;visibility:hidden !important;pointer-events:none !important;}
+  .site-sticky-nav{transform:translateY(0) !important;opacity:1 !important;visibility:visible !important;pointer-events:auto !important;}
   body.mobile-top-scrolled .site-sticky-nav,body.mobile-site-nav-open .site-sticky-nav{transform:translateY(0) !important;opacity:1 !important;visibility:visible !important;pointer-events:auto !important;}
-  .site-sticky-logo{display:none !important;}
+  .site-sticky-logo{display:block !important;left:7px !important;top:50% !important;transform:translateY(-50%) !important;width:34px !important;height:34px !important;}
   body.mobile-top-scrolled .site-sticky-logo{display:block !important;left:7px !important;top:50% !important;transform:translateY(-50%) !important;width:34px !important;height:34px !important;}
   .sticky-cart-button{left:7px !important;right:auto !important;top:12px !important;width:34px !important;height:34px !important;}
   body.mobile-top-scrolled .sticky-cart-button{left:auto !important;right:46px !important;top:12px !important;}
@@ -3483,6 +3483,11 @@ body:not(.mck-customer-chat-open) .sticky-cart-button{visibility:visible!importa
 }
 </style>
 
+
+<style id="mck-v95-sticky-logo-fallback">
+/* V95: keep the sticky navigation logo visible immediately; Firebase branding may replace it later. */
+.site-sticky-logo{display:block !important;background:transparent !important;object-fit:contain !important;}
+</style>
 </head>
 
 
@@ -4147,6 +4152,7 @@ body:not(.mck-customer-chat-open) .sticky-cart-button{visibility:visible!importa
 <div id="siteStickyNav" class="site-sticky-nav" aria-label="Site navigation">
   <img id="siteStickyLogo"
        class="site-sticky-logo"
+       src="favicon.png"
        alt="Mckenzie Ramen House Logo"
        title="Go to Home"
        onclick="goToHomeFromLogo_();">
